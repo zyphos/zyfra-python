@@ -21,39 +21,55 @@
 #
 ##############################################################################
 
+import types
+
 class zyfra_debug:
     
     @staticmethod
-    def get_object_memory_map(obj, hidebase = True, lvl = 0, maxlevel=10, 
-                              field_name = None):
-        if lvl > maxlevel: return
+    def get_object_memory_map(obj, hide_builtin = True, lvl = 0, max_lvl=10, 
+                              field_name = None, attr_name = None):
+        #print type(obj)
+        if lvl > max_lvl: return
         obj_type = zyfra_debug.get_type_str(obj)
         field_name = (field_name is not None and str(field_name) + ': ') or ''
-        prefix = ' ' * lvl  * 4 + field_name +'(' + obj_type + ')' 
+        attr_name = (attr_name is not None and '' + str(attr_name) + ' = ') or ''
+        prefix = ' ' * lvl  * 4 + attr_name + field_name +'(' + obj_type + ')' 
         if obj_type in ['str', 'int', 'float']:
             print prefix + str(obj)
             return
-        print prefix
-        base_attr = ['__class__', '__delattr__', '__doc__', '__getattribute__', 
+        
+        if obj_type == 'class':
+            #print prefix + str(obj.__class__)
+            print prefix
+        else:
+            print prefix 
+        builtin_attr = ['__class__', '__delattr__', '__doc__', '__getattribute__', 
                      '__hash__', '__init__', '__new__', '__reduce__', 
                      '__reduce_ex__', '__repr__', '__setattr__', '__str__']
-        
-        if obj_type not in ['list','dict']:
+        if obj_type not in ['list','dict','def']:
+            if zyfra_debug.is_limit_reached(lvl, max_lvl): return
             for attr in dir(obj):
-                if hidebase and attr in base_attr: continue
-                if attr.startswith('__'): continue
-                if isinstance(attr, def) : continue
-                print attr
-                zyfra_debug.get_object_memory_map(getattr(obj, attr), hidebase, lvl + 1)                
+                if hide_builtin:
+                    if attr in builtin_attr : continue
+                    if type(getattr(obj, attr)) is types.BuiltinMethodType: continue
+                    if attr.startswith('__'): continue
+                #print attr
+                #print attr
+                
+                zyfra_debug.get_object_memory_map(getattr(obj, attr), hide_builtin, lvl + 1, attr_name = attr, max_lvl=max_lvl)                
 
-        if hasattr(obj, 'iteritems'):
+        if hasattr(obj, 'iteritems') and callable(obj.iteritems):
+            if zyfra_debug.is_limit_reached(lvl, max_lvl): return
             for (key, item) in obj.iteritems():
-                zyfra_debug.get_object_memory_map(item, hidebase, lvl + 1, 
-                                                  field_name = key)
+                zyfra_debug.get_object_memory_map(item, hide_builtin, lvl + 1, 
+                                                  field_name = key, max_lvl=max_lvl)
         elif zyfra_debug.is_iterable(obj):
+            if zyfra_debug.is_limit_reached(lvl, max_lvl): return
+            if lvl >= max_lvl: 
+                print ' ' * lvl  * 4 + '...'
+                return
             for item in obj:
-                zyfra_debug.get_object_memory_map(item, hidebase, lvl + 1)
-        
+                zyfra_debug.get_object_memory_map(item, hide_builtin, lvl + 1, max_lvl=max_lvl)
         return
     
     @staticmethod
@@ -65,10 +81,23 @@ class zyfra_debug:
         if isinstance(obj, list): return 'list'
         if isinstance(obj, dict): return 'dict'
         if isinstance(obj, set): return 'set'
-        return 'unknown'
+        if type(obj) is types.MethodType or \
+            type(obj) is types.FunctionType: return 'def'
+        if type(obj) is types.InstanceType: return 'obj'
+        if type(obj) is types.ClassType: return 'class'
+        if type(obj) is types.NoneType: return 'None'
+        if type(obj) is types.TypeType: return 'type'
+        return str(type(obj))
     
     @staticmethod
     def is_iterable(obj):
         try: iter(obj)
         except TypeError: return False
         return True
+    
+    @staticmethod
+    def is_limit_reached(lvl, max_lvl):
+        if lvl >= max_lvl: 
+            print ' ' * (lvl + 1)  * 4 + '--max-lvl:'+str(max_lvl)+' Limit reached--'
+            return True
+        return False
