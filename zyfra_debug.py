@@ -101,3 +101,29 @@ class zyfra_debug:
             print ' ' * (lvl + 1)  * 4 + '--max-lvl:'+str(max_lvl)+' Limit reached--'
             return True
         return False
+    
+import gtk
+class zyfra_debug_gui:
+    def __init__(self, obj):
+        
+        window = gtk.Window()
+        window.connect("delete_event", self.delete_event)
+        window.connect("destroy", self.destroy)
+        self.treestore = gtk.TreeStore(object)
+        cell = gtk.CellRendererText()
+        tvcolumn = gtk.TreeViewColumn('Object ID', cell)
+        treeview = gtk.TreeView(self.treestore)
+        treeview.append_column(tvcolumn)
+        treeview.show()
+        window.add(treeview)
+        iter = self.treestore.append(None, [window])
+        iter = self.treestore.append(iter, [treeview])
+        window.show()
+        gtk.main()
+        
+    def delete_event(self, widget, event, data=None):
+        # return True = avoid quitting application
+        return False
+
+    def destroy(self, widget, data=None):
+        gtk.main_quit()
