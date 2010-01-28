@@ -105,21 +105,31 @@ class zyfra_debug:
 import gtk
 class zyfra_debug_gui:
     def __init__(self, obj):
-        
         window = gtk.Window()
         window.connect("delete_event", self.delete_event)
         window.connect("destroy", self.destroy)
-        self.treestore = gtk.TreeStore(object)
+        self.treestore = gtk.TreeStore(str, str, str)
         cell = gtk.CellRendererText()
-        tvcolumn = gtk.TreeViewColumn('Object ID', cell)
+        col_name = gtk.TreeViewColumn('Name', cell, text=0)
+        col_type = gtk.TreeViewColumn('Type', cell, text=1)
+        col_value = gtk.TreeViewColumn('Value', cell, text=2)
         treeview = gtk.TreeView(self.treestore)
-        treeview.append_column(tvcolumn)
+        treeview.set_enable_tree_lines(True)
+        treeview.connect('row-expanded', self.expand_event)
+        treeview.append_column(col_name)
+        treeview.append_column(col_type)
+        treeview.append_column(col_value)
+        iterr = self.treestore.append(None, ['a','str','coucou'])
+        iterr = self.treestore.append(iterr, ['b','int','45'])
         treeview.show()
         window.add(treeview)
-        iter = self.treestore.append(None, [window])
-        iter = self.treestore.append(iter, [treeview])
-        window.show()
+        window.show_all()
         gtk.main()
+        
+    
+    
+    def expand_event(self, treeview, iter_row, path):
+        pass
         
     def delete_event(self, widget, event, data=None):
         # return True = avoid quitting application
