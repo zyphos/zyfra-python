@@ -77,7 +77,6 @@ class zyfra_debug:
         if isinstance(obj, str): return 'str'
         if isinstance(obj, int): return 'int'
         if isinstance(obj, float): return 'float'
-        if isinstance(obj, int): return 'int'
         if isinstance(obj, list): return 'list'
         if isinstance(obj, dict): return 'dict'
         if isinstance(obj, set): return 'set'
@@ -103,26 +102,253 @@ class zyfra_debug:
         return False
     
 import gtk
+
+class DebugObject(object):
+    iter_nb = 0
+    parent_iter = None
+    child_iter = None
+    obj = None
+    name = None
+    path = None
+    next_iter = None
+    scanned_for_childs = False
+    obj_type = ''
+    scanning = False
+    
+    def __init__(self, context, name, obj, path):
+        self.name = name
+        self.obj = obj
+        self.path = path
+        self.iter_nb = len(context['iters'])
+        self.obj_type = self.get_object_type_str(obj)
+        context['iters'].append(self)
+        
+    def get_col(self, context, column):
+        columns = ['name', 'obj_type', 'obj']
+        col_val = self.name + ' (' + self.obj_type + ')' 
+        if self.obj_type in context['show_val']:
+            col_val += ' ' + str(self.obj)
+        return col_val
+        #return getattr(self, columns[column])
+        
+    def get_object_type_str(self, obj):
+        if isinstance(obj, str): return 'str'
+        if isinstance(obj, int): return 'int'
+        if isinstance(obj, float): return 'float'
+        if isinstance(obj, list): return 'list'
+        if isinstance(obj, dict): return 'dict'
+        if isinstance(obj, set): return 'set'
+        if type(obj) is types.MethodType or \
+            type(obj) is types.FunctionType: return 'def'
+        if type(obj) is types.InstanceType: return 'obj'
+        if type(obj) is types.ClassType: return 'class'
+        if type(obj) is types.NoneType: return 'None'
+        if type(obj) is types.TypeType: return 'type'
+        return str(type(obj))
+    
+    def is_browsable(self):
+        if self.obj_type in ['str', 'int','float']: return False
+        if (self.object_is_dict_browsable() or self.object_is_list_browsable())\
+            and len(self.obj): return True
+            
+    def object_is_dict_browsable(self):
+        return hasattr(self.obj, 'iteritems') and callable(self.obj.iteritems)
+    
+    def object_is_list_browsable(self):
+        try: iter(self.obj)
+        except TypeError: return False
+        return True
+    
+    def get_n_children(self, context):
+        child_names = dir(self.obj)
+        if context['hide_builtin']:
+            nb = 0
+            if self.obj_type in context['no_method']:
+                child_names = []
+            for attr in child_names:
+                if type(getattr(self.obj, attr)) is types.BuiltinMethodType: 
+                    continue
+                if attr.startswith('__'): continue
+                nb += 1
+        else:
+            nb = len(child_names)
+        
+        if (self.is_browsable()):
+            nb += len(self.obj)
+        return nb
+    
+    def get_child_iter(self, context):
+        if not self.scanned_for_childs:
+            self.scan_children(context)
+        return self.child_iter
+    
+    def scan_children(self, context):
+        while self.scanning:
+            pass
+        if self.scanned_for_childs: return
+        self.scanning = True
+        n_child = 0
+        last_child = None
+        attrs = dir(self.obj)
+        if context['hide_builtin'] and self.obj_type in context['no_method']:
+            attrs = []
+        for attr in attrs:
+            obj = getattr(self.obj, attr)
+            if context['hide_builtin']:
+                if obj is types.BuiltinMethodType: continue
+                if attr.startswith('__'): continue
+            last_child = self.add_child(context, attr, obj, n_child, last_child)
+            n_child += 1
+        if self.object_is_dict_browsable():
+            for (key, item) in self.obj.iteritems():
+                name = '[' + str(key) + ']'
+                last_child = self.add_child(context, name, item, n_child, last_child)
+                n_child += 1
+        elif self.object_is_list_browsable():
+            i = 0
+            for item in self.obj:
+                name = '[' + str(i) + ']'
+                last_child = self.add_child(context, name, item, n_child, last_child)
+                n_child += 1
+                i += 1
+        self.scanned_for_childs = True
+        self.scanning = False
+                
+    def add_child(self, context, name, obj, n_child, last_child):
+        path = self.path + (n_child, ) 
+        d_obj = DebugObject(context, name, obj, path)
+        if not self.child_iter: self.child_iter = d_obj.iter_nb 
+        d_obj.parent_iter = self.iter_nb
+        if not last_child is None:
+            last_child.next_iter = d_obj.iter_nb
+        return d_obj
+        
+            
+
+class ObjectModel(gtk.GenericTreeModel):
+    ''' Tree model for the gtk.TreeView
+    '''
+    
+    iters = []
+    context = {}
+    columns_type = (str, str, str)
+    
+    def __init__(self, obj, name='root', hide_builtin = False):
+        gtk.GenericTreeModel.__init__(self)
+        self.context = {'iters': self.iters, 
+                        'hide_builtin': hide_builtin,
+                        'no_method':['str', 'int', 'float', 'list', 'set', 'dict'],
+                        'show_val':['str', 'int', 'float']}
+        DebugObject(self.context, name, obj, (0,))
+        
+    def set_hide_builtin(self, flag):
+        self.context['hide_builtin'] = flag
+    
+    def on_get_flags(self):
+        #print 'on_get_flags'
+        #return 0
+        return gtk.TREE_MODEL_ITERS_PERSIST
+    
+    def on_get_n_columns(self):
+        #print 'on_get_n_columns '
+        return len(self.columns_type)
+
+    def on_get_column_type(self, index):
+        #print 'on_get_column_type ', index
+        return self.columns_type[index]
+    
+    def on_get_iter(self, path, d_obj = None):
+        #print 'on_get_iter ', path
+        if not d_obj: d_obj = self.iters[0]
+        if isinstance(path, tuple): path = list(path)
+        if isinstance(path, str): path = [int(x) for x in path.split(':')]
+        if isinstance(path, list):
+            i = path[0]
+            while i > 0:
+                d_obj = self.iters[d_obj.next_iter]
+                i-= 1
+            if len(path) > 1:    
+                path.pop(0)
+                d_obj = self.iters[self.on_iter_children(d_obj.iter_nb)]
+                return self.on_get_iter(path, d_obj)
+            else:
+                return d_obj.iter_nb
+        return None
+    
+    def on_get_path(self, rowref):
+        #print 'on_get_path ', rowref
+        return self.iters[rowref].path
+    
+    def on_get_value(self, rowref, column):
+        #print 'on_get_value ', rowref, column
+        return self.iters[rowref].get_col(self.context, column)
+    
+    def on_iter_next(self, rowref):
+        #print 'on_iter_next ', rowref, 'result:', self.iters[rowref].next_iter
+        if rowref is None: return None
+        return self.iters[rowref].next_iter
+        
+    def on_iter_children(self, parent):
+        #print 'on_iter_children ', parent
+        if parent is None: return 0
+        return self.iters[parent].get_child_iter(self.context)
+        
+    def on_iter_has_child(self, rowref):
+        #print 'on_iter_has_child ', rowref
+        return self.on_iter_n_children(rowref) > 0
+        
+    def on_iter_n_children(self, rowref):
+        #print 'on_iter_n_children ', rowref
+        return self.iters[rowref].get_n_children(self.context)
+        
+    def on_iter_nth_child(self, parent, n):
+        #print 'on_iter_nth_child ', parent, n
+        child_iter = self.on_iter_children(parent)
+        while n > 0:
+            child_iter = self.on_iter_next(child_iter)
+            n -= 1
+        return child_iter
+        
+    def on_iter_parent(self, child):
+        #print 'on_iter_parent ', child
+        return self.iters[child].parent_iter
+
 class zyfra_debug_gui:
-    def __init__(self, obj):
+    def __init__(self, obj, name):
         window = gtk.Window()
         window.connect("delete_event", self.delete_event)
         window.connect("destroy", self.destroy)
-        self.treestore = gtk.TreeStore(str, str, str)
+        window.set_size_request(300, 200)
+        #self.treestore = gtk.TreeStore(str, str, str)
+        self.tree_model = ObjectModel(obj, name, True)
+        #print 'path:', tree_model.on_get_path(0)
+        #print 'iter by path:', tree_model.on_get_iter((0,))
+        #print 'name:', tree_model.on_get_value(0,0)
+        #print 'type:', tree_model.on_get_value(0,1)
+        #print 'value:', str(tree_model.on_get_value(0,2))
+        
         cell = gtk.CellRendererText()
         col_name = gtk.TreeViewColumn('Name', cell, text=0)
-        col_type = gtk.TreeViewColumn('Type', cell, text=1)
-        col_value = gtk.TreeViewColumn('Value', cell, text=2)
-        treeview = gtk.TreeView(self.treestore)
+        #col_type = gtk.TreeViewColumn('Type', cell, text=1)
+        #col_value = gtk.TreeViewColumn('Value', cell, text=2)
+        treeview = gtk.TreeView()
+        treeview.set_model(self.tree_model)
         treeview.set_enable_tree_lines(True)
-        treeview.connect('row-expanded', self.expand_event)
+        #treeview.connect('row-expanded', self.expand_event)
         treeview.append_column(col_name)
-        treeview.append_column(col_type)
-        treeview.append_column(col_value)
-        iterr = self.treestore.append(None, ['a','str','coucou'])
-        iterr = self.treestore.append(iterr, ['b','int','45'])
-        treeview.show()
-        window.add(treeview)
+        #treeview.append_column(col_type)
+        #treeview.append_column(col_value)
+        #iterr = self.treestore.append(None, ['a','str','coucou'])
+        #iterr = self.treestore.append(iterr, ['b','int','45'])
+        #treeview.show()
+        scrolledwindow = gtk.ScrolledWindow()
+        scrolledwindow.add(treeview)
+        vbox = gtk.VBox()
+        vbox.pack_start(scrolledwindow, True, True)
+        button_hb = gtk.Button(label='Hide Builtin')
+        button_hb.connect("clicked", self.on_button_hide_builtin_toggle)
+        vbox.pack_end(button, expand=False, fill=False, padding=5)
+        window.add(vbox)
         window.show_all()
         gtk.main()
         
@@ -137,3 +363,10 @@ class zyfra_debug_gui:
 
     def destroy(self, widget, data=None):
         gtk.main_quit()
+        
+    def on_button_click(self, widget, data=None):
+        zyfra_debug.get_object_memory_map(self.tree_model.iters)
+        
+    def on_button_hide_builtin_toggle(self, widget, data=None):
+        self.tree_model.set_hide_builtin(widget.get_active())
+        # refresh widget

@@ -14,4 +14,6 @@ c = tt()
 zyfra_debug.get_object_memory_map(a)
 zyfra_debug.get_object_memory_map(c)
 zyfra_debug.get_object_memory_map(tt)
-zyfra_debug_gui(tt)
+e = 4
+#zyfra_debug_gui(a, 'a')
+zyfra_debug_gui(c, 'c')
