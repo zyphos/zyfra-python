@@ -102,7 +102,8 @@ class zyfra_debug:
         return False
     
 import gtk
-
+import cgi
+ 
 class DebugObject(object):
     iter_nb = 0
     parent_iter = None
@@ -124,10 +125,11 @@ class DebugObject(object):
         context['iters'].append(self)
         
     def get_col(self, context, column):
+       
         columns = ['name', 'obj_type', 'obj']
-        col_val = self.name + ' (' + self.obj_type + ')' 
+        col_val = cgi.escape(self.name) + ' <span foreground="#009900">(' + cgi.escape(self.obj_type) + ')</span>' 
         if self.obj_type in context['show_val']:
-            col_val += ' ' + str(self.obj)
+            col_val += '  <span foreground="#000099">' + cgi.escape(str(self.obj)) + '</span>'
         return col_val
         #return getattr(self, columns[column])
         
@@ -195,7 +197,7 @@ class DebugObject(object):
         for attr in attrs:
             obj = getattr(self.obj, attr)
             if context['hide_builtin']:
-                if obj is types.BuiltinMethodType: continue
+                if type(obj) in (types.BuiltinMethodType, types.BuiltinFunctionType): continue
                 if attr.startswith('__'): continue
             last_child = self.add_child(context, attr, obj, n_child, last_child)
             n_child += 1
@@ -237,7 +239,7 @@ class ObjectModel(gtk.GenericTreeModel):
         gtk.GenericTreeModel.__init__(self)
         self.context = {'iters': self.iters, 
                         'hide_builtin': hide_builtin,
-                        'no_method':['str', 'int', 'float', 'list', 'set', 'dict'],
+                        'no_method':['str', 'int', 'float', 'list', 'set', 'dict', 'def'],
                         'show_val':['str', 'int', 'float']}
         DebugObject(self.context, name, obj, (0,))
         
@@ -312,48 +314,44 @@ class ObjectModel(gtk.GenericTreeModel):
     def on_iter_parent(self, child):
         #print 'on_iter_parent ', child
         return self.iters[child].parent_iter
-
-class zyfra_debug_gui:
+from threading import Thread 
+class zyfra_debug_gui_thread(Thread):
     def __init__(self, obj, name):
+        Thread.__init__(self)
+        self.obj = obj
+        self.name = name
+        
+    def run(self):
         window = gtk.Window()
+        window.set_title("Zyfra Debug GUI v0.0.1")
         window.connect("delete_event", self.delete_event)
         window.connect("destroy", self.destroy)
-        window.set_size_request(300, 200)
-        #self.treestore = gtk.TreeStore(str, str, str)
-        self.tree_model = ObjectModel(obj, name, True)
-        #print 'path:', tree_model.on_get_path(0)
-        #print 'iter by path:', tree_model.on_get_iter((0,))
-        #print 'name:', tree_model.on_get_value(0,0)
-        #print 'type:', tree_model.on_get_value(0,1)
-        #print 'value:', str(tree_model.on_get_value(0,2))
+        window.set_size_request(400, 500)
         
+        self.b_hide_builtin = gtk.CheckButton(label='Hide Builtin')
+        self.b_hide_builtin.set_active(True)
+        self.b_hide_builtin.connect("clicked", self.on_button_hide_builtin_toggle)
+        self.tree_model = ObjectModel(self.obj, self.name, self.b_hide_builtin.get_active())
         cell = gtk.CellRendererText()
-        col_name = gtk.TreeViewColumn('Name', cell, text=0)
-        #col_type = gtk.TreeViewColumn('Type', cell, text=1)
-        #col_value = gtk.TreeViewColumn('Value', cell, text=2)
-        treeview = gtk.TreeView()
-        treeview.set_model(self.tree_model)
-        treeview.set_enable_tree_lines(True)
-        #treeview.connect('row-expanded', self.expand_event)
-        treeview.append_column(col_name)
-        #treeview.append_column(col_type)
-        #treeview.append_column(col_value)
-        #iterr = self.treestore.append(None, ['a','str','coucou'])
-        #iterr = self.treestore.append(iterr, ['b','int','45'])
-        #treeview.show()
+        col_name = gtk.TreeViewColumn('Name', cell, markup=0)
+        self.treeview = gtk.TreeView()
+        self.treeview.set_model(self.tree_model)
+        self.treeview.set_enable_tree_lines(True)
+        self.treeview.append_column(col_name)
         scrolledwindow = gtk.ScrolledWindow()
-        scrolledwindow.add(treeview)
+        scrolledwindow.add(self.treeview)
         vbox = gtk.VBox()
         vbox.pack_start(scrolledwindow, True, True)
-        button_hb = gtk.Button(label='Hide Builtin')
-        button_hb.connect("clicked", self.on_button_hide_builtin_toggle)
-        vbox.pack_end(button, expand=False, fill=False, padding=5)
+        hbox = gtk.HBox()
+        hbox.pack_start(self.b_hide_builtin, False, False)
+        b_refresh = gtk.Button(label='Refresh')
+        b_refresh.connect("clicked", self.on_button_refresh_click)
+        hbox.pack_end(b_refresh, False, False)
+        vbox.pack_end(hbox, expand=False, fill=False, padding=5)
         window.add(vbox)
         window.show_all()
         gtk.main()
         
-    
-    
     def expand_event(self, treeview, iter_row, path):
         pass
         
@@ -363,10 +361,30 @@ class zyfra_debug_gui:
 
     def destroy(self, widget, data=None):
         gtk.main_quit()
-        
+
     def on_button_click(self, widget, data=None):
         zyfra_debug.get_object_memory_map(self.tree_model.iters)
         
+    def on_button_refresh_click(self, widget, data=None):
+        self.tree_model = ObjectModel(self.obj, self.name, 
+                                      self.b_hide_builtin.get_active())
+        self.treeview.set_model(self.tree_model)
+        
     def on_button_hide_builtin_toggle(self, widget, data=None):
         self.tree_model.set_hide_builtin(widget.get_active())
-        # refresh widget
+        
+def zyfra_debug_gui(obj, name='Root', wait = True):
+    #bug: Multi-threading don't work if application is using Threading too !!
+    # Problem of global lock, can be solved maybe by using Multiprocessing
+    # instead
+    ''' Show object browsing window
+        Input:
+            obj = The object to scan
+            name = (String) the name of the object
+            wait = (boolean) true, wait that user close the window 
+    '''
+    current = zyfra_debug_gui_thread(obj, name)
+    current.start()
+    if wait:
+        # wait for thread to finish
+        current.join()
