@@ -2,7 +2,7 @@
 import zyfra
 
 a = ['457', 8457, 4.878]
-b = {'hehe': 5456, 78: 'haha', 'huhu': a}
+b = {'hehe': 5456, 78: 'haha', 'huh"u': a, '45': 45}
 class tt():
     u = b
     nothing = None
@@ -10,7 +10,7 @@ class tt():
     def __init__(self):
         self.uu = uu()
 
-    def hello(self):
+    def hello(self, a, f ,e):
         print "hello"
 
 class uu(object):
