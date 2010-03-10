@@ -10,7 +10,7 @@ class tt():
     def __init__(self):
         self.uu = uu()
 
-    def hello(self, a, f ,e):
+    def hello(self, a = None, f='hehe' ,e=4):
         print "hello"
 
 class uu(object):
