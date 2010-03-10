@@ -22,7 +22,7 @@
 ##############################################################################
 
 import types
-import common
+from browse_gtk import common
 
 def is_limit_reached(lvl, max_lvl):
     if lvl >= max_lvl:
