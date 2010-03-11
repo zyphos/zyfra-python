@@ -25,5 +25,13 @@ zyfra.debug.object_memory_map(c)
 zyfra.debug.object_memory_map(tt)
 e = 4
 #debug.browse_object_gtk(a, 'a')
-zyfra.debug.browse_object_gtk(c, 'c')
+# zyfra.debug.browse_object_gtk(c, 'c')
 #debug.browse_object_gtk(e, 'e')
+# zyfra.debug.browse_object_gtk(frame, 'Current frame')
+
+
+def hello(a, b=4, c='ghg', d='huhu'):
+    print 'coucou'
+    zyfra.debug.inspect_gtk()
+
+hello(45)

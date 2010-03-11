@@ -21,13 +21,25 @@
 #
 ##############################################################################
 
-# Simple updatable object
 
-class zyfra_object(object):
+# Create object from dict
+class Object(object):
+    def __init__(self, attrs={}):
+        super(Object, self).__init__()
+        for attr in attrs.keys():
+            self.__setattr__(attr, attrs[attr])
+            
+# Simple dynamic object
+class dObject(Object):
     attrib = {}
+    def __init__(self, attrs={}):
+        super(dObject, self).__init__(attrs)
+    
     def __getattr__(self, name):
         return self.attrib.get(name, None)
+    
     def __setattr__(self, name, value):
         self.attrib[name] = value
+        
     def __delattr__(self, name):
         del self.attrib[name]

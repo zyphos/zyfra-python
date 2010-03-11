@@ -22,6 +22,9 @@
 ##############################################################################
 
 from memory_map import object_memory_map
+import inspect
+import zyfra
+#from warnings import globals
 
 def browse_object_gtk(obj, name='Root', wait=True):
 
@@ -40,3 +43,23 @@ def browse_object_gtk(obj, name='Root', wait=True):
     if wait:
         # wait for thread to finish
         current.join()
+        
+class Frame:
+    def __init__(self, globals, locals, code):
+        self.globals = globals
+        self.locals = locals
+        self.code = code
+
+def inspect_gtk(wait=True):
+    current_frame = inspect.currentframe()
+    frame = current_frame.f_back
+    code = None
+    if frame.f_locals.get("__name__", '') != '__main__':
+        code = frame.f_globals[frame.f_code.co_name]
+    obj = Frame(zyfra.Object(frame.f_globals), zyfra.Object(frame.f_locals),
+                code)
+    browse_object_gtk(obj, 'Frame', wait=wait)
+    if wait:
+        del frame
+        del current_frame
+    

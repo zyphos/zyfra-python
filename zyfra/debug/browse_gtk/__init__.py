@@ -44,7 +44,7 @@ class DebugGuiThread(Thread):
         window.set_title("Zyfra Debug Browse GTK v" + version)
         window.connect("delete_event", self.delete_event)
         window.connect("destroy", self.destroy)
-        window.set_size_request(800, 500)
+        #window.set_size_request(800, 500)
         
         
         # vpane
@@ -61,6 +61,7 @@ class DebugGuiThread(Thread):
         col_name = gtk.TreeViewColumn('Name', cell, markup=0)
         self.treeview = gtk.TreeView()
         self.treeview.connect("cursor-changed", self.on_cursor_changed)
+        self.treeview.set_headers_visible(False)
         self.treeview.set_model(self.tree_model)
         self.treeview.set_enable_tree_lines(True)
         self.treeview.append_column(col_name)
@@ -87,6 +88,7 @@ class DebugGuiThread(Thread):
         right_view.pack_start(self.source_def, False, False)
         
         source_scroll = gtk.ScrolledWindow()
+        source_scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC) 
         lang = python_lang.lang
         self.source_content = CodeBuffer(lang=lang)
         source_tv = gtk.TextView(self.source_content)
