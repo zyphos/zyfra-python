@@ -36,7 +36,7 @@ def get_def(obj, name):
     for arg in args:
         default = ''
         if len(defaults) > 0:
-             default = ' = ' + str(defaults.pop())
+             default = '=' + repr(defaults.pop())
         def_args.append(arg + default)
     def_args.reverse()
     return 'def %s (%s)' % (name, ', '.join(def_args))
