@@ -51,42 +51,52 @@ class DebugGuiThread(Thread):
         vpaned = gtk.HPaned()
         
         # left view, navigation
+        left_view = gtk.VBox()
+        
+        nav_frame = gtk.Frame('Navigation')
+        self.treeview = gtk.TreeView()
+        self.treeview.connect("cursor-changed", self.on_cursor_changed)
+        self.treeview.set_headers_visible(False)
+        self.treeview.set_enable_tree_lines(True)
+        col_name = gtk.TreeViewColumn('Name', gtk.CellRendererText(), markup=0)
+        self.treeview.append_column(col_name)
+        scrolledwindow = gtk.ScrolledWindow()
+        scrolledwindow.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        scrolledwindow.add_with_viewport(self.treeview)
+        nav_frame.add(scrolledwindow)
+        left_view.pack_start(nav_frame, True, True)
+        
+        np_frame = gtk.Frame('Navigation path')
+        self.path_label = gtk.Entry()
+        self.path_label.set_editable(False)
+        np_frame.add(self.path_label)
+        left_view.pack_start(np_frame, False, False)
+        
+        no_frame = gtk.Frame('Navigation options')
+        no_hbox = gtk.HBox()
         self.b_hide_builtin = gtk.CheckButton(label='Hide Builtin')
         self.b_hide_builtin.set_active(True)
         self.b_hide_builtin.connect("clicked",
                                     self.on_button_hide_builtin_toggle)
-        self.tree_model = model.ObjectModel(self.obj, self.name,
-                                      self.b_hide_builtin.get_active())
-        cell = gtk.CellRendererText()
-        col_name = gtk.TreeViewColumn('Name', cell, markup=0)
-        self.treeview = gtk.TreeView()
-        self.treeview.connect("cursor-changed", self.on_cursor_changed)
-        self.treeview.set_headers_visible(False)
-        self.treeview.set_model(self.tree_model)
-        self.treeview.set_enable_tree_lines(True)
-        self.treeview.append_column(col_name)
-        scrolledwindow = gtk.ScrolledWindow()
-        scrolledwindow.add(self.treeview)
-        
-        vbox = gtk.VBox()
-        vbox.pack_start(scrolledwindow, True, True)
-        hbox = gtk.HBox()
-        self.path_label = gtk.Entry()
-        self.path_label.set_editable(False)
-        hbox.pack_start(gtk.Label('Path: '), False, False)
-        hbox.pack_start(self.path_label, True, True)
-        hbox.pack_start(self.b_hide_builtin, False, False)
+        no_hbox.pack_start(self.b_hide_builtin, False, False)
         b_refresh = gtk.Button(label='Refresh')
         b_refresh.connect("clicked", self.on_button_refresh_click)
-        hbox.pack_end(b_refresh, False, False)
-        vbox.pack_end(hbox, expand=False, fill=False, padding=5)
-        vpaned.add1(vbox)
+        no_hbox.pack_end(b_refresh, False, False)
+        no_frame.add(no_hbox)
+        left_view.pack_end(no_frame, expand=False, fill=False, padding=5)
+        
+        vpaned.add1(left_view)
         
         # Right view (sources)
         right_view =  gtk.VBox()
-        self.source_def = gtk.Label('')
-        right_view.pack_start(self.source_def, False, False)
         
+        sd_frame = gtk.Frame('Definition')
+        self.source_def = gtk.Entry()
+        self.source_def.set_editable(False)
+        sd_frame.add(self.source_def)
+        right_view.pack_start(sd_frame, False, False)
+        
+        source_frame = gtk.Frame('Source code')
         source_scroll = gtk.ScrolledWindow()
         source_scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC) 
         lang = python_lang.lang
@@ -94,25 +104,24 @@ class DebugGuiThread(Thread):
         source_tv = gtk.TextView(self.source_content)
         source_tv.set_editable(False)
         source_scroll.add_with_viewport(source_tv)
-        
-        right_view.pack_start(source_scroll, True, True)
-        
-        #right Bottom
-        right_bottom_view = gtk.HBox()
-        right_bottom_view.pack_start(gtk.Label('Source file path:'), False, 
-                                     False)
-        
+        source_frame.add(source_scroll)
+        right_view.pack_start(source_frame, True, True)
+
+        sfp_frame = gtk.Frame('Source file path')
         self.source_file = gtk.Entry()
         self.source_file.set_editable(False)
-        right_bottom_view.pack_start(self.source_file, True, True)
-        
-        right_view.pack_start(right_bottom_view, False, False)
-        
-        source_frame = gtk.Frame('Source code')
-        source_frame.add(right_view)
-        vpaned.add2(source_frame)
+        sfp_frame.add(self.source_file)
+        right_view.pack_start(sfp_frame, False, False)
+
+        vpaned.add2(right_view)
         
         window.add(vpaned)
+        
+        
+        self.tree_model = model.ObjectModel(self.obj, self.name,
+                                      self.b_hide_builtin.get_active())
+        self.treeview.set_model(self.tree_model)
+        
         window.show_all()
         gtk.main()
 
