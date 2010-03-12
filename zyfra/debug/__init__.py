@@ -45,21 +45,20 @@ def browse_object_gtk(obj, name='Root', wait=True):
         current.join()
         
 class Frame:
-    def __init__(self, globals, locals, code):
-        self.globals = globals
-        self.locals = locals
+    def __init__(self, frame):
+        code = None
+        if frame.f_locals.get("__name__", '') != '__main__':
+            code = frame.f_globals[frame.f_code.co_name]
+        self.global_vars = zyfra.Object(frame.f_globals)
+        self.local_vars = zyfra.Object(frame.f_locals)
         self.code = code
+        self.parent_frame = frame.f_back
 
 def inspect_gtk(wait=True):
     current_frame = inspect.currentframe()
-    frame = current_frame.f_back
-    code = None
-    if frame.f_locals.get("__name__", '') != '__main__':
-        code = frame.f_globals[frame.f_code.co_name]
-    obj = Frame(zyfra.Object(frame.f_globals), zyfra.Object(frame.f_locals),
-                code)
+    obj = Frame(current_frame.f_back)
     browse_object_gtk(obj, 'Frame', wait=wait)
     if wait:
-        del frame
         del current_frame
+        del obj
     

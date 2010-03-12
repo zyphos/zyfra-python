@@ -137,11 +137,10 @@ class ObjectModel(gtk.GenericTreeModel):
     ''' Tree model for the gtk.TreeView
     '''
 
-    iters = []
-    context = {}
     columns_type = (str, str, str)
 
     def __init__(self, obj, name='root', hide_builtin=False):
+        self.iters = []
         gtk.GenericTreeModel.__init__(self)
         self.context = {'iters': self.iters,
                         'hide_builtin': hide_builtin,
