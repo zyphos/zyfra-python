@@ -21,40 +21,41 @@
 #
 ##############################################################################
 
-import queue
+import Queue
 
 """ This module handle RPC at thread level
 Usage:
-import zyfra.thread_rpc
+import zyfra
+
 class MyClassServer(zyfra.thread_rpc.Server):
     def calculate(self, a, b):
         return a + b + 5
 
-def client_thread(server_queue):
+
+def client_def(server_queue):
     rpc = zyfra.thread_rpc.Client(server_queue)
     print rpc.calculate(4, 5)
     print rpc.calculate(b=5, a=4)
-    rpc._quit() #Kill server
+    rpc._quit #Kill server
+
 
 server = MyClassServer()
 server_queue =  server._rpc_get_queue()
+
 # init client thread
 import threading
-client_thread_object = thread.Thread(target=client_thread, args=(server_queue,))
-client_thread_object.start()
+client_thread = threading.Thread(target=client_def, args=(server_queue,))
+client_thread.start()
 server._rpc_run() #Main_loop of server
-client_thread_object.join() #Wait for child
-
-
-    
+client_thread.join() #Wait for child   
 """
 
 class Server(object):
     def __init__(self):
-        self.q = queue.Queue(50)
+        self.q = Queue.Queue(50)
     
     def _rpc_get_queue(self):
-        return q
+        return self.q
     
     def _rpc_run(self):
         self.loop = True
@@ -76,7 +77,8 @@ class Server(object):
         if isMsg:
             return self.__rpc_handle_msg(client_queue, data)
         (attr, args, aargs) = data
-        getattr(self, attr)(*args, **aargs)
+        res = getattr(self, attr)(*args, **aargs)
+        client_queue.put((False, res))
     
     def __rpc_handle_msg(self, client_queue, data):
         if data == '_quit':
@@ -92,7 +94,7 @@ class Client(object):
         
     def __getattr__(self, name):
         # for now this module only handle "method" (not attr)
-        q = queue.Queue(1)
+        q = Queue.Queue(1)
         if name[0] == '_': #This is a RPC message
             self.server_queue.put((True, q, name))
             return self.__rpc_dispatch(q.get(True, self.timeout))
