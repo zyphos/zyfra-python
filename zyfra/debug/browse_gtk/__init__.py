@@ -31,11 +31,12 @@ import python_lang
 import model
 import source
 
+import zyfra.debug
+
 version = '0.0.1'
 
-class DebugGuiThread(Thread):
+class DebugGui(object):
     def __init__(self, obj, name):
-        Thread.__init__(self)
         window = gtk.Window()
         window.set_title("Zyfra Debug Browse GTK v" + version)
         window.connect("delete_event", self.delete_event)
@@ -45,12 +46,12 @@ class DebugGuiThread(Thread):
         self.notebook = gtk.Notebook()
         
         window.add(self.notebook)
-        self.add_tab(obj, name)
+        #self.add_tab(obj, name)
         
         window.show_all()
-
-    def run(self):
+        zyfra.debug.instance_gtk = True
         gtk.main()
+        zyfra.debug.instance_gtk = False
 
     def delete_event(self, widget, event, data=None):
         # return True = avoid quitting application
@@ -61,6 +62,15 @@ class DebugGuiThread(Thread):
         
     def add_tab(self, obj, name):
         DebugView(obj, name, self.notebook)
+        
+class DebugGuiThread(DebugGui, Thread):
+    def __init__(self, obj, name):
+        self.obj = obj
+        self.name = name
+        Thread.__init__(self)
+
+    def run(self):
+        DebugGui.__init__(self, self.obj, self.name)
         
 class DebugView(object):
     def __init__(self, obj, name, notebook):

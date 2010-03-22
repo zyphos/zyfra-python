@@ -26,6 +26,8 @@ import inspect
 import zyfra
 #from warnings import globals
 
+instance_gtk = False
+
 def browse_object_gtk(obj, name='Root', wait=True):
 
     #bug: Multi-threading don't work if application is using Threading too !!
@@ -37,18 +39,49 @@ def browse_object_gtk(obj, name='Root', wait=True):
             name = (String) the name of the object
             wait = (boolean) true, wait that user close the window 
     '''
+    
+    if instance_gtk:
+        print 'Inspect GTK already running'
+        return
     import browse_gtk
-    current = browse_gtk.DebugGuiThread(obj, name)
-    current.start()
     if wait:
-        # wait for thread to finish
-        current.join()
+        browse_gtk.DebugGui(obj, name)
+    else:
+        current = browse_gtk.DebugGuiThread(obj, name)
+        current.start()
+        # don't wait for thread to finish
+        # current.join()
+    
+from multiprocessing import Process, Queue
+    
+def obj_gtk(obj, name):
+    q = Queue()
+    p = Process(target=f, args=(q,))
+    q.put([obj, name])
+    p.start()
+    
+    
+def f(q):
+    [obj, name] = q.get()
+    browse_gtk.DebugGui(obj, name)
+
+if __name__ == '__main__':
+    q = Queue()
+    p = Process(target=f, args=(q,))
+    p.start()
+    print q.get()    # prints "[42, None, 'hello']"
+    p.join()
+
+ 
         
 class Frame:
     def __init__(self, frame):
         code = None
         if frame.f_locals.get("__name__", '') != '__main__':
-            code = frame.f_globals[frame.f_code.co_name]
+            try:
+                code = frame.f_globals[frame.f_code.co_name]
+            except:
+                code = None
         self.global_vars = zyfra.Object(frame.f_globals)
         self.local_vars = zyfra.Object(frame.f_locals)
         self.code = code

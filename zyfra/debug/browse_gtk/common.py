@@ -26,6 +26,7 @@ import types
 def get_type_str(obj):
     if isinstance(obj, str): return 'str'
     if isinstance(obj, int): return 'int'
+    if isinstance(obj, unicode): return 'unicode'
     if isinstance(obj, float): return 'float'
     if isinstance(obj, list): return 'list'
     if isinstance(obj, dict): return 'dict'
@@ -42,6 +43,8 @@ def object_is_dict_browsable(obj):
     return hasattr(obj, 'iteritems') and callable(obj.iteritems)
 
 def object_is_list_browsable(obj):
-    try: iter(obj)
-    except TypeError: return False
+    try:
+        iter(obj)
+    except TypeError:
+        return False
     return True

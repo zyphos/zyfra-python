@@ -21,11 +21,22 @@
 #
 ##############################################################################
 
+import logging
+
 import gtk
 import cgi
 import types
 
 import common
+
+logger = logging.getLogger('debug_model')
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
 
 class DebugNode(object):
     '''Each node represent an object
@@ -43,6 +54,7 @@ class DebugNode(object):
     scanning = False
 
     def __init__(self, context, name, obj, path):
+        logger.debug('DebugNode def __init__(%s, %s, %s)'% (name, obj, path))
         self.name = name
         self.obj = obj
         self.path = path
@@ -51,7 +63,7 @@ class DebugNode(object):
         context['iters'].append(self)
 
     def get_col(self, context, column):
-
+        logger.debug('DebugNode def get_col(%s)'% (column, ))
         columns = ['name', 'obj_type', 'obj']
         col_val = cgi.escape(self.name) + ' <span foreground="#009900">(' + \
                              cgi.escape(self.obj_type) + ')</span>'
@@ -61,12 +73,16 @@ class DebugNode(object):
         return col_val
 
     def is_browsable(self):
-        if self.obj_type in ['str', 'int', 'float']: return False
+        logger.debug('DebugNode def is_browsable()')
+        if self.obj_type in ['str', 'int', 'float', 'unicode']: return False
+        if not hasattr(self.obj, '__len__'):
+            return False
         if (common.object_is_dict_browsable(self.obj) or \
             common.object_is_list_browsable(self.obj)) and len(self.obj):
             return True
 
     def get_n_children(self, context):
+        logger.debug('DebugNode def get_n_children()')
         child_names = dir(self.obj)
         if context['hide_builtin']:
             nb = 0
@@ -85,11 +101,13 @@ class DebugNode(object):
         return nb
 
     def get_child_iter(self, context):
+        logger.debug('DebugNode def get_child_iter()')
         if not self.scanned_for_childs:
             self.scan_children(context)
         return self.child_iter
 
     def scan_children(self, context):
+        logger.debug('DebugNode def scan_children()')
         while self.scanning:
             pass
         if self.scanned_for_childs: return
@@ -112,6 +130,7 @@ class DebugNode(object):
                 last_child = self.add_child(context, '[' + repr(key) + ']', 
                                             item, n_child, last_child)
                 n_child += 1
+                if n_child > 50: break # Avoid infinite loop
         elif common.object_is_list_browsable(self.obj):
             i = 0
             for item in self.obj:
@@ -120,10 +139,12 @@ class DebugNode(object):
                                             last_child)
                 n_child += 1
                 i += 1
+                if n_child > 50: break # Avoid infinite loop
         self.scanned_for_childs = True
         self.scanning = False
 
     def add_child(self, context, name, obj, n_child, last_child):
+        logger.debug('DebugNode def add_child(%s, %s, %s, %s)'% (name, obj, n_child, last_child))
         path = self.path + (n_child,)
         d_obj = DebugNode(context, name, obj, path)
         if not self.child_iter: self.child_iter = d_obj.iter_nb
@@ -140,19 +161,22 @@ class ObjectModel(gtk.GenericTreeModel):
     columns_type = (str, str, str)
 
     def __init__(self, obj, name='root', hide_builtin=False):
+        logger.debug('ObjectModel def __init__(%s, %s, %s)'% (obj, name, hide_builtin))
         self.iters = []
         gtk.GenericTreeModel.__init__(self)
         self.context = {'iters': self.iters,
                         'hide_builtin': hide_builtin,
                         'no_method':['str', 'int', 'float', 'list', 'set',
                                      'dict', 'def'],
-                        'show_val':['str', 'int', 'float']}
+                        'show_val':['str', 'int', 'float', 'unicode']}
         DebugNode(self.context, name, obj, (0,))
 
     def set_hide_builtin(self, flag):
+        logger.debug('ObjectModel def set_hide_builtin(%s)'% (flag,))
         self.context['hide_builtin'] = flag
 
     def get_path_txt(self, path):
+        logger.debug('ObjectModel def get_path_txt(%s)'% (path,))
         iter = self.iters[self.on_get_iter(path)]
         path_txt = ''
         while True:
@@ -166,15 +190,19 @@ class ObjectModel(gtk.GenericTreeModel):
         return path_txt
 
     def on_get_flags(self):
+        logger.debug('ObjectModel def on_get_flags()')
         return gtk.TREE_MODEL_ITERS_PERSIST
 
     def on_get_n_columns(self):
+        logger.debug('ObjectModel def on_get_n_columns()')
         return len(self.columns_type)
 
     def on_get_column_type(self, index):
+        logger.debug('ObjectModel def on_get_column_type(%s)'% (index,))
         return self.columns_type[index]
 
     def on_get_iter(self, path, d_obj=None):
+        logger.debug('ObjectModel def on_get_iter(%s, %s)'% (path, d_obj))
         if not d_obj: d_obj = self.iters[0]
         if isinstance(path, tuple): path = list(path)
         if isinstance(path, str): path = [int(x) for x in path.split(':')]
@@ -192,26 +220,33 @@ class ObjectModel(gtk.GenericTreeModel):
         return None
 
     def on_get_path(self, rowref):
+        logger.debug('ObjectModel def on_get_path(%s)'% (rowref,))
         return self.iters[rowref].path
 
     def on_get_value(self, rowref, column):
+        logger.debug('ObjectModel def on_get_value(%s, %s)'% (rowref, column))
         return self.iters[rowref].get_col(self.context, column)
 
     def on_iter_next(self, rowref):
+        logger.debug('ObjectModel def on_iter_next(%s)'% (rowref,))
         if rowref is None: return None
         return self.iters[rowref].next_iter
 
     def on_iter_children(self, parent):
+        logger.debug('ObjectModel def on_iter_children(%s)'% (parent,))
         if parent is None: return 0
         return self.iters[parent].get_child_iter(self.context)
 
     def on_iter_has_child(self, rowref):
+        logger.debug('ObjectModel def on_iter_has_child(%s)'% (rowref,))
         return self.on_iter_n_children(rowref) > 0
 
     def on_iter_n_children(self, rowref):
+        logger.debug('ObjectModel def on_iter_n_children(%s)'% (rowref,))
         return self.iters[rowref].get_n_children(self.context)
 
     def on_iter_nth_child(self, parent, n):
+        logger.debug('ObjectModel def on_iter_nth_child(%s)'% (parent,))
         child_iter = self.on_iter_children(parent)
         while n > 0:
             child_iter = self.on_iter_next(child_iter)
@@ -219,4 +254,5 @@ class ObjectModel(gtk.GenericTreeModel):
         return child_iter
 
     def on_iter_parent(self, child):
+        logger.debug('ObjectModel def on_iter_parent(%s)'% (child,))
         return self.iters[child].parent_iter
