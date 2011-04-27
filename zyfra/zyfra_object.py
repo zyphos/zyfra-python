@@ -21,25 +21,22 @@
 #
 ##############################################################################
 
-
-# Create object from dict
-class Object(object):
-    def __init__(self, attrs={}):
-        super(Object, self).__init__()
-        for attr in attrs.keys():
-            self.__setattr__(attr, attrs[attr])
-            
-# Simple dynamic object
-class dObject(Object):
-    attrib = {}
-    def __init__(self, attrs={}):
-        super(dObject, self).__init__(attrs)
-    
-    def __getattr__(self, name):
-        return self.attrib.get(name, None)
+# A dict that can be acceded by attribute
+# Ie:
+# c = DictAttr({'a':4,'b':'t'})
+#
+# c.a => 4
+# c.e = 78
+# c => {'a':4,'b':'t','e':78}
+#
+# Drawbacks:
+# * You cannot call dict method ! Ie: You should used dict(c).keys()
+class DictAttr(dict):
+    def __getattribute__(self, name):
+        return self[name]
     
     def __setattr__(self, name, value):
-        self.attrib[name] = value
+        self[name] = value
         
     def __delattr__(self, name):
-        del self.attrib[name]
+        del self[name]
