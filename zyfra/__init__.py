@@ -1,3 +1,3 @@
 from zyfra_object import *
-import debug
 import thread_rpc
+from web_browser import *
