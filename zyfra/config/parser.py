@@ -20,9 +20,7 @@ class ParserCf(object):
         self.filename = filename
         content = File(filename, password=password).read()
         for line_number, line in enumerate(content):
-            if not line: continue
-            if line[0] == '#': continue
-            if not line.strip(): continue
+            if not line or line[0] == '#' or not line.strip(): continue
             self.parse_line(line.strip(), line_number)
     
     def parse_line(self, line, line_number):
@@ -36,7 +34,9 @@ class ParserCf(object):
             self.config[name] = ConfigOption(value, self.filename, line_number)
 
     def __repr__(self):
-        for name in self.config:
+        keys = self.config.keys()
+        keys.sort()
+        for name in keys:
             print name, '=', self.config[name]
         return ''
 
