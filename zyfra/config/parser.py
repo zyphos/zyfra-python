@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: UTF-8 -*-
 
+import os
 from file_handler import File
 
 class ConfigOption(object):
@@ -40,3 +41,6 @@ class ParserCf(object):
             print name, '=', self.config[name]
         return ''
 
+class Parser(object):
+    def __new__(cls, module, uri, password=''):
+        os.listdir()
