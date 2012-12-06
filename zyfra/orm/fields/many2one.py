@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from relational import RelationalField
+from relational import Relational
 from numerics import Int
 from zyfra.orm.sql_query import SqlQuery
 
-class Many2One(RelationalField):
+class Many2One(Relational):
     local_key = None
     left_right = True
     default_value = None
@@ -71,26 +71,26 @@ class Many2One(RelationalField):
                 op_data = context['op_data']
                 ta = sql_query.get_new_table_alias()
                 if operator == 'parent_of':
-                    sql = 'EXISTS(SELECT ' + obj._key + ' FROM ' + obj._table + ' AS ' + ta + ' WHERE ' + ta + ' + ' + obj._key + '=' + op_data + ' AND ' + pa + ' + ' + self.pleft + '<' + ta + ' + ' + self.pleft + ' AND ' + pa + ' + ' + self.pright + '>' + ta + ' + ' + self.pright + ')'
+                    sql = 'EXISTS(SELECT ' + obj._key + ' FROM ' + obj._table + ' AS ' + ta + ' WHERE ' + ta + '.' + obj._key + '=' + op_data + ' AND ' + pa + '.' + self.pleft + '<' + ta + '.' + self.pleft + ' AND ' + pa + '.' + self.pright + '>' + ta + '.' + self.pright + ')'
                 elif operator == 'child_of':
-                    sql = 'EXISTS(SELECT ' + obj._key + ' FROM ' + obj._table + ' AS ' + ta + ' WHERE ' + ta + ' + ' + obj._key + '=' + op_data + ' AND ' + pa + ' + ' + self.pleft + '>' + ta + ' + ' + self.pleft + ' AND ' + pa + ' + ' + self.pright + '<' + ta + ' + ' + self.pright + ')'
-                sql_query.order_by.append(pa + ' + ' + self.pleft)
+                    sql = 'EXISTS(SELECT ' + obj._key + ' FROM ' + obj._table + ' AS ' + ta + ' WHERE ' + ta + '.' + obj._key + '=' + op_data + ' AND ' + pa + '.' + self.pleft + '>' + ta + '.' + self.pleft + ' AND ' + pa + '.' + self.pright + '<' + ta + '.' + self.pright + ')'
+                sql_query.order_by.append(pa + '.' + self.pleft)
                 return sql
-            field_link = parent_alias.alias + ' + ' + self.name
+            field_link = parent_alias.alias + '.' + self.name
             parent_alias.set_used()
             return field_link
         parameter = 'param' in context and context['parameter'] or ''
-        field_link = parent_alias.alias + ' + ' + self.name + parameter
+        field_link = parent_alias.alias + '.' + self.name + parameter
         if hasattr(self, 'local_keys'):
             # Threat multi key
             palias = parent_alias.alias
             relations = []
             for key, localkey in self.local_keys.iteritems():
                 foreign_key = self.foreign_keys[key]
-                relations.append('%ta% + ' + foreign_key + '=' + palias + ' + ' + local_key)
+                relations.append('%ta% + ' + foreign_key + '=' + palias + '.' + local_key)
             sql_on = implode(' and ', relations)
         else:
-            sql_on = '%ta% + ' + self.relation_object_key + '=' + parent_alias.alias + ' + ' + self.name
+            sql_on = '%ta% + ' + self.relation_object_key + '=' + parent_alias.alias + '.' + self.name
         
         sql = (not self.required and '' or 'LEFT ') + 'JOIN ' + robj._table + ' AS %ta% ON ' + sql_on
         if sql_query.context.get('visible', True) and robj._visible_condition != '':
@@ -98,7 +98,7 @@ class Many2One(RelationalField):
             visible_sql_q = SqlQuery(robj, '%ta%')
             sql = sql_txt + ' ON (' + on_condition + ')AND(' + visible_sql_q.where2sql('') + ')'
         ta = sql_query.get_table_alias(field_link, sql, parent_alias)
-        field_name = array_shift(fields)
+        field_name = fields.pop(0)
         field_name, field_param = sql_query.split_field_param(field_name)
         if field_name[0] == '(' and field_name[-1] == ')':
             sub_mql = field_name[1:-1]
@@ -123,17 +123,19 @@ class Many2One(RelationalField):
             return
         # to do: handle case of subfield
 
-    def after_write_trigger(&old_values, new_value):
-        if (!self.left_right) return
-        //Update left and right tree
+    def after_write_trigger(self, old_values, new_value):
+        if  not self.left_right:
+            return
+        # Update left and right tree
         db = self.object._pool.db
         modified_values_ids = array()
         left_col = self.pleft
         right_col = self.pright
         table = self.object._table
         key = self.object._key
-        foreach(old_values as id=>old_value):
-            if (old_value == new_value) continue
+        for id, old_value in old_values.iteritems():
+            if old_value == new_value:
+                continue
             obj = db.get_object('SELECT ' + left_col + ' AS lc, ' + right_col + ' AS rc FROM ' + table + ' WHERE ' + self.object._key + '=' + id)
             l0 = obj.lc
             r0 = obj.rc
@@ -144,88 +146,76 @@ class Many2One(RelationalField):
                 db.safe_query('UPDATE ' + table + ' SET ' + left_col + '=' + left_col + '-' + (d+1) + ' WHERE ' + left_col + '>' + r0 + ' AND ' + left_col + '<' + l1)
                 db.safe_query('UPDATE ' + table + ' SET ' + right_col + '=' + right_col + '-' + (d+1) + ' WHERE ' + right_col + '>' + r0 + ' AND ' + right_col + '<' + l1)
                 delta = l1 - l0 - d - 1
-            }else:
+            else:
                 db.safe_query('UPDATE ' + table + ' SET ' + left_col + '=' + left_col + '+' + (d+1) + ' WHERE ' + left_col + '>=' + l1 + ' AND ' + left_col + '<' + l0)
                 db.safe_query('UPDATE ' + table + ' SET ' + right_col + '=' + right_col + '+' + (d+1) + ' WHERE ' + right_col + '>=' + l1 + ' AND ' + right_col + '<' + l0)
                 delta = l1 - l0
-            }
             db.safe_query('UPDATE ' + table + ' SET ' + left_col + '=' + left_col + '+' + delta + ',' + right_col + '=' + right_col + '+' + delta + ' WHERE ' + key + ' in %s', array(children_ids))
-        }
-    }
 
-    def _tree_get_new_left(id, value):
+    def _tree_get_new_left(self, id, value):
         db = self.object._pool.db
         key = self.object._key
         left_col = self.pleft
         right_col = self.pright
         table = self.object._table
-        if (value == null || value == 0):
+        if value == null or value == 0:
             l1 = 1
             brothers = self.object.select(key + ' AS id,' + right_col + ' AS rc WHERE ' + self.name + ' IS NULL OR ' + self.name + '=0')
-            foreach(brothers as brother):
-                if (brother.id == id) break
+            for brother in brothers:
+                if brother.id == id:
+                    break
                 l1 = brother.rc + 1
-            }
-        }else:
+        else:
             parent_obj = self.object._pool.db.get_object('SELECT ' + left_col + ' AS lc FROM ' + table + ' WHERE ' + key + '=%s', array(value))
             l1 = parent_obj.lc + 1
             brothers = self.object.select(key + ' AS id,' + right_col + ' AS rc WHERE ' + self.name + '=%s', array(), array(value))
-            foreach(brothers as brother):
-                if (brother.id == id) break
+            for brother in brothers:
+                if brother.id == id:
+                    break
                 l1 = brother.rc + 1
-            }
-        }
         return l1
-    }
 
-    def rebuild_tree(id = 0, left = 1, key='', table=''):
-        if(key == '' || table == ''):
+    def rebuild_tree(self, id = 0, left = 1, key='', table=''):
+        if key == '' or table == '':
             key = self.object._key
             table = self.object._table
-        }
         right = left+1
 
-        if (id==null || id==0):
+        if id is None or id == 0:
             rows = self.object.select(key + ' AS id WHERE ' + self.name + ' IS NULL OR ' + self.name + '=0')
-        }else:
+        else:
             rows = self.object.select(key + ' AS id WHERE ' + self.name + '=%s', array(), array(id))
-        }
-        foreach (rows as row):
+        for row in rows:
             right = self.rebuild_tree(row.id, right, key, table)
-        }
-        if (id!=0 && id!=null):
+        if id != 0 and id is not None:
             db = self.object._pool.db
             db.safe_query('UPDATE ' + table + ' SET ' + self.pleft + '=' + left + ', ' + self.pright + '=' + right + ' WHERE ' + key + '=%s', array(id))
-        }
         return right+1
-    }
 
-    def before_unlink_trigger(old_values):
-        if (!self.left_right) return
-        if (count(old_values) == 0) return
+    def before_unlink_trigger(self, old_values):
+        if not self.left_right:
+            return
+        if not len(old_values):
+            return
         db = self.object._pool.db
         table = self.object._table
         left_col = self.pleft
         right_col = self.pright
         sql = 'SELECT ' + self.pleft + ' AS pleft FROM ' + self.object._table + ' WHERE ' + self.object._key + ' IN %s ORDER BY pleft'
         plefts = db.get_array(sql, 'pleft', '', array(array_keys(old_values)))
-        nb = count(plefts)
-        for(i=0 i<nb i++):
-            nbi = (i+1)*2
-            if (i+1 < nb):
-                if (plefts[i+1]-plefts[i]>=2):
+        for i in xrange(len(plefts)):
+            nbi = (i + 1) * 2
+            if i+1 < nb:
+                if plefts[i+1] - plefts[i] >= 2:
                     db.safe_query('UPDATE ' + table + ' SET ' + left_col + '=' + left_col + '-' + nbi + ' WHERE ' + left_col + '>' + plefts[i] + ' AND ' + left_col + '<' + plefts[i+1])
                     db.safe_query('UPDATE ' + table + ' SET ' + right_col + '=' + right_col + '-' + nbi + '  WHERE ' + right_col + '>' + plefts[i] + ' AND ' + right_col + '<' + plefts[i+1])
-                }
-            }else:
+            else:
                 db.safe_query('UPDATE ' + table + ' SET ' + left_col + '=' + left_col + '-' + nbi + ' WHERE ' + left_col + '>' + plefts[i])
                 db.safe_query('UPDATE ' + table + ' SET ' + right_col + '=' + right_col + '-' + nbi + '  WHERE ' + right_col + '>' + plefts[i])
-            }
-        }
-    }
 
-    def after_create_trigger(id, value, context):
-        if (!self.left_right) return
+    def after_create_trigger(self, id, value, context):
+        if not self.left_right:
+            return
         db = self.object._pool.db
         l1 = self._tree_get_new_left(id, value)
         left_col = self.pleft
@@ -234,5 +224,3 @@ class Many2One(RelationalField):
         db.safe_query('UPDATE ' + table + ' SET ' + left_col + '=' + left_col + '+2  WHERE ' + left_col + '>=' + l1)
         db.safe_query('UPDATE ' + table + ' SET ' + right_col + '=' + right_col + '+2  WHERE ' + right_col + '>=' + l1)
         db.safe_query('UPDATE ' + table + ' SET ' + left_col + '=' + l1 + ', ' + right_col + '=' + (l1+1) + ' WHERE ' + self.object._key + '=%s', array(id))
-    }
-}
