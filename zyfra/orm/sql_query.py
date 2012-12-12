@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import re
+
 from zyfra.tools import tools
 
 class SqlTableAlias:
@@ -99,16 +101,16 @@ class SqlQuery(object):
         self.where_no_parse = []
         self.order_by = []
         self.required_fields = []
-        self.sql_field_alias = []
+        self.sql_field_alias = {}
 
-    def no_alias(alias):
+    def no_alias(self, alias):
         self.no_alias = alias
 
-    def get_new_table_alias():
+    def get_new_table_alias(self):
         self.table_alias_nb +=1
         return self.table_alias_prefix + 't' + str(self.table_alias_nb - 1)
 
-    def get_table_alias(field_link, sql = '', parent_alias=None):
+    def get_table_alias(self, field_link, sql = '', parent_alias=None):
         if field_link in self.table_alias:
             return self.table_alias[field_link]
         table_alias = self.get_new_table_alias()
@@ -116,19 +118,19 @@ class SqlQuery(object):
             sql = sql.replace('%ta%', table_alias)
         return self.add_table_alias(field_link, table_alias, parent_alias, sql)
 
-    def add_table_alias(field_link, table_alias, parent_alias, sql):
+    def add_table_alias(self, field_link, table_alias, parent_alias, sql):
         ta = SqlTableAlias(table_alias, parent_alias, sql)
         self.table_alias[field_link] = ta
         return ta
 
-    def get_table_sql():
+    def get_table_sql(self):
         tables = ''
         for table_alias in self.table_alias:
             if table_alias.used:
                 tables  += ' ' + table_alias.sql
         return tables
 
-    def mql2sql(mql, context = None, no_init= False):
+    def mql2sql(self, mql, context = None, no_init= False):
         if context is None:
             context = {}
         debug = context.get('debug', False)
@@ -196,245 +198,209 @@ class SqlQuery(object):
             print txt
         return sql
     
-    def where2sql(mql, context = [)):
+    def where2sql(self, mql, context = None):
+        if context is None:
+            context = {}
         self.context = context
-        if (array_get(self.context, 'domain')):
-            self.where[] = self.context['domain']
-        }
-        if (array_get(self.context, 'visible', True)&&(self.object._visible_condition != '')):
-            self.where[] = self.object._visible_condition
-        }
+        if self.context.get('domain'):
+            self.where.append(self.context['domain'])
+        if self.context.get('visible', True) and self.object._visible_condition != '':
+            self.where.append(self.object._visible_condition)
         sql = self.parse_mql_where(mql)
-        sql  + = ' ' + self.get_table_sql()
+        sql  += ' ' + self.get_table_sql()
         return sql
-    }
 
-    def get_[mql, context = [)):
+    def get_array(self, mql, context = None):
+        if context is None:
+            context = {}
         sql = self.mql2sql(mql, context, True)
-        key = array_get(context, 'key', '')
-        if (key != self.object._key && !in_[key, self.object._columns)) key = ''
-        datas = self.pool.db.get_array_object(sql, key)
-        field_alias_ids = [)
-        row_field_alias_ids = [)
-        if (count(datas)>0):
-            foreach(self.sub_queries as sub_query):
-                list(robject, rfield, sub_mql, field_alias, parameter) = sub_query
+        key = context.get('key', '')
+        if key != self.object._key and key not in self.object._columns:
+            key = ''
+        datas = tools.DictObject(self.pool.db.get_array_object(sql, key))
+        field_alias_ids = {}
+        row_field_alias_ids = {}
+        if len(datas):
+            for sub_query in self.sub_queries:
+                robject, rfield, sub_mql, field_alias, parameter = sub_query
                 is_fx = sub_mql == '!function!'
-                if(array_key_exists(field_alias, field_alias_ids)):
+                if field_alias in field_alias_ids:
                     ids = field_alias_ids[field_alias]
                     row_alias_ids = row_field_alias_ids[field_alias]
-                    //foreach(array_keys(ids) as key) if (trim(ids[key])=='') unset(ids[key])
-                }else:
-                    ids = [)
-                    row_alias_ids = [)
-                    foreach(datas as row_id=>row):
-                        ids[row.:field_alias}] = True
-                        //row_alias_ids[row_id] = row.field_alias
-                        if(!isset(row_alias_ids[row.field_alias])) row_alias_ids[row.field_alias] = [)
-                        row_alias_ids[row.field_alias][] = row_id
-                        if (!is_fx) row.field_alias = [)
-                    }
-                    ids = array_keys(ids)
-                    foreach(array_keys(ids) as key) if (trim(ids[key])=='') unset(ids[key])
+                else:
+                    ids = {}
+                    row_alias_ids = []
+                    for row_id, row in datas.iteritems():
+                        ids[getattr(row, field_alias)] = True
+                        row_alias_ids.setdefault(row.field_alias, []).append(row_id)
+                        if not is_fx:
+                            row.field_alias = []
+                    ids = keys(ids)
+                    for key in keys(ids):
+                        if ids[key].trim() == '':
+                            del ids[key]
                     field_alias_ids[field_alias] = ids
                     row_field_alias_ids[field_alias] = row_alias_ids
-                }
-                if (is_fx):
-                    if(count(parameter)>0):
-                        fx_data = [)
-                        foreach (ids as id):
-                            obj = stdClass
-                            foreach(parameter as key=>field):
-                                foreach(row_alias_ids[id] as row_id):
-                                    obj.key = datas[row_id].:self.sql_field_alias[field]}
-                                }
-                            }
-                            fx_data[id] = obj
-                        }
-                    }
+                if is_fx:
+                    if len(parameter):
+                        fx_data = {}
+                        for id in ids:
+                            obj = {}
+                            for key, field in parameter.iteritems():
+                                for row_id in row_alias_ids[id]:
+                                    obj[key] = datas[row_id][self.sql_field_alias[field]]
+                            fx_data[id] = tools.DictObject(obj)
                     sub_datas = robject.rfield.get(ids, context, fx_data)
-                    foreach(row_alias_ids as id=>row_ids):
-                        if (id=='') continue
-                        foreach(row_ids as row_id):
-                            datas[row_id].:field_alias}= sub_datas[id]
-                        }
-                    }
-                }else:
-                    if (parameter!='') parameter = '(' + parameter + ') AND '
-                    nctx = array_merge(context, ['domain'=>parameter + rfield + ' IN(' + implode(',', ids) + ')'))
-                    /*echo 'context:<br><pre>'
-                    print_r(nctx)
-                    echo '</pre>'*/
+                    for id, row_ids in row_alias_ids.iteritems():
+                        if id=='':
+                            continue
+                        for row_id in row_ids:
+                            datas[row_id][field_alias] = sub_datas[id]
+                else:
+                    if parameter != '':
+                        parameter = '(' + parameter + ') AND '
+                    nctx = context.copy()
+                    nctx.update({'domain': parameter + rfield + ' IN(' + ','.join(map(str, ids)) + ')'})
                     sub_datas = robject.select(rfield + ' AS _subid,' + sub_mql, nctx)
-                    foreach(row_alias_ids as id=>row_ids):
-                        foreach(sub_datas as sub_row):
-                            if (sub_row._subid == id):
-                                foreach(row_ids as row_id):
-                                    datas[row_id].:field_alias}[] = sub_row
-                                }
-                            }
-                        }
-                    }
-                }
-                foreach(sub_datas as sub_row):
-                    unset(sub_row._subid)
-                }
-            }
-        }
-        if(count(self.remove_from_result)):
-            foreach(datas as &row):
-                foreach(self.remove_from_result as alias):
-                    unset(row.alias)
-                }
-            }
-        }
+                    for id, row_ids in row_alias_ids.iteritems():
+                        for sub_row in sub_datas:
+                            if sub_row._subid == id:
+                                for row_id in row_ids:
+                                    datas[row_id][field_alias].append(sub_row)
+                for sub_row in sub_datas:
+                   del sub_row._subid
+        if len(self.remove_from_result):
+            for id in keys(datas):
+                for alias in self.remove_from_result:
+                    del datas[id][alias]
         self.init()
         return datas
-    }
 
-    def parse_mql_fields(field_defs, recursive=False):
-        if (recursive) saved_fields = self.sql_select_fields
-        self.sql_select_fields = [)
+    def parse_mql_fields(self, field_defs, recursive=False):
+        if recursive:
+            saved_fields = self.sql_select_fields
+        self.sql_select_fields = []
         self.split_select_fields(field_defs, recursive)
-        result = implode(',', self.sql_select_fields)
-        if (recursive) self.sql_select_fields = saved_fields
+        result = ','.join(self.sql_select_fields)
+        if recursive:
+            self.sql_select_fields = saved_fields
         return result
-    }
 
-    def split_select_fields(field_defs, recursive=False, obj = None, ta = None, pre_alias = ''):
-        if (obj==None) obj = self.object
-        if(!is_[field_defs)) field_defs = specialsplit(field_defs)
-        foreach (array_keys(field_defs) as key):
-            if (trim(field_defs[key]) == '*'):
-                unset(field_defs[key])
-                foreach(obj._columns as name=>column):
-                    if (!column.relational) field_defs[] = name
-                }
-            }
-        }
-
-        foreach(field_defs as field_def):
-            datas = multispecialsplit(field_def, ' as ')
-            field_name = trim(datas[0])
-            if (count(datas)>1):
-                alias = trim(datas[1])
+    def split_select_fields(self, field_defs, recursive=False, obj = None, ta = None, pre_alias = ''):
+        if obj is None:
+            obj = self.object
+        if not tools.is_array(field_defs):
+            field_defs = tools.specialsplit(field_defs)
+        field_defs = [x.strip() for x in field_defs]
+        if '*' in field_defs:
+            field_defs.remove('*')
+            field_defs += [x for x in obj._columns if not obj._columns[x].relational]
+        for field_def in field_defs:
+            datas = tools.multispecialsplit(field_def, ' as ')
+            field_name = datas[0].strip()
+            if len(datas)>1:
+                alias = datas[1].strip()
                 auto_alias = False
-            }else:
-                //No alias auto generate it
+            else:
+                # No alias auto generate it
                 auto_alias = True
                 alias = field_name
-                pos = strpos(alias, ' + (')
-                if (pos !== False) alias = substr(alias, 0, pos)
-                alias = str_replace(['.', '[', ']','='), '_', alias)
-            }
-            if (pre_alias != ''):
+                pos = alias.find('.(')
+                if pos != -1:
+                    alias = alias[0, pos]
+                alias = alias.replace('.','_').replace('[','_').replace(']','_').replace('=','_')
+            if pre_alias != '':
                 alias = pre_alias + '_' + alias
-            }
             sql_field = self.field2sql(field_name, obj, ta, alias)
-            if (sql_field != None) :
-                fields = explode('.',sql_field)
-                last_field = array_pop(fields)
-                no_alias = recursive || auto_alias && (last_field==alias)
-                self.sql_select_fields[] = sql_field + (no_alias?'':' AS ' + alias)
-                if (!recursive) self.sql_field_alias[sql_field] = (no_alias?last_field:alias)
-            }
-        }
+            if sql_field is not None:
+                fields = sql_field.split('.')
+                last_field = fields.pop()
+                no_alias = recursive or auto_alias and last_field==alias
+                self.sql_select_fields.append(sql_field + (no_alias and '' or ' AS ' + alias))
+                if not recursive:
+                    self.sql_field_alias[sql_field] = no_alias and last_field or alias
         rqi = 0
-        foreach(self.required_fields as field):
-            if (recursive || isset(self.sql_field_alias[field])) continue
-            alias = '_rq' + ++rqi
-            self.sql_select_fields[] = field + ' AS ' + alias
+        for field in self.required_fields:
+            if recursive or field in self.sql_field_alias[field]:
+                continue
+            rqi += 1
+            alias = '_rq' + str(rqi)
+            self.sql_select_fields.append(field + ' AS ' + alias)
             self.sql_field_alias[field] = alias
-            self.remove_from_result[] = alias
-        }
-    }
+            self.remove_from_result.append(alias)
 
-    def parse_mql_where(mql_where):
-        if (count(self.where)):
-            where = '(' + implode(')AND(', self.where) + ')'
+    def parse_mql_where(self, mql_where):
+        if self.where:
+            where = '(' + ')AND('.join(self.where) + ')'
             if (mql_where != ''):
                 mql_where = where + ' AND(' + mql_where + ')'
-            }else:
+            else:
                 mql_where = where
-            }
-        }
-        where = self.mql_where.parse(mql_where)
-        if (count(self.where_no_parse)):
-            where_np = '(' + implode(')AND(', self.where_no_parse) + ')'
-            if (where != ''):
+        where = self.mql_where.parse(self, mql_where)
+        if self.where_no_parse:
+            where_np = '(' + ')AND('.join(self.where_no_parse) + ')'
+            if where != '':
                 where = where_np + ' AND(' + where + ')'
-            }else:
+            else:
                 where = where_np
-            }
-        }
         return where
-    }
 
-    def parse_mql_group_by(mql_group_by):
-        fields = explode(',', mql_group_by)
-        sql_fields = [)
-        foreach(self.group_by as field_name):
-            sql_fields[] = field_name
-        }
-        foreach(fields as field_name):
-            field_name = trim(field_name)
-            if (field_name != '') sql_fields[] = self.field2sql(field_name)
-        }
-        return implode(',', sql_fields)
-    }
+    def parse_mql_group_by(self, mql_group_by):
+        fields = mql_group_by.split(',')
+        sql_fields = self.group_by[:]
+        for field_name in fields:
+            field_name.strip()
+            if field_name != '':
+                sql_fields.append(self.field2sql(field_name))
+        return ','.join(sql_fields)
 
-    def parse_mql_having(mql_having):
+    def parse_mql_having(self, mql_having):
         return self.mql_where.parse(mql_having)
-    }
 
-    def convert_order_by(&array_order_parsed, mql_order_by):
-        fields = explode(',', mql_order_by)
-        foreach(fields as field):
-            if (trim(field)=='') continue
-            fields = explode(' ', trim(field))
-            field_name = array_shift(fields)
-            array_order_parsed[] = self.field2sql(field_name) + ' ' + implode(' ', fields)
-        }
-    }
+    def convert_order_by(array_order_parsed, mql_order_by):
+        fields = mql_order_by.split(',')
+        for field in fields:
+            if field.strip()=='':
+                continue
+            fields = trim(field).split(' ')
+            field_name = fields.pop(0)
+            array_order_parsed.append(self.field2sql(field_name) + ' ' + ' '.join(fields))
 
-    def parse_mql_order_by(mql_order_by):
-        sql_order = [)
+    def parse_mql_order_by(self, mql_order_by):
+        sql_order = []
         self.convert_order_by(sql_order, mql_order_by)
-        sql_order = array_merge(sql_order, self.order_by)
+        sql_order += self.order_by
         self.convert_order_by(sql_order, self.object._order_by)
-        return implode(',', sql_order)
-    }
+        return ','.join(sql_order)
 
-    def parse_mql_limit(mql_limit):
+    def parse_mql_limit(self, mql_limit):
         return mql_limit
-    }
 
-    def split_field_param(field_name):
-        return specialsplitparam(field_name)
-    }
+    def split_field_param(self, field_name):
+        return tools.specialsplitparam(field_name)
 
-    def field2sql(field_name, obj = None, ta = None, field_alias = '', operator='', op_data=''):
-        if (is_numeric(field_name)) return field_name
-        if (obj === None) obj = self.object
-        if (ta === None) ta = self.table_alias['']
+    def field2sql(self, field_name, obj = None, ta = None, field_alias = '', operator='', op_data=''):
+        if tools.is_numeric(field_name):
+            return field_name
+        if obj is None:
+            obj = self.object
+        if ta is None:
+            ta = self.table_alias['']
         fx_regex = '/^([a-z_]+)\(( + *)\)/'
-        if (preg_match(fx_regex, field_name, matches)):
-            return matches[1] + '(' + self.parse_mql_fields(matches[2], True) + ')'
-        }
-        fields = specialsplit(field_name, '.')
-        field = array_shift(fields)
-        list(field_name, field_data) = specialsplitparam(field)
-        if (!array_key_exists(field_name, obj._columns)) return field_name
-        context = ['parameter'=>field_data, 'field_alias'=>field_alias, 'operator'=>operator, 'op_data'=>op_data)
-        context = array_merge(self.context, context)
+        matches = re.search(fx_regex, field_name)
+        if matches:
+            return matches.group(1) + '(' + self.parse_mql_fields(matches.group(2), True) + ')'
+        fields = tools.specialsplit(field_name, '.')
+        field = fields.pop(0)
+        field_name, field_data = tools.specialsplitparam(field)
+        if field_name not in obj._columns:
+            return field_name
+        context = self.context.copy()
+        context.update({'parameter':field_data, 'field_alias':field_alias, 'operator':operator, 'op_data':op_data})
         return obj._columns[field_name].get_sql(ta, fields, self, context)
-    }
 
-    def add_sub_query(robject, rfield, sub_mql, field_alias, parameter):
-        self.sub_queries[] = [robject, rfield, sub_mql, field_alias, parameter)
-    }
+    def add_sub_query(self, robject, rfield, sub_mql, field_alias, parameter):
+        self.sub_queries.append([robject, rfield, sub_mql, field_alias, parameter])
     
-    def add_required_fields(required_fields):
-        self.required_fields = array_unique(array_merge(self.required_fields, required_fields))
-    }
-}
+    def add_required_fields(self, required_fields):
+        self.required_fields = list(set(self.required_fields + required_fields))
