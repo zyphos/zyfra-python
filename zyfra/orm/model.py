@@ -5,6 +5,7 @@ from zyfra import tools
 from fields import Field
 from active_record import ActiveRecord
 from sql_write import SQLWrite
+from sql_create import SQLCreate
 
 class Model:
     _columns = None
@@ -94,12 +95,12 @@ class Model:
         pass
 
     def active_record(self, param=None, context=None):
-        return ActiveRecord(this, param, context)
+        return ActiveRecord(self, param, context)
 
     def update_sql(self):
         if self._read_only:
             return None
-        if hasattr(this, '__update_sql_done'):
+        if hasattr(self, '__update_sql_done'):
             return
         # 1 Check if table exists
         db = self._pool.db
@@ -160,7 +161,7 @@ class Model:
         if (count(values2add) == 0):
             return
         for values in values2add:
-            sql_create = OM_SQLcreate(this, context)
+            sql_create = SQLCreate(this, context)
             id = sql_create.create(values)
         return id
 

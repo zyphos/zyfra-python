@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-class OM_SQLinterface(object):
+class SQLInterface(object):
     callbacks = None
     object = None
 

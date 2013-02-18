@@ -3,11 +3,11 @@
 
 import time
 
-from sql_interface import OM_SQLinterface
+from sql_interface import SQLInterface
 
 from zyfra import tools
 
-class OM_SQLcreate(OM_SQLinterface):
+class SQLCreate(SQLInterface):
     def create(values_array):
         obj = self.object
         columns = []
