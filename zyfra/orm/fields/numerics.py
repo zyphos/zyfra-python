@@ -3,6 +3,7 @@
 
 from field import Field
 from zyfra.tools import is_numeric
+import decimal
 
 class Int(Field):
     unsigned = False
@@ -39,6 +40,16 @@ class Double(Field):
 
     def sql_format(self, value):
         return float(value)
+
+    def get_sql_def(self):
+        return 'DOUBLE'
+
+class Decimal(Field):
+    default_value = 0
+    widget = 'double'
+
+    def sql_format(self, value):
+        return decimal.Decimal(value)
 
     def get_sql_def(self):
         return 'DOUBLE'
