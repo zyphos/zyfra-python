@@ -5,3 +5,4 @@ from meta_object import *
 from scraper import *
 import config
 import tools
+import orm
