@@ -25,9 +25,15 @@ def toData(obj):
     return obj
 
 class Data(MetaObject):
+    def __new__(cls, value):
+        obj = MetaObject.__new__(cls, value)
+        if (hasattr(obj, 'xpath')):
+            obj.__xpath = obj.xpath 
+        return obj
+        
     def re(self, regex):
         if(not isinstance(self, basestring)): 
-            raise 'Can not do regex on non string object'
+            raise Exception('Can not do regex on non string object')
         res = re.findall(regex, self)
         return toData(res)
     
@@ -35,7 +41,7 @@ class Data(MetaObject):
         if(isinstance(self, lxml.etree._ElementTree)):
             return Data(self.xpath(xpath))
         if(not isinstance(self, basestring)): 
-            raise 'Can not do xpath on this kind of object [' + str(self) + ']'
+            raise Exception('Can not do xpath on this kind of object [' + str(self) + ']')
         tree = fromstring(self)
         #self.__class__(
         return toData(tree.xpath(xpath))
