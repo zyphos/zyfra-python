@@ -3,7 +3,7 @@
 
 import re
 
-from zyfra.tools import tools
+from zyfra import tools
 
 class SqlTableAlias:
     parent = None

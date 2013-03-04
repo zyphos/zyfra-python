@@ -7,7 +7,7 @@ from active_record import ActiveRecord
 from sql_write import SQLWrite
 from sql_create import SQLCreate
 
-class Model:
+class Model(object):
     _columns = None
     _name = None
     _table = None
@@ -19,6 +19,7 @@ class Model:
     _visible_condition = None
     _read_only = False
     _instanciated = False
+    _description = ''
 
     def __init__(self, pool, **kargs):
         self._columns = {}
@@ -141,11 +142,13 @@ class Model:
                     values[col_name] = column.default_value
         return values
 
-    def create(self, values, context=array()):
+    def create(self, values, context=None):
         # Create new record(s)
         # values = array (column: value, col2: value2)
         # or
         # values = array[](column: value, col2: value2)
+        if context is None:
+            context = {}
         if self._read_only or count(values) == 0:
             return None
         values2add = {}

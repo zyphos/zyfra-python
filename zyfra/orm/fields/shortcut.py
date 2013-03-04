@@ -8,7 +8,7 @@ class Shortcut(Field):
     stored = False
     relation = None
 
-    def __init__(self, label, relation, args=null):
+    def __init__(self, label, relation, args=None):
         super(Shortcut, self).__construct(label, args)
         self.relation = relation
 

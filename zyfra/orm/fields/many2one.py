@@ -31,9 +31,9 @@ class Many2One(Relational):
                 label, field = self.back_ref_field
             else:
                 label = field = self.back_ref_field
-            self.get_relation_obj().add_column(field, One2ManyField(label, obj._name, name))
+            self.relation_object.add_column(field, One2ManyField(label, obj._name, name))
         if self.relation_object_key == '':
-            self.relation_object_key = self.get_relation_obj()._key
+            self.relation_object_key = self.relation_object._key
         # Multikey support
         foreign_keys = self.relation_object_key.split(',')
         n_foreign_keys = len(foreign_keys)
@@ -49,7 +49,7 @@ class Many2One(Relational):
             self.local_keys = local_keys
             self.foreign_keys = foreign_keys
             # Todo: create local fields for storage
-            robj_name = self.get_relation_obj()._name
+            robj_name = self.relation_object._name
             for field_name in self.local_keys:
                 if hasattr(obj, field_name):
                     continue

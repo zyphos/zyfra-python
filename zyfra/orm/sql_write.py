@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from sql_interface import SQLInterface
-import tools
+from .. import tools
 
 class SQLWrite(SQLInterface):
     def __init__(object, values, where, where_datas, context):

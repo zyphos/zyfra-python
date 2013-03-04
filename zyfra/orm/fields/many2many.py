@@ -4,11 +4,10 @@
 from one2many import One2Many
 from many2one import Many2One
 from zyfra.tools import is_array
-from zyfra.orm.model import Model
 
 class Many2Many(One2Many):
     widget='many2many'
-    relation_object_field
+    relation_object_field=None
     stored=False
     back_ref_field=None # If set, name of the back reference (O2M) to this field in the relational object
     relation_table=None
@@ -16,13 +15,13 @@ class Many2Many(One2Many):
     rt_foreign_field=None
     equal2equal = False
 
-    def __init__(self, label, relation_object_name, args = array()):
+    def __init__(self, label, relation_object_name, args = None):
         super(Many2Many, self).__init__(label, relation_object_name, '', args)
         self.left_right = False
 
     def set_instance(self, object, name):
         super(Many2Many, self).set_instance(object, name)
-        robj = self.get_relation_object()
+        robj = self.relation_object
         br_field = ''
         if self.back_ref_field is not None:
             if is_array(self.back_ref_field):
@@ -53,6 +52,7 @@ class Many2Many(One2Many):
                                         'rt_local_field': self.rt_foreign_field}))
         pool = object._pool
         if not pool.object_in_pool(self.relation_table):
+            from .. import Model
             rel_table_object = Model(pool, {
                     '_name':self.relation_table,
                     '_columns':{self.rt_local_field: Many2One(None, object._name),
@@ -87,7 +87,9 @@ class Many2Many(One2Many):
             else:
                 self.relation_table = 'm2m_' + robj._name + '_' + object._name
 
-    def get_sql(self, parent_alias, fields, sql_query, context=array()):
+    def get_sql(self, parent_alias, fields, sql_query, context=None):
+        if context is None:
+            context = {}
         nb_fields = len(fields)
         new_fields = fields.copy() 
         new_ctx = context.copy()

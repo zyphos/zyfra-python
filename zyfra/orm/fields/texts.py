@@ -4,11 +4,10 @@
 from field import Field
 from many2one import Many2One
 from one2many import One2Many
-from zyfra.orm.model import Model
 
 class Text(Field):
     widget='text'
-    translate=false
+    translate=False
 
     def sql_create(self, sql_create, value, fields, context):
         if not self.translate or not context.get('language_id'):
@@ -70,6 +69,7 @@ class Text(Field):
                 # Add field
                 pool[tr_name].add_column(name, self.__get_translate_col_instance())
             else:
+                from .. import Model
                 if not pool.obj_in_pool('language'):
                     lg_obj = Model(pool, {
                                    '_name': 'language', 
