@@ -20,14 +20,16 @@ class Model(object):
     _read_only = False
     _instanciated = False
     _description = ''
+    _pool = None
+    _db = None
+    _field_prefix = ''
 
-    def __init__(self, pool, **kargs):
+    def __init__(self, **kargs):
         self._columns = {}
         for key, value in kargs.iteritems():
             if hasattr(self, key):
                 setattr(self, key, value)
         self.init()
-        self._pool = pool
         methods = ['before_create', 'after_create', 'before_write',
                 'after_write', 'before_unlink', 'after_unlink']
         """for method in methods:
@@ -69,9 +71,12 @@ class Model(object):
             self.set_column_instance(name, column)
             self._columns[name] = column
 
-    def set_instance(self):
+    def set_instance(self, pool):
         if self._instanciated:
             return
+        self._pool = pool
+        if self._db is None:
+            self._db = pool.db
         self._instanciated = True
         if not self._name:
             self._name = self.__class__.__name__
@@ -211,15 +216,15 @@ class Model(object):
         mql = ','.join(fields) + where + ' ORDER BY ' + self._order_by
         return self.select(mql)
 
-    def select(self, mql='*', context=None, datas=None):
+    def select(self, cr, mql='*', datas=None):
         try:
-            mql = self._pool.db.safe_sql(mql, datas)
+            mql = cr.safe_sql(mql, datas)
         except:
             if 'debug' in datas and datas['debug']:
                 raise
             return []
         sql_query = SqlQuery(self)
-        return sql_query.get_array(mql, context)
+        return sql_query.get_array(cr, mql)
 
     def get_form_view(self):
         view = []

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import imp
 from zyfra.singleton import Singleton
 
 class Pool(object):
@@ -15,11 +16,11 @@ class Pool(object):
 
     def __getattr__(self, key):
         if key in self.__pool:
-            return self.pool[key];
+            return self.__pool[key]
         try:
-            f, path, descr = imp.find_module(module_part, ad_paths)
+            f, path, descr = imp.find_module(module_part, self.module_path)
             mod = imp.load_module(key, f, path, descr)
-            obj = getattr(key, key)()  # Istanciate class
+            obj = getattr(mod, key.capitalize())()  # Istanciate class
         except:
             raise Exception("Object class [" + key + "] doesn't exists")
         self.add_object(key, obj)
@@ -27,7 +28,7 @@ class Pool(object):
 
     def add_object(self, name, obj):
         self.__pool[name] = obj
-        obj.set_instance()
+        obj.set_instance(self)
 
     def object_in_pool(self, name):
         return name in self.__pool
