@@ -46,7 +46,7 @@ class Data(MetaObject):
         return toData(res)
     
     def xpath(self, xpath):
-        if(isinstance(self, lxml.etree._ElementTree) or isinstance(self, lxml.etree._Element)):
+        if (hasattr(self, '__xpath')):
             return toData(self.__xpath(xpath))
         if(not isinstance(self, basestring)): 
             raise Exception('Can not do xpath on this kind of object [' + str(self) + ']')
