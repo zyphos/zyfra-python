@@ -1,13 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from relational import Relational
-from numerics import Int
-from zyfra.orm.sql_query import SqlQuery
-
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 from many2one import Many2One
 
 class One2One(Many2One):
@@ -22,5 +15,6 @@ class One2One(Many2One):
         if self.local_key == '':
             self.local_key = obj._key
         if self.relation_object_key == '':
-            self.relation_object_key = relation_object._key
+            self.relation_object_key = self.relation_object._key
         super(One2One, self).set_instance(obj, name)
+        self.sql_name = self.local_key
