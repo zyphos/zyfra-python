@@ -59,7 +59,7 @@ class Text(Field):
         return cls(self.label)
 
     def set_instance(self, obj, name):
-        super(TextField, self).set_instance(obj, name)
+        super(Text, self).set_instance(obj, name)
         if self.translate == False:
             return
         pool = obj._pool
@@ -88,7 +88,7 @@ class Text(Field):
     def get_sql(self, parent_alias, fields, sql_query, context=None):
         if context is None:
             context = {}
-        self_sql = super(TextField, self).get_sql(parent_alias, fields, sql_query, context)
+        self_sql = super(Text, self).get_sql(parent_alias, fields, sql_query, context)
         if not self.translate:
             return self_sql
         if 'parameter' in context and context['parameter'] != '':
@@ -110,7 +110,7 @@ class Char(Text):
     size = None
 
     def __init__(self, label, size, **kargs):
-        super(TextField, self).__init__(label, **kargs)
+        super(Char, self).__init__(label, **kargs)
         self.size = size
 
     def get_sql_def(self):

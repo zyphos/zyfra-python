@@ -2,6 +2,11 @@
 # -*- coding: utf-8 -*-
 
 class DictObject(dict):
+    def __new__(cls, *args, **kargs):
+        if (len(args) == 1 and isinstance(args[0], list)):
+            return [DictObject(arg) for arg in args[0]]
+        return super(DictObject, cls).__new__(cls, *args, **kargs)
+        
     def __init__(self, *args, **kargs):
         super(DictObject, self).__init__(**kargs)
         if (len(args)):
@@ -14,7 +19,7 @@ class DictObject(dict):
                         if attr.startswith('__'):
                             continue
                         self[attr] = getattr(arg, attr)
-        self.__dict__ = self
+        #self.__dict__ = self
     
     def __getattr__(self, name):
         return self[name]
@@ -102,13 +107,13 @@ def specialsplit(string, split_var=',') :
             level -= 1
         if level == 0:
             if is_array(split_var) and c in split_var:
-                ret[cur + 1] = c
+                ret.append(c)
                 cur += 2
-                ret[cur] = ''
+                ret.append('')
                 continue
             elif c == split_var:
                 cur += 1
-                ret[cur] = ''
+                ret.append('')
                 continue
         ret[cur] += c
     return ret
@@ -133,13 +138,13 @@ def specialsplitnotpar(string, split_var=',') :
             level -= 1
         if level == 0:
             if is_array(split_var) and c in split_var:
-                ret[cur + 1] = char
+                ret.append(c)
                 cur += 2
-                ret[cur] = ''
+                ret.append('')
                 continue
             elif c == split_var:
                 cur += 1
-                ret[cur] = ''
+                ret.append('')
                 continue
         ret[cur] += c
     return ret
@@ -147,16 +152,19 @@ def specialsplitnotpar(string, split_var=',') :
 def multispecialsplit(string, split_var=',', return_key=False, key_index=False):
     # Specialsplit with multi character split_var
     level = 0  # number of nested sets of brackets
-    ret = ['']  # array to return
     if key_index:
+        ret = {'':''}
         cur = ''
     else:
+        ret = ['']  # array to return
         cur = 0  # current index in the array to return, for convenience
     ignore = ''
     if not is_array(split_var):
         split_var = [split_var]
     i = 0
-    while i < len(string):
+    len_str = len(string)
+    while i < len_str:
+        can_add = True
         c = string[i]
         if c in ['"', "'"] and level == 0:
             if c == ignore:
@@ -179,11 +187,13 @@ def multispecialsplit(string, split_var=',', return_key=False, key_index=False):
                     else:
                         if return_key:
                             cur += 1
-                            ret[cur] = sv
+                            ret.append(sv)
                         cur += 1
-                        ret[cur] = ''
-                    i += split_length - 1
-                    continue
-        i += 1
-        ret[cur] += c
+                        ret.append('')
+                    i += split_length
+                    can_add = False
+                    break
+        if can_add:
+            i += 1
+            ret[cur] += c
     return ret

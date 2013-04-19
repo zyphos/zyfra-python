@@ -6,17 +6,18 @@ from fields import Field
 from active_record import ActiveRecord
 from sql_write import SQLWrite
 from sql_create import SQLCreate
+from sql_query import SQLQuery
 
 class Model(object):
     _columns = None
     _name = None
     _table = None
     _key = 'id'
-    _order_by = None
+    _order_by = ''
     _create_date = 'create_date'
     _write_date = 'write_date'
     _visible_field = 'visible'
-    _visible_condition = None
+    _visible_condition = ''
     _read_only = False
     _instanciated = False
     _description = ''
@@ -30,6 +31,12 @@ class Model(object):
             if hasattr(self, key):
                 setattr(self, key, value)
         self.init()
+        for col in dir(self):
+            attr = getattr(self, col)
+            if isinstance(attr, Field):
+                self._columns[col.lower()] = attr
+                #delattr(self, col)
+        self._field_prefix = self._field_prefix.lower()
         methods = ['before_create', 'after_create', 'before_write',
                 'after_write', 'before_unlink', 'after_unlink']
         """for method in methods:
@@ -51,6 +58,7 @@ class Model(object):
         }"""
 
     def add_column(self, name, col):
+        name = name.lower()
         self._columns[name] = col
         self.set_column_instance(name, col)
 
@@ -67,9 +75,9 @@ class Model(object):
                 self.:'__' + method + '_fields'}[name] = True
             }
         }"""
-        for name, column in col.iteritems():
-            self.set_column_instance(name, column)
-            self._columns[name] = column
+        #for name, column in col.iteritems():
+        #    self.set_column_instance(name, column)
+        #    self._columns[name] = column
 
     def set_instance(self, pool):
         if self._instanciated:
@@ -218,12 +226,12 @@ class Model(object):
 
     def select(self, cr, mql='*', datas=None):
         try:
-            mql = cr.safe_sql(mql, datas)
+            mql = cr(self).safe_sql(mql, datas)
         except:
-            if 'debug' in datas and datas['debug']:
+            if 'debug' in cr.context and cr.context['debug']:
                 raise
             return []
-        sql_query = SqlQuery(self)
+        sql_query = SQLQuery(self)
         return sql_query.get_array(cr, mql)
 
     def get_form_view(self):

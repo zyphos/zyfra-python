@@ -7,6 +7,7 @@ class Relational(Field):
     relation_object_name = None
     relation_object_key = None
     relational = True
+    __rel_obj = None
 
     def __init__(self, label, relation_object_name, **args):
         self.relation_object_key = ''
@@ -15,10 +16,11 @@ class Relational(Field):
         self.relation_object_name = relation_object_name
 
     def get_relation_object(self):
-        if type(self.relation_object) == property:
+        if self.__rel_obj is None:
             try:
-                self.relation_object = self.object._pool.__get(self.relation_object_name)
+                self.__rel_obj = getattr(self.object._pool, self.relation_object_name)
             except:
-                raise Exception('Could not find object [' + self.relation_object_name + '] field one2one [' + self.name + '] from object [' + self.object._name + ']')
-        return self.relation_object
+                raise
+                #raise Exception('Could not find object [' + self.relation_object_name + '] field ' + self.__class__.__name__ + ' [' + self.name + '] from object [' + self.object._name + ']')
+        return self.__rel_obj
     relation_object = property(get_relation_object)

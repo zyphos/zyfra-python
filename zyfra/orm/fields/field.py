@@ -14,6 +14,7 @@ class Field(object):
     required = False
     read_only = False
     instanciated = False
+    sql_name = ''
 
     def __init__(self, label, **args):
         self.label = label
@@ -36,6 +37,7 @@ class Field(object):
         self.instanciated = True
         if self.label is None or self.label == '': self.label = name
         self.name = name
+        self.sql_name = object._field_prefix + name
         self.object = object
 
     def get_sql(self, parent_alias, fields, sql_query, context=None):
@@ -44,9 +46,9 @@ class Field(object):
             field_alias = context['field_alias']
         else:
             field_alias = ''
-        if self.name == field_alias: sql_query.no_alias(field_alias)
+        if self.sql_name == field_alias: sql_query.no_alias(field_alias)
         parent_alias.set_used()
-        return parent_alias.alias + '.' + self.name
+        return parent_alias.alias + '.' + self.sql_name
 
     def get_sql_def(self):
         return ''

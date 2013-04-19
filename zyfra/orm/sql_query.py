@@ -35,11 +35,11 @@ class MqlWhere(object):
 
     def parse(self, mql_where, obj=None, ta=None):
         language_id = self.sql_query.context.get('language_id', 0)
-        mql_where = str_replace('%language_id%', language_id, mql_where)
+        mql_where = mql_where.replace('%language_id%', str(language_id))
         self.obj = obj
         self.ta = ta
-        mql_where = trim_inside(mql_where)
-        fields = specialsplitnotpar(mql_where, self.basic_operators)
+        mql_where =tools.trim_inside(mql_where)
+        fields = tools.specialsplitnotpar(mql_where, self.basic_operators)
         for key, field in enumerate(fields):
             lfield = field.lower()
             if key % 2 == 1:
@@ -47,21 +47,21 @@ class MqlWhere(object):
             if field == '':
                 continue
             if lfield in self.operators:
-                field = ''
+                fields[key] = ''
             elif lfield in self.reserved_words:
                 continue
             elif key + 4 < len(fields) and fields[key+2].lower() in self.operators:
                 op_data = self.sql_query.field2sql(fields[key+4], self.obj, self.ta)
-                field = self.sql_query.field2sql(field, self.obj, self.ta, '', fields[key+2].lower(), op_data)
+                fields[key] = self.sql_query.field2sql(field, self.obj, self.ta, '', fields[key+2].lower(), op_data)
                 fields[key+4] = fields[key+2] = ''
             else:
-                field = self.sql_query.field2sql(field, self.obj, self.ta)
+                fields[key] = self.sql_query.field2sql(field, self.obj, self.ta)
         sql_where = ''.join(fields)
         return sql_where
 
 sql_query_id = 0
 
-class SqlQuery(object):
+class SQLQuery(object):
     table_alias = None
     table_alias_nb = None
     table_alias_prefix = None
@@ -90,7 +90,7 @@ class SqlQuery(object):
         self.table_alias_nb = 0
         self.sub_query_nb = 0
         self.pool = self.object._pool
-        self.table_alias = []
+        self.table_alias = {}
         if self.table_alias_prefix != '':
             self.add_table_alias('', self.table_alias_prefix, None, '')
         else:
@@ -125,32 +125,33 @@ class SqlQuery(object):
 
     def get_table_sql(self):
         tables = ''
-        for table_alias in self.table_alias:
+        for alias in self.table_alias:
+            table_alias = self.table_alias[alias]
             if table_alias.used:
                 tables  += ' ' + table_alias.sql
         return tables
 
-    def mql2sql(self, mql, context = None, no_init= False):
-        if context is None:
-            context = {}
-        debug = context.get('debug', False)
-        self.context = context
+    def mql2sql(self, cr, mql, no_init= False):
+        debug = cr.context.get('debug', False)
+        self.context = cr.context
         mql = mql.lower()
         keywords = ['limit', 'order by', 'having', 'group by', 'where']
         query_datas = {}
         for keyword in keywords:
             datas = tools.multispecialsplit(mql, keyword + ' ')
             if len(datas) > 1:
-                query_datas[keyword] = datas[1].trim()
-            mql = datas[0]
+                query_datas[keyword] = datas[1].strip()
+            mql = datas[0].strip()
         if debug:
             s = tools.multispecialsplit(mql, ',')
             txt = ",\n".join(s)
-            txt  += "<br>"
+            txt  += "\n"
             keywords.reverse()
-            for key in kr:
-                txt  += key.upper() + "\n" + value + "\n"
-            txt  += 'Context:' + repr(context)
+            for key in keywords:
+                if key not in query_datas:
+                    continue
+                txt  += key.upper() + "\n" + query_datas[key] + "\n"
+            txt  += 'Context:' + repr(self.context)
             print 'MQL[' + str(self.__uid__) + ']:'
             print txt 
         sql = 'SELECT ' + self.parse_mql_fields(mql)
@@ -177,31 +178,29 @@ class SqlQuery(object):
         if not no_init:
             self.init()
         if debug:
-            mss = multispecialsplit(sql, ['LIMIT ', 'ORDER BY ', 'HAVING ', 'GROUP BY ', 'WHERE ','SELECT ', 'FROM ', 'LEFT JOIN', 'JOIN'], True)
+            mss = tools.multispecialsplit(sql, ['LIMIT ', 'ORDER BY ', 'HAVING ', 'GROUP BY ', 'WHERE ','SELECT ', 'FROM ', 'LEFT JOIN', 'JOIN'], True)
             txt = ''
             i=1
             while i < len(mss):
                 key = mss[i]
                 ss = mss[i+1]
-                if ss.trim() == '':
+                if ss.strip() == '':
                     i += 2
                     continue
                 txt  += key + "\n"
                 if key == 'SELECT ':
-                    s = multispecialsplit(ss, ',')
+                    s = tools.multispecialsplit(ss, ',')
                     txt  += ",\n".join(s)
                     txt  += "\n"
                 else:
-                    txt  += ss + '<br>'
+                    txt  += ss + "\n"
                 i += 2
             print 'SQL[' + str(self.__uid__) + ']:'
             print txt
         return sql
     
     def where2sql(self, mql, context = None):
-        if context is None:
-            context = {}
-        self.context = context
+        self.context = cr(self).context
         if self.context.get('domain'):
             self.where.append(self.context['domain'])
         if self.context.get('visible', True) and self.object._visible_condition != '':
@@ -210,14 +209,18 @@ class SqlQuery(object):
         sql  += ' ' + self.get_table_sql()
         return sql
 
-    def get_array(self, mql, context = None):
-        if context is None:
-            context = {}
-        sql = self.mql2sql(mql, context, True)
-        key = context.get('key', '')
+    def get_array(self, cr, mql):
+        sql = self.mql2sql(cr, mql, True)
+        key = cr.context.get('key', '')
         if key != self.object._key and key not in self.object._columns:
             key = ''
-        datas = tools.DictObject(self.pool.db.get_array_object(sql, key))
+        res = cr(self.object).get_array_object(sql, key)
+        for row in res:
+            for col in row:
+                value = row[col]
+                if isinstance(value, basestring):
+                    row[col] = row[col].rstrip()
+        datas = tools.DictObject(res)
         field_alias_ids = {}
         row_field_alias_ids = {}
         if len(datas):
@@ -336,7 +339,7 @@ class SqlQuery(object):
                 mql_where = where + ' AND(' + mql_where + ')'
             else:
                 mql_where = where
-        where = self.mql_where.parse(self, mql_where)
+        where = self.mql_where.parse(mql_where)
         if self.where_no_parse:
             where_np = '(' + ')AND('.join(self.where_no_parse) + ')'
             if where != '':
@@ -357,7 +360,7 @@ class SqlQuery(object):
     def parse_mql_having(self, mql_having):
         return self.mql_where.parse(mql_having)
 
-    def convert_order_by(array_order_parsed, mql_order_by):
+    def convert_order_by(self, array_order_parsed, mql_order_by):
         fields = mql_order_by.split(',')
         for field in fields:
             if field.strip()=='':
@@ -394,7 +397,13 @@ class SqlQuery(object):
         field = fields.pop(0)
         field_name, field_data = tools.specialsplitparam(field)
         if field_name not in obj._columns:
-            return field_name
+            prefix_field_name = obj._field_prefix + field_name
+            if prefix_field_name not in obj._columns:
+                return field_name
+            else:
+                if field_alias == '':
+                    field_alias = field_name
+                field_name = prefix_field_name
         context = self.context.copy()
         context.update({'parameter':field_data, 'field_alias':field_alias, 'operator':operator, 'op_data':op_data})
         return obj._columns[field_name].get_sql(ta, fields, self, context)

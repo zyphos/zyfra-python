@@ -3,7 +3,7 @@
 
 from relational import Relational
 from numerics import Int
-from zyfra.orm.sql_query import SqlQuery
+from zyfra.orm.sql_query import SQLQuery
 
 class Many2One(Relational):
     local_key = None
@@ -19,8 +19,8 @@ class Many2One(Relational):
     def set_instance(self, obj, name):
         super(Many2One, self).set_instance(obj, name)
         if self.left_right:
-            if obj._name != self.relation_obj_name:
-                self.left_right = false
+            if obj._name != self.relation_object_name:
+                self.left_right = False
             else:
                 self.pleft = name + '_pleft'
                 self.pright = name + '_pright'
@@ -76,26 +76,26 @@ class Many2One(Relational):
                     sql = 'EXISTS(SELECT ' + obj._key + ' FROM ' + obj._table + ' AS ' + ta + ' WHERE ' + ta + '.' + obj._key + '=' + op_data + ' AND ' + pa + '.' + self.pleft + '>' + ta + '.' + self.pleft + ' AND ' + pa + '.' + self.pright + '<' + ta + '.' + self.pright + ')'
                 sql_query.order_by.append(pa + '.' + self.pleft)
                 return sql
-            field_link = parent_alias.alias + '.' + self.name
+            field_link = parent_alias.alias + '.' + self.sql_name
             parent_alias.set_used()
             return field_link
         parameter = 'param' in context and context['parameter'] or ''
-        field_link = parent_alias.alias + '.' + self.name + parameter
+        field_link = parent_alias.alias + '.' + self.sql_name + parameter
         if hasattr(self, 'local_keys'):
             # Threat multi key
             palias = parent_alias.alias
             relations = []
             for key, localkey in self.local_keys.iteritems():
                 foreign_key = self.foreign_keys[key]
-                relations.append('%ta% + ' + foreign_key + '=' + palias + '.' + local_key)
+                relations.append('%ta%.' + foreign_key + '=' + palias + '.' + local_key)
             sql_on = implode(' and ', relations)
         else:
-            sql_on = '%ta% + ' + self.relation_object_key + '=' + parent_alias.alias + '.' + self.name
+            sql_on = '%ta%.' + self.relation_object_key + '=' + parent_alias.alias + '.' + self.sql_name
         
         sql = (not self.required and '' or 'LEFT ') + 'JOIN ' + robj._table + ' AS %ta% ON ' + sql_on
         if sql_query.context.get('visible', True) and robj._visible_condition != '':
             sql_txt, on_condition = sql.split(' ON ')
-            visible_sql_q = SqlQuery(robj, '%ta%')
+            visible_sql_q = SQLQuery(robj, '%ta%')
             sql = sql_txt + ' ON (' + on_condition + ')AND(' + visible_sql_q.where2sql('') + ')'
         ta = sql_query.get_table_alias(field_link, sql, parent_alias)
         field_name = fields.pop(0)
@@ -160,7 +160,7 @@ class Many2One(Relational):
         table = self.object._table
         if value == null or value == 0:
             l1 = 1
-            brothers = self.object.select(key + ' AS id,' + right_col + ' AS rc WHERE ' + self.name + ' IS NULL OR ' + self.name + '=0')
+            brothers = self.object.select(key + ' AS id,' + right_col + ' AS rc WHERE ' + self.sql_name + ' IS NULL OR ' + self.sql_name + '=0')
             for brother in brothers:
                 if brother.id == id:
                     break
@@ -168,7 +168,7 @@ class Many2One(Relational):
         else:
             parent_obj = self.object._pool.db.get_object('SELECT ' + left_col + ' AS lc FROM ' + table + ' WHERE ' + key + '=%s', array(value))
             l1 = parent_obj.lc + 1
-            brothers = self.object.select(key + ' AS id,' + right_col + ' AS rc WHERE ' + self.name + '=%s', array(), array(value))
+            brothers = self.object.select(key + ' AS id,' + right_col + ' AS rc WHERE ' + self.sql_name + '=%s', array(), array(value))
             for brother in brothers:
                 if brother.id == id:
                     break
@@ -182,9 +182,9 @@ class Many2One(Relational):
         right = left+1
 
         if id is None or id == 0:
-            rows = self.object.select(key + ' AS id WHERE ' + self.name + ' IS NULL OR ' + self.name + '=0')
+            rows = self.object.select(key + ' AS id WHERE ' + self.sql_name + ' IS NULL OR ' + self.sql_name + '=0')
         else:
-            rows = self.object.select(key + ' AS id WHERE ' + self.name + '=%s', array(), array(id))
+            rows = self.object.select(key + ' AS id WHERE ' + self.sql_name + '=%s', array(), array(id))
         for row in rows:
             right = self.rebuild_tree(row.id, right, key, table)
         if id != 0 and id is not None:
