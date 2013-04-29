@@ -197,3 +197,19 @@ def multispecialsplit(string, split_var=',', return_key=False, key_index=False):
             i += 1
             ret[cur] += c
     return ret
+
+def dump(var, lvl=0):
+    txt = ''
+    ident = ''
+    nident = ' ' * (lvl * 2)
+    if isinstance(var, dict):
+        for key in var:
+            txt += ident + repr(key) + ': ' + dump(var[key], lvl=lvl+1) + "\n"
+            ident = nident
+        return txt
+    if isinstance(var, list):
+        for v in var:
+            txt += ident + '- ' + dump(v, lvl=lvl+1) + "\n"
+            ident = nident
+        return txt
+    return repr(var)
