@@ -252,8 +252,9 @@ class Model(object):
         else:
             done.append(self._name)
         txt = ''
-        for col in self._columns:
-            txt += ' ' * lvl * 2 + '+ ' + col.name + '[' + col.__class__.__name__ + ']'
+        for col_name in self._columns:
+            col = self._columns[col_name]
+            txt += ' ' * lvl * 2 + '+ ' + col_name + '[' + col.__class__.__name__ + '] ' + col.label
             if col.relational:
                 robj = col.get_relation_object()
                 txt += '[' + robj._name + "]\n"
