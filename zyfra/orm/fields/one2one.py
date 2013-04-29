@@ -14,7 +14,7 @@ class One2One(Many2One):
     def set_instance(self, obj, name):
         if self.local_key == '':
             self.local_key = obj._key
-        if self.relation_object_key == '':
-            self.relation_object_key = self.relation_object._key
+        do_rel_key = self.relation_object_key == '' 
         super(One2One, self).set_instance(obj, name)
+        self.relation_object_key = self.relation_object._key
         self.sql_name = self.local_key
