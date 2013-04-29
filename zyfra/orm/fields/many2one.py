@@ -106,8 +106,8 @@ class Many2One(Relational):
                 field_alias = context['field_alias']
             else:
                 field_alias = ''
-            sql_query.split_select_fields(sub_mql, false, robj, ta, field_alias)
-            return null
+            sql_query.split_select_fields(sub_mql, False, robj, ta, field_alias)
+            return None
         context['parameter'] = field_param
         return robj._columns[field_name].get_sql(ta, fields, sql_query, context)
 

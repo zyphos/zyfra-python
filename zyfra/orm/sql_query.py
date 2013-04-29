@@ -141,7 +141,7 @@ class SQLQuery(object):
             datas = tools.multispecialsplit(mql, keyword + ' ')
             if len(datas) > 1:
                 query_datas[keyword] = datas[1].strip()
-            mql = datas[0].strip()
+            mql = datas[0]
         if debug:
             s = tools.multispecialsplit(mql, ',')
             txt = ",\n".join(s)
@@ -294,7 +294,6 @@ class SQLQuery(object):
             obj = self.object
         if not tools.is_array(field_defs):
             field_defs = tools.specialsplit(field_defs)
-        field_defs = [x.strip() for x in field_defs]
         if '*' in field_defs:
             field_defs.remove('*')
             field_defs += [x for x in obj._columns if not obj._columns[x].relational]
@@ -310,7 +309,7 @@ class SQLQuery(object):
                 alias = field_name
                 pos = alias.find('.(')
                 if pos != -1:
-                    alias = alias[0, pos]
+                    alias = alias[0: pos]
                 alias = alias.replace('.','_').replace('[','_').replace(']','_').replace('=','_')
             if pre_alias != '':
                 alias = pre_alias + '_' + alias
