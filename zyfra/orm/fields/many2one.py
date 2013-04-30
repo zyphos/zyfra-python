@@ -87,7 +87,11 @@ class Many2One(Relational):
             relations = []
             for key, localkey in self.local_keys.iteritems():
                 foreign_key = self.foreign_keys[key]
-                relations.append('%ta%.' + foreign_key + '=' + palias + '.' + local_key)
+                if foreign_key in self.relation_object._columns:
+                    foreign_key = '%ta%.' + foreign_key
+                if local_key in self.object._columns:
+                    local_key = palias + '.' + local_key
+                relations.append(foreign_key + '=' + local_key)
             sql_on = implode(' and ', relations)
         else:
             sql_on = '%ta%.' + self.relation_object_key + '=' + parent_alias.alias + '.' + self.sql_name
