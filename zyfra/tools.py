@@ -199,6 +199,7 @@ def multispecialsplit(string, split_var=',', return_key=False, key_index=False):
     return ret
 
 def dump(var, lvl=0):
+    import decimal
     txt = ''
     ident = ''
     nident = ' ' * (lvl * 2)
@@ -212,4 +213,6 @@ def dump(var, lvl=0):
             txt += ident + '- ' + dump(v, lvl=lvl+1) + "\n"
             ident = nident
         return txt
+    if isinstance(var, decimal.Decimal):
+        return str(var)
     return repr(var)
