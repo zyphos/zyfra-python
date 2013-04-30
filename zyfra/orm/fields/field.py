@@ -14,6 +14,7 @@ class Field(object):
     required = False
     read_only = False
     instanciated = False
+    select = None
     sql_name = ''
 
     def __init__(self, label, **args):
