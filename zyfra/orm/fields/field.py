@@ -21,7 +21,7 @@ class Field(object):
         self.label = label
         for key in args:
             if hasattr(self, key): setattr(self, key, args[key])
-        self.needed_columns = []
+        self.needed_columns = {}
 
     def sql_create(self, sql_create, value, fields, context):
         return self.sql_format(value)

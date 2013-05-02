@@ -146,8 +146,9 @@ class SQLQuery(object):
             s = tools.multispecialsplit(mql, ',')
             txt = ",\n".join(s)
             txt  += "\n"
-            keywords.reverse()
-            for key in keywords:
+            kws = keywords[:]
+            kws.reverse()
+            for key in kws:
                 if key not in query_datas:
                     continue
                 txt  += key.upper() + "\n" + query_datas[key] + "\n"
@@ -167,6 +168,7 @@ class SQLQuery(object):
             self.where.append(self.object._visible_condition)
         if len(self.where) and 'where' not in query_datas:
             query_datas['where'] = ''
+        keywords.reverse()
         for keyword in keywords:
             if keyword in query_datas:
                 data = getattr(self, 'parse_mql_' + keyword.replace(' ', '_'))(query_datas[keyword])
@@ -232,15 +234,15 @@ class SQLQuery(object):
                     row_alias_ids = row_field_alias_ids[field_alias]
                 else:
                     ids = {}
-                    row_alias_ids = []
-                    for row_id, row in datas.iteritems():
-                        ids[getattr(row, field_alias)] = True
-                        row_alias_ids.setdefault(row.field_alias, []).append(row_id)
+                    row_alias_ids = {}
+                    for row_id, row in enumerate(datas):
+                        ids[row[field_alias]] = True
+                        row_alias_ids.setdefault(row[field_alias], []).append(row_id)
                         if not is_fx:
                             row.field_alias = []
-                    ids = keys(ids)
-                    for key in keys(ids):
-                        if ids[key].trim() == '':
+                    ids = ids.keys()
+                    for key, id in enumerate(ids):
+                        if str(id).strip() == '':
                             del ids[key]
                     field_alias_ids[field_alias] = ids
                     row_field_alias_ids[field_alias] = row_alias_ids
@@ -262,16 +264,21 @@ class SQLQuery(object):
                 else:
                     if parameter != '':
                         parameter = '(' + parameter + ') AND '
-                    nctx = context.copy()
+                    nctx = cr.context.copy()
                     nctx.update({'domain': parameter + rfield + ' IN(' + ','.join(map(str, ids)) + ')'})
-                    sub_datas = robject.select(rfield + ' AS _subid,' + sub_mql, nctx)
+                    old_context = cr.context 
+                    cr.context = nctx
+                    sub_datas = robject.select(cr, rfield + ' AS subid_,' + sub_mql)
                     for id, row_ids in row_alias_ids.iteritems():
                         for sub_row in sub_datas:
-                            if sub_row._subid == id:
+                            if sub_row.subid_ == id:
                                 for row_id in row_ids:
+                                    if not isinstance(datas[row_id][field_alias], list):
+                                        datas[row_id][field_alias] = []
                                     datas[row_id][field_alias].append(sub_row)
+                    cr.context = old_context
                 for sub_row in sub_datas:
-                   del sub_row._subid
+                   del sub_row.subid_
         if len(self.remove_from_result):
             for id in keys(datas):
                 for alias in self.remove_from_result:
@@ -364,7 +371,7 @@ class SQLQuery(object):
         for field in fields:
             if field.strip()=='':
                 continue
-            fields = trim(field).split(' ')
+            fields = field.strip().split(' ')
             field_name = fields.pop(0)
             array_order_parsed.append(self.field2sql(field_name) + ' ' + ' '.join(fields))
 

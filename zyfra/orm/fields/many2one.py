@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 from relational import Relational
-from numerics import Int
+import numerics
 from zyfra.orm.sql_query import SQLQuery
 
 class Many2One(Relational):
     local_key = None
-    left_right = True
+    left_right = False
     default_value = None
     back_ref_field = None # If set, name of the back reference (O2M) to this field in the relational object
     widget = 'many2one'
@@ -24,8 +24,8 @@ class Many2One(Relational):
             else:
                 self.pleft = name + '_pleft'
                 self.pright = name + '_pright'
-                self.needed_columns[self.pleft] = Int(self.label + ' left')
-                self.needed_columns[self.pright] = Int(self.label + ' right')
+                self.needed_columns[self.pleft] = numerics.Int(self.label + ' left')
+                self.needed_columns[self.pright] = numerics.Int(self.label + ' right')
         if self.back_ref_field is not None:
             if isinstance(self.back_ref_field, (list, tuple)):
                 label, field = self.back_ref_field

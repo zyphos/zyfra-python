@@ -24,7 +24,7 @@ class One2Many(Relational):
             parameter = ''
         key_field = parent_alias.alias + '.' + self.object._key
         robject = self.get_relation_object()
-        sql = 'LEFT JOIN ' + robject._table + ' AS %ta% ON %ta% + ' + self.relation_object_field + '=' + key_field
+        sql = 'LEFT JOIN ' + robject._table + ' AS %ta% ON %ta%.' + self.relation_object_field + '=' + key_field
         field_link = parent_alias.alias + '.' + self.name + parameter
         ta = sql_query.get_table_alias(field_link, sql, parent_alias)
 
