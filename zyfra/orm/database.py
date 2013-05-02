@@ -29,9 +29,17 @@ class Cursor(object):
         return res
     
     def safe_sql(self, sql, datas):
+        def parse_data(data):
+            if isinstance(data, basestring):
+                return repr(data)
+            if isinstance(data, (list, tuple)):
+                return '(' + ','.join([parse_data(d) for d in data]) + ')'
+            return str(data)
         if datas is None:
-            datas = []
-        return sql % datas
+            return sql
+        for data in datas:
+            sql = sql.replace('%s', parse_data(data), 1)
+        return sql
 
 class OdbcCursor(Cursor):  
     def execute(self, sql, params):
