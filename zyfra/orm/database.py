@@ -20,7 +20,7 @@ class Cursor(object):
             if row is None:
                 break
             if cols is None:
-                cols = [c[0] for c in row.cursor_description]
+                cols = [c[0].lower() for c in row.cursor_description]
             row_data = dict(zip(cols, row))
             if key == '':
                 res.append(row_data)
