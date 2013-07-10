@@ -40,9 +40,14 @@ class Cursor(object):
         for data in datas:
             sql = sql.replace('%s', parse_data(data), 1)
         return sql
+    
+    def get_last_insert_id(self):
+        return 0
 
 class OdbcCursor(Cursor):  
-    def execute(self, sql, params):
+    def execute(self, sql, params=None):
+        if params is None:
+            params = []
         sql.replace('%s','?')
         self.cr.execute(sql, params)
 
@@ -54,6 +59,6 @@ class OdbcConnection(object):
         return OdbcCursor(self.cnx.cursor())
 
 class Odbc(Database):
-    def connect(self, params):
+    def connect(self, params, **kargs):
         import pyodbc
-        return OdbcConnection(pyodbc.connect(params))
+        return OdbcConnection(pyodbc.connect(params, **kargs))

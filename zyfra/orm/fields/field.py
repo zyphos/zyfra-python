@@ -24,14 +24,14 @@ class Field(object):
         self.needed_columns = {}
 
     def sql_create(self, sql_create, value, fields, context):
-        return self.sql_format(value)
+        return str(self.sql_format(value))
 
     def sql_write(self, sql_write, value, fields, context):
         if self.read_only or self.stored: return
         sql_write.add_assign(self.name+'='+self.sql_format(value))
 
     def sql_format(self, value):
-        return "'" + value + "'" # !! SQL injection !!!
+        return "'" + str(value) + "'" # !! SQL injection !!!
     
     def set_instance(self, object, name):
         if self.instanciated: return

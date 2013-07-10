@@ -5,10 +5,10 @@ class SQLInterface(object):
     callbacks = None
     object = None
 
-    def __init__(obj, context):
+    def __init__(self, cr, obj):
         self.object = obj
+        self.cr = cr
         self.callbacks = []
-        self.context = context
 
-    def add_callback(field_object, callback_name):
+    def add_callback(self, field_object, callback_name):
         self.callbacks.append(field_object, callback_name)

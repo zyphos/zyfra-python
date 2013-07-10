@@ -155,42 +155,33 @@ class Model(object):
                     values[col_name] = column.default_value
         return values
 
-    def create(self, values, context=None):
+    def create(self, cr, values):
         # Create new record(s)
-        # values = array (column: value, col2: value2)
+        # values = {column: value, col2: value2}
         # or
-        # values = array[](column: value, col2: value2)
-        if context is None:
-            context = {}
-        if self._read_only or count(values) == 0:
+        # values = [{column: value, col2: value2}, {column: value, col2: value2}]
+        if self._read_only or len(values) == 0:
             return None
-        values2add = {}
-        if tools.is_numeric(key(values)):
-            multi_values = True
+        sql_create = SQLCreate(cr, self)
+        if isinstance(values, list):
+            values2add = []
             for value in values:
                 value = self.__add_default_values(value, True)
-                values2add[implode(',', array_keys(value))].append(value)
-        else:
-            multi_values = False
-            values = self.__add_default_values(values, True)
-            values2add[implode(',', array_keys(values))].append(values)
-        if (count(values2add) == 0):
-            return
-        for values in values2add:
-            sql_create = SQLCreate(this, context)
-            id = sql_create.create(values)
-        return id
+                values2add.append(value)
+            return sql_create.create(values2add)
+        values = self.__add_default_values(values, True)
+        return sql_create.create(values2add)[0]
 
-    def write(self, values, where, where_datas=None, context=None):
+    def write(self, cr, values, where, where_datas=None, context=None):
         if self._read_only:
             return None
         if tools.is_numeric(where):
             where = self._key + '=' + where
         elif tools.is_array(where):
             where = self._key + ' in (' + ','.join(where) + ')'
-        sql_write = SQLWrite(this, values, where, where_datas, context)
+        sql_write = SQLWrite(cr, self, values, where, where_datas, context)
 
-    def unlink(self, where, datas=None, context=None):
+    def unlink(self, cr, where, datas=None, context=None):
         if self._read_only:
             return None
         if tools.is_numeric(where):
@@ -216,13 +207,13 @@ class Model(object):
                 old_values[getattr(row, self._key)] = getattr(row, column)
             self._columns[column].after_unlink_trigger(old_values)
 
-    def read(self, where='', fields=None):
+    def read(self, cr, where='', fields=None):
         if not fields:
             fields = array_keys(self._columns)
         if where.trim() != '':
             where += ' WHERE' + where
         mql = ','.join(fields) + where + ' ORDER BY ' + self._order_by
-        return self.select(mql)
+        return self.select(cr, mql)
 
     def select(self, cr, mql='*', datas=None):
         try:

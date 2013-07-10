@@ -5,14 +5,14 @@ from sql_interface import SQLInterface
 from .. import tools
 
 class SQLWrite(SQLInterface):
-    def __init__(object, values, where, where_datas, context):
-        super(self, SQLWrite).__init__(object, context)
+    def __init__(self, cr, object, values, where, where_datas):
+        super(self, SQLWrite).__init__(cr, object)
         for column in values.keys():
             if column not in object._columns:
                 del values[column]
         if not len(values):
             return
-        values[object._write_date] = time.strftime('Y-m-d H:i:s', time.gmtime())
+        values[object._write_date] = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
         self.values = values
         self.col_assign = []
         self.col_assign_data = []
@@ -26,7 +26,7 @@ class SQLWrite(SQLInterface):
             fields = specialsplit(column, '.')
             field = array_shift(fields)
             field_name, field_data = tools.specialsplitparam(field)
-            ctx = context.copy()
+            ctx = cr.context.copy()
             ctx['parameter'] = field_data
             if field_name in object.__before_write_fields:
                 #Todo
@@ -42,14 +42,15 @@ class SQLWrite(SQLInterface):
         if len(self.col_assign) == 0:
             return
         sql = 'UPDATE ' + object._table + ' AS t0 SET ' + implode(',', self.col_assign) + ' WHERE ' + where
-        db.safe_query(sql, self.col_assign_data.update(where_datas))
+        cr(self.object).safe_query(sql, key)
+        
         # for callback in self.callbacks as callback:
         # call_user_func(callback, self, values[col_name], self.ids, context)
         for col_name, old_value in old_values.iteritems():
             object._columns[col_name].after_write_trigger(old_value, values[col_name])
 
-    def add_assign(assign):
+    def add_assign(self, assign):
         self.col_assign.append(assign)
 
-    def add_data(data):
+    def add_data(self, data):
         self.col_assign_data.append(data)

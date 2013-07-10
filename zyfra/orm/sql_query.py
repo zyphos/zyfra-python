@@ -153,7 +153,7 @@ class SQLQuery(object):
                     continue
                 txt  += key.upper() + "\n" + query_datas[key] + "\n"
             txt  += 'Context:' + repr(self.context)
-            print 'MQL[' + str(self.__uid__) + ']:'
+            print '== MQL[' + str(self.__uid__) + ']: =='
             print txt 
         sql = 'SELECT ' + self.parse_mql_fields(mql)
         if 'order by' not in query_datas:
@@ -197,7 +197,7 @@ class SQLQuery(object):
                 else:
                     txt  += ss + "\n"
                 i += 2
-            print 'SQL[' + str(self.__uid__) + ']:'
+            print '== SQL[' + str(self.__uid__) + ']: =='
             print txt
         return sql
     
