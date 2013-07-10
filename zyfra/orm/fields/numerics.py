@@ -13,7 +13,7 @@ class Int(Field):
     widget = 'integer'
 
     def sql_format(self, value):
-        return int(value)
+        return str(int(value))
 
     def get_sql_def(self):
         return 'INT(' + self.size + ')' + (self.unsigned and ' UNSIGNED ' or '')

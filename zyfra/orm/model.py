@@ -172,14 +172,14 @@ class Model(object):
         values = self.__add_default_values(values, True)
         return sql_create.create(values2add)[0]
 
-    def write(self, cr, values, where, where_datas=None, context=None):
+    def write(self, cr, values, where, where_datas=None):
         if self._read_only:
             return None
         if tools.is_numeric(where):
             where = self._key + '=' + where
         elif tools.is_array(where):
             where = self._key + ' in (' + ','.join(where) + ')'
-        sql_write = SQLWrite(cr, self, values, where, where_datas, context)
+        sql_write = SQLWrite(cr, self, values, where, where_datas)
 
     def unlink(self, cr, where, datas=None, context=None):
         if self._read_only:

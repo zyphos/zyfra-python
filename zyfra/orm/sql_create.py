@@ -11,7 +11,6 @@ class SQLCreate(SQLInterface):
     def create(self, values_array):
         debug = self.cr.context.get('debug', False)
         obj = self.object
-        print obj._columns
         columns = []
         sql_columns = []
         for col_name in values_array[0].keys():

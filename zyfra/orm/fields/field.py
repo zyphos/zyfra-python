@@ -27,8 +27,8 @@ class Field(object):
         return str(self.sql_format(value))
 
     def sql_write(self, sql_write, value, fields, context):
-        if self.read_only or self.stored: return
-        sql_write.add_assign(self.name+'='+self.sql_format(value))
+        if self.read_only: return
+        sql_write.add_assign(self.sql_name+'='+self.sql_format(value))
 
     def sql_format(self, value):
         return "'" + str(value) + "'" # !! SQL injection !!!

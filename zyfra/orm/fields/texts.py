@@ -24,7 +24,7 @@ class Text(Field):
 
     def sql_write(self, sql_write, value, fields, context):
         if self.read_only: return
-        ctx = sql_write.context
+        ctx = sql_write.cr.context
         language_id = ctx.get('language_id')
         if not self.translate or not language_id:
             Field.sql_write(self, sql_write, value, fields, context)
@@ -38,6 +38,7 @@ class Text(Field):
             object_tr.unlink(where, where_values)
             return
         sql = t['key'] + ' AS oid,' + object_tr._key + ' AS id,' + t['column'] + ' AS tr WHERE ' + where
+        sql_write.cr.context
         rows = object_tr.select(sql, array_merge(sql_write.context, {'key':'oid'}), where_values)
         row2add = []
         row2update = []
