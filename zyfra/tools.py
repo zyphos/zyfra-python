@@ -54,7 +54,8 @@ def trim_inside(string):
                 r += c
                 last = True
         elif c in ['"', "'"]:
-            quote = not quote == c and c or ''
+            quote = not (quote == c) and c or ''
+            r += c
         else:
             last = False
             r += c

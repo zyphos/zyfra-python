@@ -38,7 +38,7 @@ class MqlWhere(object):
         mql_where = mql_where.replace('%language_id%', str(language_id))
         self.obj = obj
         self.ta = ta
-        mql_where =tools.trim_inside(mql_where)
+        mql_where = tools.trim_inside(mql_where)
         fields = tools.specialsplitnotpar(mql_where, self.basic_operators)
         for key, field in enumerate(fields):
             lfield = field.lower()
