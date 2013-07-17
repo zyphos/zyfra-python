@@ -24,8 +24,11 @@ class Model(object):
     _pool = None
     _db = None
     _field_prefix = ''
+    _key_sql_name = ''
 
     def __init__(self, **kargs):
+        if not self._key_sql_name:
+            self._key_sql_name = self._field_prefix + self._key
         self._columns = {}
         for key, value in kargs.iteritems():
             if hasattr(self, key):
@@ -185,9 +188,9 @@ class Model(object):
         if self._read_only:
             return None
         if tools.is_numeric(where):
-            where = self._key + '=' + where
+            where = self._key_sql_name + '=' + where
         elif tools.is_array(where):
-            where = self._key + ' in (' + implode(',', where) + ')'
+            where = self._key_sql_name + ' in (' + implode(',', where) + ')'
         columns_before = array_keys(self.__before_unlink_fields)
         columns_after = array_keys(self.__after_unlink_fields)
         columns = array_merge(columns_before, columns_after)
