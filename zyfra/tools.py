@@ -217,3 +217,25 @@ def dump(var, lvl=0):
     if isinstance(var, decimal.Decimal):
         return str(var)
     return repr(var)
+
+def special_lower(string):
+    len_str = len(string)
+    ignore = ''
+    i = 0
+    buffer = ''
+    out = ''
+    while i < len_str:
+        c = string[i]
+        if c in ['"', "'"]:
+            if c == ignore:
+                ignore = ''
+                out += buffer
+                buffer=''
+            elif ignore == '':
+                ignore = c
+                out += buffer.lower()
+                buffer=''
+        buffer += c
+        i += 1
+    out += buffer.lower()
+    return out
