@@ -53,6 +53,9 @@ class Decimal(Field):
 
     def get_sql_def(self):
         return 'DOUBLE'
+    
+    def sql_create(self, sql_create, value, fields, context):
+        return str(decimal.Decimal(value))
 
 class Boolean(Field):
     default_value = 0
