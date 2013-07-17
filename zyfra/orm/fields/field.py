@@ -38,7 +38,8 @@ class Field(object):
         self.instanciated = True
         if self.label is None or self.label == '': self.label = name
         self.name = name
-        self.sql_name = object._field_prefix + name
+        if not self.sql_name:
+            self.sql_name = object._field_prefix + name
         self.object = object
 
     def get_sql(self, parent_alias, fields, sql_query, context=None):
