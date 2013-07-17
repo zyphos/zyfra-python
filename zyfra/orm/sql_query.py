@@ -134,7 +134,7 @@ class SQLQuery(object):
     def mql2sql(self, cr, mql, no_init= False):
         debug = cr.context.get('debug', False)
         self.context = cr.context
-        mql = mql.lower()
+        mql = tools.special_lower(mql)
         keywords = ['limit', 'order by', 'having', 'group by', 'where']
         query_datas = {}
         for keyword in keywords:
