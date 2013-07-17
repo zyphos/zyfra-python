@@ -9,6 +9,7 @@ class SQLWrite(SQLInterface):
         if where_datas is None:
             where_datas = []
         debug = cr.context.get('debug', False)
+        test_only = cr.context.get('test_only', False)
         super(SQLWrite, self).__init__(cr, object)
         for column in values.keys():
             if column not in object._columns:
@@ -47,7 +48,8 @@ class SQLWrite(SQLInterface):
                 print 'SQLWrite: No column found'
             return
         sql = 'UPDATE ' + object._table + ' AS t0 SET ' + ','.join(self.col_assign) + ' WHERE ' + where
-        sql = cr(self.object).safe_sql(sql, self.col_assign_data + where_datas)
+        if not test_only:
+            sql = cr(self.object).safe_sql(sql, self.col_assign_data + where_datas)
         if debug:
             print sql
         cr(self.object).execute(sql)

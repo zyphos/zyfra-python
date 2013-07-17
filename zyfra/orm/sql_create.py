@@ -10,6 +10,7 @@ from zyfra import tools
 class SQLCreate(SQLInterface):
     def create(self, values_array):
         debug = self.cr.context.get('debug', False)
+        test_only = self.cr.context.get('test_only', False)
         obj = self.object
         columns = []
         sql_columns = []
@@ -60,8 +61,9 @@ class SQLCreate(SQLInterface):
             sql = 'INSERT INTO ' + obj._table + ' (' + ','.join(sql_columns) + ') VALUES ' + ','.join(sql_values)
             if debug:
                 print sql
-            cr = self.cr(self.object) 
-            cr.execute(sql)
+            cr = self.cr(self.object)
+            if not test_only: 
+                cr.execute(sql)
             context = self.cr.context
             ids.append(cr.get_last_insert_id())
             for callback in self.callbacks:
