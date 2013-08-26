@@ -257,3 +257,19 @@ class Model(object):
             else:
                 txt += "\n"
         return txt
+
+    def validate_values(self, cr, values):
+        validation_errors = []
+        for name in values:
+            if name in self._columns:
+                validation = self._columns[name].validate(cr, values[name])
+                if validation:
+                    validation_errors.append('Field [%s]: %s' % (name, validation))
+            else:
+                validation_errors.append('Field [%s]: not found' % name)
+        if validation_errors:
+            txt = "Validation errors in [%s] object:\n" % self._name
+            for validation_error in validation_errors:
+                txt += validation_error + "\n"
+            return txt
+        return False

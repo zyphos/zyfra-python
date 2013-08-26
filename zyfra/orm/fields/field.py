@@ -69,3 +69,6 @@ class Field(object):
     
     def get_default():
         return self.default_value
+
+    def validate(self, cr, data):
+        return False

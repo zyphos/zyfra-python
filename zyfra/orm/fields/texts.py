@@ -116,6 +116,11 @@ class Char(Text):
 
     def get_sql_def(self):
         return 'VARCHAR(' + self.size + ')'
+    
+    def validate(self, cr, data):
+        if len(data) > self.size:
+            return 'Len size to big %i > %i' % (len(data), self.size)
+        return False
 
 class Tinytext(Text):
     def get_sql_def(self):
