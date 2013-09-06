@@ -11,9 +11,8 @@ class Pool(object):
     __metaclass__ = Singleton
     __pool = None;
 
-    def __init__(self, db, module_path):
+    def __init__(self, module_path):
         self.__pool = {}
-        self.db = db;
         self.module_path = module_path
         sys.path.insert(1, os.path.abspath(module_path))
 

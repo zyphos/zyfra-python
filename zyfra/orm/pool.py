@@ -5,6 +5,10 @@ from zyfra import pool
 
 class Pool(pool.Pool):
     auto_create = False;
+    
+    def __init__(self, db, module_path):
+        self.db = db
+        super(Pool, self).__init__(module_path)
 
     def add_object(self, name, obj):
         super(Pool, self).add_object(name, obj)
