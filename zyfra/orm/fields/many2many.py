@@ -58,7 +58,7 @@ class Many2Many(One2Many):
                     '_columns':{self.rt_local_field: Many2One(None, object._name),
                             self.rt_foreign_field: Many2One(None, robj._name)
                     }})
-            pool.add_object(self.relation_table, rel_table_object)
+            pool[self.relation_table] = rel_table_object
         else:
             rel_table_object = object._pool[self.relation_table]
         self.m2m_relation_object = self.relation_object

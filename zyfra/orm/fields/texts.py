@@ -75,13 +75,13 @@ class Text(Field):
                     lg_obj = Model(pool, {
                                    '_name': 'language', 
                                    '_columns': {'name': Char('Name', 30)}})
-                    pool.add_obj('language', lg_obj)
+                    pool['language'] = lg_obj
                 tr_obj = Model(pool, {
                             '_name': tr_name,
                             '_columns': {'language_id': Many2One('Language', 'language'), 
                                          'source_id': Many2One('Source row id', obj._name),\
                                          name: self.__get_translate_col_instance()}})
-                pool.add_obj(tr_name, tr_obj)
+                pool[tr_name] = tr_obj
             self.translate = {'obj': tr_name, 'column': name, 'key': 'source_id', 'language_id': 'language_id'}
         if '_translation' not in obj:
             obj.add_column('_translation', One2Many('Translation', self.translate['obj'], self.translate['key']))

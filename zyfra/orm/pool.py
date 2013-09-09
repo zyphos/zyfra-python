@@ -6,12 +6,12 @@ from zyfra import pool
 class Pool(pool.Pool):
     auto_create = False;
     
-    def __init__(self, db, module_path):
+    def __init__(self, db, module_path, lazy_load=True):
         self.db = db
-        super(Pool, self).__init__(module_path)
+        super(Pool, self).__init__(module_path, lazy_load)
 
-    def add_object(self, name, obj):
-        super(Pool, self).add_object(name, obj)
+    def __setitem__(self, key, obj):
+        super(Pool, self).__setitem__(key, obj)
         obj.set_instance(self)
 
     def set_auto_create(self, flag):
