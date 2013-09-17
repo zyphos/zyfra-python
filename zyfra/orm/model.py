@@ -106,6 +106,9 @@ class Model(object):
 
     def __getattr__(self, name):
         return self._columns[name]
+    
+    def __getitem__(self, name):
+        return self._columns[name]
 
     def init(self):
         # Contains fields definitions
