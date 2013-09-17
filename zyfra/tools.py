@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
+import os
+import linecache
+
 class DictObject(dict):
     def __new__(cls, *args, **kargs):
         if (len(args) == 1 and isinstance(args[0], list)):
@@ -239,3 +243,55 @@ def special_lower(string):
         i += 1
     out += buffer.lower()
     return out
+
+# source : https://wiki.python.org/moin/PythonDecoratorLibrary#Easy_Dump_of_Function_Arguments
+def dump_args(func):
+    "This decorator dumps out the arguments passed to a function before calling it"
+    argnames = func.func_code.co_varnames[:func.func_code.co_argcount]
+    fname = func.func_name
+
+    def echo_func(*args,**kwargs):
+        print fname + '(' + ', '.join(
+            '%s=%r' % entry
+            for entry in zip(argnames,args) + kwargs.items()) + ')'
+        return func(*args, **kwargs)
+
+    return echo_func
+
+def dump_result(func):
+    "This decorator dumps out the result from function after calling it"
+
+    def echo_func(*args,**kwargs):
+        r = func(*args, **kwargs)
+        print r
+        return r
+
+    return echo_func
+
+
+# source : https://wiki.python.org/moin/PythonDecoratorLibrary#Line_Tracing_Individual_Functions
+def trace(f):
+    def globaltrace(frame, why, arg):
+        if why == "call":
+            return localtrace
+        return None
+
+    def localtrace(frame, why, arg):
+        if why == "line":
+            # record the file name and line number of every trace
+            filename = frame.f_code.co_filename
+            lineno = frame.f_lineno
+
+            bname = os.path.basename(filename)
+            print "{}({}): {}".format(  bname,
+                                        lineno,
+                                        linecache.getline(filename, lineno)),
+        return localtrace
+
+    def _f(*args, **kwds):
+        sys.settrace(globaltrace)
+        result = f(*args, **kwds)
+        sys.settrace(None)
+        return result
+
+    return _f
