@@ -419,3 +419,6 @@ class SQLQuery(object):
     
     def add_required_fields(self, required_fields):
         self.required_fields = list(set(self.required_fields + required_fields))
+    
+    def __repr__(self):
+        return super(SQLQuery, self).__repr__() +'<' + self.object._name + '>'
