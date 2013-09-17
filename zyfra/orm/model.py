@@ -91,7 +91,10 @@ class Model(object):
         self._instanciated = True
         if not self._name:
             self._name = self.__class__.__name__
+        self.set_column_instance(self._key, self._columns[self._key])
         for name, col in self._columns.iteritems():
+            if name == self._key:
+                continue
             self.set_column_instance(name, col)
         if not self._table:
             self._table = self._name
