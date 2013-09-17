@@ -6,6 +6,7 @@ from field import Field
 class Relational(Field):
     relation_object_name = None
     relation_object_key = None
+    relation_object_sql_key = None
     relational = True
     __rel_obj = None
 

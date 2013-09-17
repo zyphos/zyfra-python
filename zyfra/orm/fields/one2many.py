@@ -22,7 +22,7 @@ class One2Many(Relational):
             parameter = context['parameter']
         else:
             parameter = ''
-        key_field = parent_alias.alias + '.' + self.object._key
+        key_field = parent_alias.alias + '.' + self.object._key_sql_name
         robject = self.get_relation_object()
         sql = 'LEFT JOIN ' + robject._table + ' AS %ta% ON %ta%.' + self.relation_object_field + '=' + key_field
         field_link = parent_alias.alias + '.' + self.name + parameter

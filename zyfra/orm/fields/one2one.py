@@ -17,4 +17,5 @@ class One2One(Many2One):
         do_rel_key = self.relation_object_key == '' 
         super(One2One, self).set_instance(obj, name)
         self.relation_object_key = self.relation_object._key
-        self.sql_name = self.local_key
+        self.relation_object_sql_key = self.relation_object[self.relation_object._key].sql_name
+        self.sql_name = obj[obj._key].sql_name

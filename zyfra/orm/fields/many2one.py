@@ -34,6 +34,7 @@ class Many2One(Relational):
             self.relation_object.add_column(field, One2ManyField(label, obj._name, name))
         if self.relation_object_key == '':
             self.relation_object_key = self.relation_object._key
+            self.relation_object_sql_key = self.relation_object[self.relation_object._key].sql_name
         # Multikey support
         foreign_keys = self.relation_object_key.split(',')
         n_foreign_keys = len(foreign_keys)
@@ -71,9 +72,9 @@ class Many2One(Relational):
                 op_data = context['op_data']
                 ta = sql_query.get_new_table_alias()
                 if operator == 'parent_of':
-                    sql = 'EXISTS(SELECT ' + obj._key + ' FROM ' + obj._table + ' AS ' + ta + ' WHERE ' + ta + '.' + obj._key + '=' + op_data + ' AND ' + pa + '.' + self.pleft + '<' + ta + '.' + self.pleft + ' AND ' + pa + '.' + self.pright + '>' + ta + '.' + self.pright + ')'
+                    sql = 'EXISTS(SELECT ' + obj._key_sql_name + ' FROM ' + obj._table + ' AS ' + ta + ' WHERE ' + ta + '.' + obj._key_sql_name + '=' + op_data + ' AND ' + pa + '.' + self.pleft + '<' + ta + '.' + self.pleft + ' AND ' + pa + '.' + self.pright + '>' + ta + '.' + self.pright + ')'
                 elif operator == 'child_of':
-                    sql = 'EXISTS(SELECT ' + obj._key + ' FROM ' + obj._table + ' AS ' + ta + ' WHERE ' + ta + '.' + obj._key + '=' + op_data + ' AND ' + pa + '.' + self.pleft + '>' + ta + '.' + self.pleft + ' AND ' + pa + '.' + self.pright + '<' + ta + '.' + self.pright + ')'
+                    sql = 'EXISTS(SELECT ' + obj._key_sql_name + ' FROM ' + obj._table + ' AS ' + ta + ' WHERE ' + ta + '.' + obj._key_sql_name + '=' + op_data + ' AND ' + pa + '.' + self.pleft + '>' + ta + '.' + self.pleft + ' AND ' + pa + '.' + self.pright + '<' + ta + '.' + self.pright + ')'
                 sql_query.order_by.append(pa + '.' + self.pleft)
                 return sql
             field_link = parent_alias.alias + '.' + self.sql_name
@@ -94,7 +95,7 @@ class Many2One(Relational):
                 relations.append(foreign_key + '=' + local_key)
             sql_on = implode(' and ', relations)
         else:
-            sql_on = '%ta%.' + self.relation_object_key + '=' + parent_alias.alias + '.' + self.sql_name
+            sql_on = '%ta%.' + self.relation_object_sql_key + '=' + parent_alias.alias + '.' + self.sql_name
         
         sql = (not self.required and '' or 'LEFT ') + 'JOIN ' + robj._table + ' AS %ta% ON ' + sql_on
         if sql_query.context.get('visible', True) and robj._visible_condition != '':
