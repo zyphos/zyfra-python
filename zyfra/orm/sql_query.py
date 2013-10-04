@@ -217,11 +217,25 @@ class SQLQuery(object):
         if key != self.object._key and key not in self.object._columns:
             key = ''
         res = cr(self.object).get_array_object(sql, key)
-        for row in res:
-            for col in row:
-                value = row[col]
-                if isinstance(value, basestring):
-                    row[col] = row[col].rstrip()
+        if isinstance(res, dict):
+            for key in res.keys():
+                row = res[key]
+                for col in row:
+                    value = row[col]
+                    if isinstance(value, basestring):
+                        row[col] = row[col].rstrip()
+                if isinstance(key, basestring):
+                    new_key = key.rstrip()
+                    if new_key != key:
+                        res[new_key] = row
+                        del res[key] 
+        else:
+            for row in res:
+                for col in row:
+                    value = row[col]
+                    if isinstance(value, basestring):
+                        row[col] = row[col].rstrip()
+        
         datas = tools.DictObject(res)
         field_alias_ids = {}
         row_field_alias_ids = {}

@@ -25,7 +25,7 @@ class Cursor(object):
             if key == '':
                 res.append(row_data)
             else:
-                res[getattr(row, key)] = row_data
+                res[row_data[key]] = row_data
         return res
     
     def safe_sql(self, sql, datas):
