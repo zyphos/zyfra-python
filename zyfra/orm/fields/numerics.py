@@ -49,7 +49,7 @@ class Decimal(Field):
     widget = 'double'
 
     def sql_format(self, value):
-        return decimal.Decimal(value)
+        return str(decimal.Decimal(value))
 
     def get_sql_def(self):
         return 'DOUBLE'
