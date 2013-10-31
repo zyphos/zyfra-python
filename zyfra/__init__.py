@@ -6,3 +6,4 @@ from scraper import *
 import config
 import tools
 import orm
+from wiki_parser import *
