@@ -28,7 +28,7 @@ class Model(object):
 
     def __init__(self, **kargs):
         if not self._key_sql_name:
-            self._key_sql_name = self._field_prefix + self._key
+            self._key_sql_name = (self._field_prefix + self._key).lower()
         self._columns = {}
         for key, value in kargs.iteritems():
             if hasattr(self, key):
