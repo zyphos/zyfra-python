@@ -10,10 +10,19 @@ class One2Many(Relational):
     relation_object_field = None
     stored = False
 
-    def __init__(self, label, relation_object_name, relation_object_field, **kargs):
+    def __init__(self, label, relation_object_name, relation_object_field = None, **kargs):
         super(One2Many, self).__init__(label, relation_object_name, **kargs)
         self.left_right = True
         self.relation_object_field = relation_object_field
+    
+    def set_instance(self, obj, name):
+        super(One2Many, self).set_instance(obj, name)
+        if self.relation_object_field is None:
+            self.relation_object_field = self.relation_object_sql_key
+        else:
+            if self.relation_object_field in self.relation_object:
+                self.relation_object_field = self.relation_object[self.relation_object_field].sql_name
+
 
     def get_sql(self, parent_alias, fields, sql_query, context=None):
         if context is None:
