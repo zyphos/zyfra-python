@@ -82,6 +82,7 @@ def specialsplitparam(string) :
             levelb += 1
             if level == 0 and levelb == 1:
                 cur = param
+                continue
             cur[0] += '['
         elif c == ']':
             if level == 0 and levelb == 1:
