@@ -8,8 +8,8 @@ class Shortcut(Field):
     stored = False
     relation = None
 
-    def __init__(self, label, relation, args=None):
-        super(Shortcut, self).__construct(label, args)
+    def __init__(self, label, relation, **kargs):
+        super(Shortcut, self).__init__(label, **kargs)
         self.relation = relation
 
     def get_sql(self, parent_alias, fields, sql_query, context = None):
