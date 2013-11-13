@@ -112,6 +112,9 @@ class Model(object):
     
     def __getitem__(self, name):
         return self._columns[name]
+    
+    def __contains__(self, name):
+        return name in self._columns
 
     def init(self):
         # Contains fields definitions
