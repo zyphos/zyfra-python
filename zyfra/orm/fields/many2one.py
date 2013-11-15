@@ -120,7 +120,7 @@ class Many2One(Relational):
         if len(fields) == 0:
             return super(Many2One, self).sql_create(sql_create, value, fields, context)
         # Handle subfield (meanfull ?)
-        return null
+        return None
 
     def sql_write(self, sql_write, value, fields, context):
         if len(fields) == 0:

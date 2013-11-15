@@ -173,6 +173,8 @@ class Model(object):
         # or
         # values = [{column: value, col2: value2}, {column: value, col2: value2}]
         if self._read_only or len(values) == 0:
+            if cr.context.get('debug'):
+                print 'Nothing to create (Readonly %s) (len %s)' % (self._read_only and 'True' or 'False', len(values))
             return None
         sql_create = SQLCreate(cr, self)
         if isinstance(values, list):
