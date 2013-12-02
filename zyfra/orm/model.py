@@ -221,15 +221,15 @@ class Model(object):
                 old_values[getattr(row, self._key)] = getattr(row, column)
             self._columns[column].after_unlink_trigger(old_values)
 
-    def read(self, cr, where='', fields=None):
+    def read(self, cr, where='', fields=None, **kargs):
         if not fields:
             fields = array_keys(self._columns)
-        if where.trim() != '':
+        if where.strip() != '':
             where += ' WHERE' + where
         mql = ','.join(fields) + where + ' ORDER BY ' + self._order_by
-        return self.select(cr, mql)
+        return self.select(cr, mql, **kargs)
 
-    def select(self, cr, mql='*', datas=None):
+    def select(self, cr, mql='*', datas=None, **kargs):
         try:
             mql = cr(self).safe_sql(mql, datas)
         except:
@@ -237,7 +237,7 @@ class Model(object):
                 raise
             return []
         sql_query = SQLQuery(self)
-        return sql_query.get_array(cr, mql)
+        return sql_query.get_array(cr, mql, **kargs)
 
     def get_form_view(self):
         view = []

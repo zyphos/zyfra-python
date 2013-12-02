@@ -211,12 +211,12 @@ class SQLQuery(object):
         sql  += ' ' + self.get_table_sql()
         return sql
 
-    def get_array(self, cr, mql):
+    def get_array(self, cr, mql, **kargs):
         sql = self.mql2sql(cr, mql, True)
         key = cr.context.get('key', '')
         if key != self.object._key and key not in self.object._columns:
             key = ''
-        res = cr(self.object).get_array_object(sql, key)
+        res = cr(self.object).get_array_object(sql, key, **kargs)
         if isinstance(res, dict):
             for key in res.keys():
                 row = res[key]
