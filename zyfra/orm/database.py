@@ -8,14 +8,16 @@ class Cursor(object):
     def __init__(self, cr):
         self.cr = cr
 
-    def get_array_object(self, sql, key):
+    def get_array_object(self, sql, key='', limit=None, offset=0, after_query_fx=None):
         self.cr.execute(sql)
+        if after_query_fx is not None:
+            after_query_fx()
         if key == '':
             res = []
         else:
             res = {}
         cols = None
-        while True:
+        while limit is None or limit > 0:
             row = self.cr.fetchone()
             if row is None:
                 break
@@ -26,6 +28,8 @@ class Cursor(object):
                 res.append(row_data)
             else:
                 res[row_data[key]] = row_data
+            if limit is not None:
+                limit -= 1
         return res
     
     def safe_sql(self, sql, datas):
@@ -50,6 +54,11 @@ class OdbcCursor(Cursor):
             params = []
         sql.replace('%s','?')
         self.cr.execute(sql, params)
+    
+    def get_array_object(self, sql, key='', limit=None, offset=0):
+        def after_query_fx():
+            self.cr.skip(offset)
+        return super(OdbcCursor, self).get_array_object(sql, key, limit, offset, after_query_fx)
 
 class OdbcConnection(object):
     def __init__(self, cnx):
