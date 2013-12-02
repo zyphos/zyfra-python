@@ -22,7 +22,11 @@ class Pool(object):
         if key in self.__pool:
             return self.__pool[key]
         obj = self.__load_module(key)
-        self[key] = obj
+        try:
+            self[key] = obj
+        except:
+            print 'Exception during instanciation of module: %s' % key
+            raise
         return obj
 
     def __getitem__(self, key):
@@ -55,6 +59,7 @@ class Pool(object):
                     f.close()
             return getattr(mod, name.capitalize())()  # Istanciate class
         except:
+            print 'Exception during load of module: %s' % name
             raise
             # raise Exception("Object class [" + key + "] doesn't exists")
 
@@ -68,4 +73,8 @@ class Pool(object):
                 ext = ''
             if ext == 'py' and name not in self.__pool:
                 obj = self.__load_module(name)
-                self[name] = obj
+                try:
+                    self[name] = obj
+                except:
+                    print 'Exception during instanciation of module: %s' % name
+                    raise
