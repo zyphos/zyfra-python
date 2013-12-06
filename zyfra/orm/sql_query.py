@@ -94,7 +94,8 @@ class SQLQuery(object):
         if self.table_alias_prefix != '':
             self.add_table_alias('', self.table_alias_prefix, None, '')
         else:
-            self.get_table_alias('', 'FROM ' + self.object._table + ' AS %ta%')    
+            self.get_table_alias('', 'FROM ' + self.object._table + ' AS %ta%')
+        self.table_alias[''].set_used()
         self.sub_queries = []
         self.group_by = []
         self.where = []
