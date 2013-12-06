@@ -5,11 +5,15 @@ class Database(object):
     pass
 
 class Cursor(object):
-    def __init__(self, cr):
+    def __init__(self, cnx, cr):
         self.cr = cr
+        self.cnx = cnx
+    
+    def execute(self, sql):
+        self.cr.execute(sql)
 
     def get_array_object(self, sql, key='', limit=None, offset=0, after_query_fx=None):
-        self.cr.execute(sql)
+        self.execute(sql)
         if after_query_fx is not None:
             after_query_fx()
         if key == '':
@@ -50,24 +54,33 @@ class Cursor(object):
 
 class OdbcCursor(Cursor):  
     def execute(self, sql, params=None):
+        sql = sql.encode('ascii') 
         if params is None:
             params = []
         sql.replace('%s','?')
-        self.cr.execute(sql, params)
-    
+        try:
+            self.cr.execute(sql, params)
+        except self.cnx.pyodbc.ProgrammingError as e:
+            print e
+            raise
+        except:
+            print '===Not handled==='
+            raise
+
     def get_array_object(self, sql, key='', limit=None, offset=0):
         def after_query_fx():
             self.cr.skip(offset)
         return super(OdbcCursor, self).get_array_object(sql, key, limit, offset, after_query_fx)
 
 class OdbcConnection(object):
-    def __init__(self, cnx):
-        self.cnx = cnx
+    def __init__(self, params, **kargs):
+        import pyodbc
+        self.pyodbc = pyodbc
+        self.cnx = pyodbc.connect(params, **kargs)
 
     def cursor(self):
-        return OdbcCursor(self.cnx.cursor())
+        return OdbcCursor(self, self.cnx.cursor())
 
 class Odbc(Database):
     def connect(self, params, **kargs):
-        import pyodbc
-        return OdbcConnection(pyodbc.connect(params, **kargs))
+        return OdbcConnection(params, **kargs)
