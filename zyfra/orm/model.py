@@ -10,6 +10,7 @@ from sql_query import SQLQuery
 
 class Model(object):
     _columns = None
+    _columns_order = None
     _name = None
     _table = None
     _key = 'id'
@@ -27,6 +28,7 @@ class Model(object):
     _key_sql_name = ''
 
     def __init__(self, **kargs):
+        self._columns_order = []
         if not self._key_sql_name:
             self._key_sql_name = (self._field_prefix + self._key).lower()
         self._columns = {}
@@ -37,7 +39,9 @@ class Model(object):
         for col in dir(self):
             attr = getattr(self, col)
             if isinstance(attr, Field):
-                self._columns[col.lower()] = attr
+                name = col.lower()
+                self._columns[name] = attr
+                self._columns_order.append(name)
                 #delattr(self, col)
         self._field_prefix = self._field_prefix.lower()
         methods = ['before_create', 'after_create', 'before_write',
@@ -63,6 +67,7 @@ class Model(object):
     def add_column(self, name, col):
         name = name.lower()
         self._columns[name] = col
+        self._columns_order.append(name)
         self.set_column_instance(name, col)
 
     def set_column_instance(self, name, col):
@@ -104,6 +109,7 @@ class Model(object):
     def ___setattr__(self, name, value):
         if isinstance(value, Field):
             self._columns[name] = value
+            self._columns_order.append(name)
         else:
             super(Model, self).__setattr__(name, value)
 
@@ -241,8 +247,9 @@ class Model(object):
 
     def get_form_view(self):
         view = []
-        for name, column in self._columns.iteritems():
-            col = {'name': name, 'widget': column.widget, 'required': column.required}
+        for name in self._columns_order:
+            column = self._columns[name]
+            col = {'name': name, 'widget': column.widget, 'required': column.required, 'label': column.label}
             view.append(col)
         return view
 
