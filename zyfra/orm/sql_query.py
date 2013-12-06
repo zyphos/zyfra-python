@@ -316,9 +316,10 @@ class SQLQuery(object):
             obj = self.object
         if not tools.is_array(field_defs):
             field_defs = tools.specialsplit(field_defs)
-        if '*' in field_defs:
-            field_defs.remove('*')
-            field_defs += [x for x in obj._columns if not obj._columns[x].relational]
+        for f in field_defs:
+            if f.strip() == '*':
+                field_defs.remove(f)
+                field_defs += [x for x in obj._columns if not obj._columns[x].relational]
         for field_def in field_defs:
             datas = tools.multispecialsplit(field_def, ' as ')
             field_name = datas[0].strip()
