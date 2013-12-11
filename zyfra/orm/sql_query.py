@@ -157,7 +157,7 @@ class SQLQuery(object):
             print '== MQL[' + str(self.__uid__) + ']: =='
             print txt 
         sql = 'SELECT ' + self.parse_mql_fields(mql)
-        if 'order by' not in query_datas:
+        if 'order by' not in query_datas and not self.context.get('no_order_by', False):
             query_datas['order by'] = ''
 
         if len(self.group_by) and 'group by' not in query_datas:
