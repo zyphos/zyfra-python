@@ -26,9 +26,13 @@ class Model(object):
     _db = None
     _field_prefix = ''
     _key_sql_name = ''
+    _columns_order = None
+    _auto_columns_order = False
 
     def __init__(self, **kargs):
-        self._columns_order = []
+        if self._columns_order is None:
+            self._columns_order = []
+            self._auto_columns_order = True
         if not self._key_sql_name:
             self._key_sql_name = (self._field_prefix + self._key).lower()
         self._columns = {}
@@ -41,7 +45,8 @@ class Model(object):
             if isinstance(attr, Field):
                 name = col.lower()
                 self._columns[name] = attr
-                self._columns_order.append(name)
+                if self._auto_columns_order:
+                    self._columns_order.append(name)
                 #delattr(self, col)
         self._field_prefix = self._field_prefix.lower()
         methods = ['before_create', 'after_create', 'before_write',
@@ -67,7 +72,8 @@ class Model(object):
     def add_column(self, name, col):
         name = name.lower()
         self._columns[name] = col
-        self._columns_order.append(name)
+        if self._auto_columns_order:
+            self._columns_order.append(name)
         self.set_column_instance(name, col)
 
     def set_column_instance(self, name, col):
@@ -109,7 +115,8 @@ class Model(object):
     def ___setattr__(self, name, value):
         if isinstance(value, Field):
             self._columns[name] = value
-            self._columns_order.append(name)
+            if self._auto_columns_order:
+                self._columns_order.append(name)
         else:
             super(Model, self).__setattr__(name, value)
 
