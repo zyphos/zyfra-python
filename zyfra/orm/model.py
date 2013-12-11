@@ -256,7 +256,7 @@ class Model(object):
         view = []
         for name in self._columns_order:
             column = self._columns[name]
-            col = {'name': name, 'widget': column.widget, 'required': column.required, 'label': column.label}
+            col = {'name': name, 'widget': column.widget, 'required': column.required, 'label': column.label, 'select': column.select}
             view.append(col)
         return view
 
