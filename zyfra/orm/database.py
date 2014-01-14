@@ -5,9 +5,11 @@ class Database(object):
     pass
 
 class Cursor(object):
-    def __init__(self, cnx, cr):
+
+    def __init__(self, cnx, cr, encoding=None):
         self.cr = cr
         self.cnx = cnx
+        self.encoding = encoding
     
     def execute(self, sql):
         self.cr.execute(sql)
@@ -27,6 +29,14 @@ class Cursor(object):
                 break
             if cols is None:
                 cols = [c[0].lower() for c in row.cursor_description]
+            if self.encoding is not None:
+                new_row = []
+                for x in row:
+                    if isinstance(x, basestring):
+                        new_row.append(x.decode(self.encoding))
+                    else:
+                        new_row.append(x)
+                row = new_row
             row_data = dict(zip(cols, row))
             if key == '':
                 res.append(row_data)
@@ -52,7 +62,7 @@ class Cursor(object):
     def get_last_insert_id(self):
         return 0
 
-class OdbcCursor(Cursor):  
+class OdbcCursor(Cursor):
     def execute(self, sql, params=None):
         sql = sql.encode('ascii') 
         if params is None:
@@ -70,7 +80,9 @@ class OdbcCursor(Cursor):
     def get_array_object(self, sql, key='', limit=None, offset=0):
         def after_query_fx():
             self.cr.skip(offset)
-        return super(OdbcCursor, self).get_array_object(sql, key, limit, offset, after_query_fx)
+        res = super(OdbcCursor, self).get_array_object(sql, key, limit, offset, after_query_fx)
+        
+        return res
 
 class OdbcConnection(object):
     def __init__(self, params, **kargs):
@@ -78,8 +90,8 @@ class OdbcConnection(object):
         self.pyodbc = pyodbc
         self.cnx = pyodbc.connect(params, **kargs)
 
-    def cursor(self):
-        return OdbcCursor(self, self.cnx.cursor())
+    def cursor(self, encoding=None):
+        return OdbcCursor(self, self.cnx.cursor(), encoding)
 
 class Odbc(Database):
     def connect(self, params, **kargs):

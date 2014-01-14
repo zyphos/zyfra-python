@@ -4,10 +4,12 @@
 class VirtualCursor(object):
     master=None
     cr = None
+    db_encoding = None
 
-    def __init__(self, master, db):
+    def __init__(self, master, db, db_encoding):
         self.master = master
-        self.cr = db.cursor()
+        self.cr = db.cursor(db_encoding)
+        self.db_encoding = db_encoding
     
     def commit(self):
         self.master.commit()
@@ -28,7 +30,8 @@ class Cursor(object):
 
     def __call__(self, model):
         db = model._db
-        return self.cursors.setdefault(db, VirtualCursor(self, db))
+        db_encoding = model._db_encoding
+        return self.cursors.setdefault(db, VirtualCursor(self, db, db_encoding))
 
     def commit(self):
         for cursor in cursors:

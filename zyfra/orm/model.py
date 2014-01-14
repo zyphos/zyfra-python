@@ -24,6 +24,7 @@ class Model(object):
     _description = ''
     _pool = None
     _db = None
+    _db_encoding = None
     _field_prefix = ''
     _key_sql_name = ''
     _columns_order = None
@@ -99,6 +100,8 @@ class Model(object):
         self._pool = pool
         if self._db is None:
             self._db = pool.db
+        if self._db_encoding is None:
+            self._db_encoding = pool.db_encoding
         self._instanciated = True
         if not self._name:
             self._name = self.__class__.__name__
