@@ -23,7 +23,7 @@ class ClearConfig(object):
                 continue
             if row[0] == '#':
                 continue
-            key, value = [x.strip() for x in row.split('=', 2)]
+            key, value = [x.strip() for x in row.split('=', 1)]
             params[key] = value
             if key in order:
                 order.remove(key)
