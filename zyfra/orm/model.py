@@ -254,6 +254,10 @@ class Model(object):
             return []
         sql_query = SQLQuery(self)
         return sql_query.get_array(cr, mql, **kargs)
+    
+    def sql(self, cr, sql, **kargs):
+        sql_query = SQLQuery(self)
+        return sql_query.get_array_sql(cr, sql, **kargs)
 
     def get_form_view(self):
         view = []

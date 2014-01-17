@@ -211,6 +211,10 @@ class SQLQuery(object):
         sql = self.parse_mql_where(mql)
         sql  += ' ' + self.get_table_sql()
         return sql
+    
+    def get_array_sql(self, cr, sql, **kargs):
+        res = cr(self.object).get_array_object(sql, **kargs)
+        return tools.DictObject(res)
 
     def get_array(self, cr, mql, **kargs):
         sql = self.mql2sql(cr, mql, True)
