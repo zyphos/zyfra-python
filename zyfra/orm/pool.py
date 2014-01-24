@@ -6,9 +6,10 @@ from zyfra import pool
 class Pool(pool.Pool):
     auto_create = False;
     
-    def __init__(self, db, module_path, lazy_load=True, db_encoding=None):
+    def __init__(self, db, module_path, lazy_load=True, db_encoding=None, table_prefix=''):
         self.db = db
         self.db_encoding = db_encoding
+        self.table_prefix = table_prefix
         super(Pool, self).__init__(module_path, lazy_load)
 
     def __setitem__(self, key, obj):

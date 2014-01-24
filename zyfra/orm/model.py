@@ -111,7 +111,7 @@ class Model(object):
                 continue
             self.set_column_instance(name, col)
         if not self._table:
-            self._table = self._name
+            self._table = pool.table_prefix + self._name
         if self._pool.get_auto_create():
             self.update_sql()
 
