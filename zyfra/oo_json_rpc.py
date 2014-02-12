@@ -87,7 +87,7 @@ class ProxyObject(object):
         return fx 
 
 
-class Oo7RPC(object):
+class OoJsonRPC(object):
     login = None
     password = None
     db = None
