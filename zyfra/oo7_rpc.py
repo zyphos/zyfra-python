@@ -81,7 +81,6 @@ class ProxyObject(object):
                       'kwargs': kwargs,
                       "session_id":self.oo_rpc.session_id,
                       'context': self.oo_rpc.context}
-            print params
             return self.oo_rpc.json_rpc('dataset/call_kw', params)
         if method[:2] == '__':
             return super(ProxyObject, self).__getattr__(method)
