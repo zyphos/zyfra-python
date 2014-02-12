@@ -8,6 +8,14 @@ import simplejson
 
 from zyfra import WebBrowser
 
+"""
+Usage:
+from zyfra import Oo7RPC
+oo = Oo7RPC()
+print oo.search_read('product.product', limit=1)
+print oo['product.product'].fields_get()
+"""
+
 class JsonRPC(object):
     version = '2.0'
     
