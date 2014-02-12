@@ -10,10 +10,32 @@ from zyfra import WebBrowser
 
 """
 Usage:
+
 from zyfra import Oo7RPC
-oo = Oo7RPC()
+
+url = 'http://localhost'
+db = 'my_openerp'
+login = 'my_login'
+password = 'my_password'
+
+oo = Oo7RPC(url, db, login, password)
+
 print oo.search_read('product.product', limit=1)
 print oo['product.product'].fields_get()
+
+
+all options (url, db, login, password) could be set by default in ~/.oo7_rpc
+ie:
+[option]
+url = http://localhost
+db = my_openerp
+login = my_login
+password = my_password
+
+
+then in python:
+from zyfra import Oo7RPC
+oo = Oo7RPC()
 """
 
 class JsonRPC(object):
