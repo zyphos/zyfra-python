@@ -24,7 +24,7 @@ print oo.search_read('product.product', limit=1)
 print oo['product.product'].fields_get()
 
 
-all options (url, db, login, password) could be set by default in ~/.oo7_rpc
+all options (url, db, login, password) can be set as default in ~/.oo7_rpc
 ie:
 [option]
 url = http://localhost
@@ -95,9 +95,10 @@ class Oo7RPC(object):
     url = None
     json_rpc = None
     
-    def __init__(self, url=None, db=None, login=None, password=None):
+    def __init__(self, url=None, db=None, login=None, password=None,
+                 config_filename='~/.oo7_rpc', config_section='options'):
         self.context = {}
-        self._read_config()
+        self._read_config(config_filename, config_section)
         if db:
             self.db = db
         if login:
@@ -135,13 +136,13 @@ class Oo7RPC(object):
         res = self.json_rpc('session/authenticate', params)
         self.context = res['user_context']
     
-    def _read_config(self):
-        filename = os.path.expanduser('~/.oo7_rpc')
+    def _read_config(self, filename, section):
+        filename = os.path.expanduser(filename)
         if not os.path.exists(filename):
             return
         p = ConfigParser.ConfigParser()
         p.read([filename])
-        for (name,value) in p.items('options'):
+        for (name,value) in p.items(section):
             if name == 'login':
                 self.login = value 
             if name == 'password':
