@@ -7,3 +7,4 @@ import config
 import tools
 import orm
 from wiki_parser import *
+from oo7_rpc import Oo7RPC
