@@ -4,6 +4,7 @@
 import sys
 import os
 import linecache
+import datetime
 
 class DictObject(dict):
     def __new__(cls, *args, **kargs):
@@ -293,6 +294,17 @@ def trace(f):
         sys.settrace(globaltrace)
         result = f(*args, **kwds)
         sys.settrace(None)
+        return result
+
+    return _f
+
+def duration(f): # Decorator for function
+    fname = f.func_name
+
+    def _f(*args, **kwargs):
+        start = datetime.datetime.now()
+        result = f(*args, **kwargs)
+        print '[%s] duration: %ss' % (fname, (datetime.datetime.now() - start).total_seconds()) 
         return result
 
     return _f
