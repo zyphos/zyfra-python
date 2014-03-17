@@ -14,6 +14,9 @@ class Int(Field):
 
     def sql_format(self, value):
         return str(int(value))
+    
+    def python_format(self, value):
+        return int(value)
 
     def get_sql_def(self):
         return 'INT(' + self.size + ')' + (self.unsigned and ' UNSIGNED ' or '')

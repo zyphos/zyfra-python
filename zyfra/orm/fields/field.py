@@ -33,6 +33,9 @@ class Field(object):
     def sql_format(self, value):
         return "'" + str(value) + "'" # !! SQL injection !!!
     
+    def python_format(self, value):
+        return value
+    
     def set_instance(self, object, name):
         if self.instanciated: return
         self.instanciated = True
