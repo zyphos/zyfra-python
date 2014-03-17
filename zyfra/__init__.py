@@ -8,3 +8,4 @@ import tools
 import orm
 from wiki_parser import *
 from oo_json_rpc import OoJsonRPC
+import import_oo
