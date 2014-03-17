@@ -136,8 +136,8 @@ class M2M(Relational):
         return [(4,_id) for _id in values]
     
     def eval_load(self, value):
-        values = self.eval(value)[2]
-        return ','.join([str(x) for x in values])
+        values = [str(x[1]) for x in self.eval(value)]
+        return ','.join(values)
 
 class O2M(Field):
     pass
