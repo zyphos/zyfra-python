@@ -71,7 +71,7 @@ class SQLQuery(object):
     where = None
     where_no_parse = None
     sub_queries = None
-    no_alias = ''
+    no_aliases = []
     sql_field_alias = None
     required_fields = None
     remove_from_result = None
@@ -105,7 +105,7 @@ class SQLQuery(object):
         self.sql_field_alias = {}
 
     def no_alias(self, alias):
-        self.no_alias = alias
+        self.no_aliases.append(alias)
 
     def get_new_table_alias(self):
         self.table_alias_nb +=1
