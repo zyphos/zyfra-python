@@ -6,6 +6,7 @@ import csv
 import re
 import pprint
 from datetime import datetime
+import time
 
 
 def field_logger(func):
@@ -334,6 +335,7 @@ class Model(object):
         with open(os.path.join('export', self._csv_name + '.csv'), 'rb') as f:
             reader = csv.reader(f, delimiter=';', quotechar='"')
             nb_done = 0
+            done_timer = 0
             for row in reader:
                 if self.csv_columns is None:
                     self.csv_columns = row
@@ -436,7 +438,9 @@ class Model(object):
                     pprint.pprint(zip(self.columns_fieldname,row_evaled))
                     raise
                 nb_done += 1
-                if show_progress and nb_done % 10 == 0:
+                time_now = time.time()
+                if show_progress and time_now-done_timer > 1:
+                    done_timer = time_now
                     print '%s/%s' % (nb_done, nb_rows)
                 if limit is not None:
                     limit -= 1
