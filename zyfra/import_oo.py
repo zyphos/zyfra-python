@@ -258,12 +258,14 @@ class Model(object):
     loadable = True
     clear = False
     update_only = False
+    _add_only = False
     _name = None
     _csv_name = None
     _dry_run = False
 
-    def __init__(self, oo):
+    def __init__(self, oo, add_only=False):
         self.oo = oo
+        self._add_only = add_only
         self.ids = []
         self._columns = {}
         self._new_columns = []
@@ -322,9 +324,16 @@ class Model(object):
         if record_ids is None:
             record_ids = {}
         col_indexes = {}
+        if self.id:
+            if self._columns[self.id].fieldname:
+                _id_fieldname = self._columns[self.id].fieldname
+            else:
+                _id_fieldname = self.id
         if self.update_only and self.id:
-            refs = dict([(r[self.id],r['id']) for r in self.oo.search_read(self._name, limit=0)])
+            refs = dict([(r[_id_fieldname],r['id']) for r in self.oo.search_read(self._name, [_id_fieldname, 'id'],limit=0)])
             self.loadable = False
+        if self._add_only and self.id:
+            added_refs = [r[_id_fieldname] for r in self.oo.search_read(self._name, [_id_fieldname], limit=0)]
         nb_rows = 0
         with open(os.path.join('export', self._csv_name + '.csv'), 'rb') as f:
             reader = csv.reader(f, delimiter=';', quotechar='"')
@@ -411,19 +420,20 @@ class Model(object):
                     print '%s/%s' % (nb_done, nb_rows)
                     pprint.pprint(csv_row)
                     raise
-                if debug:
-                    print 'evaled'
-                    pprint.pprint(zip(self.columns_fieldname,row_evaled))
                 try:
+                    data = dict(zip(self.columns_fieldname,row_evaled))
+                    if debug:
+                        print 'evaled'
+                        pprint.pprint(data)
                     if self.update_only and self.id:
-                        data = dict(zip(self.columns_fieldname,row_evaled))
                         _id = data[self.id]
                         del data[self.id]
                         self.oo[self._name].write([refs[_id]], data)
+                    elif self._add_only and self.id and data[_id_fieldname] in added_refs:
+                        pass
                     elif self.loadable:   
                         datas.append(row_evaled)
                     else:
-                        data = dict(zip(self.columns_fieldname,row_evaled))
                         for key in data.keys():
                             if data[key] is None:
                                 del data[key]
