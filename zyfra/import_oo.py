@@ -257,10 +257,10 @@ def get_model_array(oo, model, field, key='id', where=None, limit=0):
     return dict(_make_record(r) for r in res)
     
 class Model(object):
-    id = None
+    _id = None
     loadable = True
-    clear = False
-    update_only = False
+    _clear = False
+    _update_only = False
     _add_only = False
     _name = None
     _csv_name = None
@@ -269,7 +269,7 @@ class Model(object):
     def __init__(self, oo, add_only=False):
         self.oo = oo
         self._add_only = add_only
-        self.ids = []
+        self._ids = []
         self._columns = {}
         self._new_columns = []
         self.csv_columns = None
@@ -277,7 +277,7 @@ class Model(object):
         self.set_columns()
         if 'dry_run' in self.oo.context and self.oo.context['dry_run']:
             self._dry_run = True
-        if self.clear:
+        if self._clear:
             ids = self.oo[self._name].search([])
             self.oo[self._name].unlink(ids)
 
@@ -300,7 +300,7 @@ class Model(object):
             attr = getattr(self, col)
             if isinstance(attr, Field):
                 if isinstance(attr, M2O) and attr.link_field is not None:
-                    self.loadable = False
+                    self._loadable = False
                 if isinstance(attr, NewField):
                     self._new_columns.append(col)
                 if attr.name is None:
@@ -327,15 +327,15 @@ class Model(object):
         if record_ids is None:
             record_ids = {}
         col_indexes = {}
-        if self.id:
-            if self._columns[self.id].fieldname:
-                _id_fieldname = self._columns[self.id].fieldname
+        if self._id:
+            if self._columns[self._id].fieldname:
+                _id_fieldname = self._columns[self._id].fieldname
             else:
-                _id_fieldname = self.id
-        if self.update_only and self.id:
+                _id_fieldname = self._id
+        if self._update_only and self._id:
             refs = dict([(r[_id_fieldname],r['id']) for r in self.oo.search_read(self._name, [_id_fieldname, 'id'],limit=0)])
-            self.loadable = False
-        if self._add_only and self.id:
+            self._loadable = False
+        if self._add_only and self._id:
             added_refs = [r[_id_fieldname] for r in self.oo.search_read(self._name, [_id_fieldname], limit=0)]
         nb_rows = 0
         with open(os.path.join('export', self._csv_name + '.csv'), 'rb') as f:
@@ -353,8 +353,8 @@ class Model(object):
                 if self.csv_columns is None:
                     self.csv_columns = row
                     self.columns_fieldname = []
-                    if self.id is not None:
-                            record_ids.setdefault(self.id,{})
+                    if self._id is not None:
+                            record_ids.setdefault(self._id,{})
                     i = 0
                     for column in row:
                         if column not in self._columns:
@@ -363,7 +363,7 @@ class Model(object):
                         if isinstance(col, NewField):
                             continue
                         if col.fieldname is not None:
-                            if not self.loadable and col.fieldname[-3:] == '.id':
+                            if not self._loadable and col.fieldname[-3:] == '.id':
                                 field_name = col.fieldname[:-3]
                             else:
                                 field_name = col.fieldname
@@ -379,7 +379,7 @@ class Model(object):
                     for col_name in self._new_columns:
                         col = self._columns[col_name]
                         if col.fieldname is not None:
-                            if not self.loadable and col.fieldname[-3:] == '.id':
+                            if not self._loadable and col.fieldname[-3:] == '.id':
                                 field_name = col.fieldname[:-3]
                             else:
                                 field_name = col.fieldname
@@ -406,16 +406,16 @@ class Model(object):
                         col = self._columns[col_name]
                         if isinstance(col, NewField):
                             continue
-                        if self.loadable:
+                        if self._loadable:
                             value = col.eval_load(val)
                         else:
                             value = col.eval(val)
                         row_evaled.append(value)
-                        if col_name == self.id:
-                            self.ids.append(value)
+                        if col_name == self._id:
+                            self._ids.append(value)
                     for col_name in self._new_columns:
                         col = self._columns[col_name]
-                        if self.loadable:
+                        if self._loadable:
                             value = col.eval_load(csv_row)
                         else:
                             value = col.eval(csv_row)
@@ -429,13 +429,13 @@ class Model(object):
                     if debug:
                         print 'evaled'
                         pprint.pprint(data)
-                    if self.update_only and self.id:
-                        _id = data[self.id]
-                        del data[self.id]
+                    if self._update_only and self._id:
+                        _id = data[self._id]
+                        del data[self._id]
                         self.oo[self._name].write([refs[_id]], data)
-                    elif self._add_only and self.id and data[_id_fieldname] in added_refs:
+                    elif self._add_only and self._id and data[_id_fieldname] in added_refs:
                         pass
-                    elif self.loadable:   
+                    elif self._loadable:   
                         datas.append(row_evaled)
                     else:
                         for key in data.keys():
@@ -468,18 +468,18 @@ class Model(object):
                     if limit == 0:
                         break
 
-        if self.update_only and self.id:
+        if self._update_only and self._id:
             return refs
-        elif self.loadable:
+        elif self._loadable:
             res = self.oo[self._name].load(self.columns_fieldname, datas)
             for r in res['messages']:
                 print '%s[%s] %s' % (r['field'],r['record'],r['message'])
             #pprint.pprint(res['messages'])
-            if self.id is not None:
+            if self._id is not None:
                 #print res['ids']
-                return dict(zip(self.ids, res['ids']))
+                return dict(zip(self._ids, res['ids']))
         else:
-            if self.id is not None:
-                return record_ids[self.id]
+            if self._id is not None:
+                return record_ids[self._id]
             else:
                 return
