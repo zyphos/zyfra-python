@@ -157,7 +157,7 @@ class OoJsonRPC(object):
                 self.db = value
             if name == 'url':
                 self.url = value
-            if name == 'admin_passwd':
+            if name == 'admin_password':
                 self.admin_passwd = value
 
     def get_database_list(self):
@@ -168,7 +168,7 @@ class OoJsonRPC(object):
         params = {'session_id': self.session_id, 'context':self.context}
         return self.json_rpc('session/modules', params)
 
-    def create_database(self, db_name, create_admin_pwd='admin', super_admin_pwd='admin', db_lang='fr_BE'):
+    def create_database(self, db_name, create_admin_pwd='admin', super_admin_pwd=None, db_lang='fr_BE'):
         if super_admin_pwd is None:
             if self.admin_passwd is None:
                 super_admin_pwd = 'admin'
