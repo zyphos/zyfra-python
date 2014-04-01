@@ -95,6 +95,7 @@ class OoJsonRPC(object):
     db = None
     url = None
     json_rpc = None
+    session_id = None
 
     def __init__(self, url=None, db=None, login=None, password=None,
                  config_filename='~/.oo7_rpc', config_section='options', no_login=False):
@@ -212,6 +213,6 @@ class OoJsonRPC(object):
         return res['records']
 
     def __del__(self):
-        if self.json_rpc:
+        if self.json_rpc and self.session_id:
             self.json_rpc('session/destroy', {'session_id': self.session_id,
                                               'context': self.context})
