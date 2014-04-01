@@ -5,7 +5,7 @@ import os
 import csv
 import re
 import pprint
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 
 
@@ -345,6 +345,7 @@ class Model(object):
             reader = csv.reader(f, delimiter=';', quotechar='"')
             nb_done = 0
             done_timer = 0
+            start_time = time.time()
             for row in reader:
                 if self.csv_columns is None:
                     self.csv_columns = row
@@ -450,8 +451,15 @@ class Model(object):
                 nb_done += 1
                 time_now = time.time()
                 if show_progress and time_now-done_timer > 1:
+                    te = (time_now - start_time)
+                    tpi = te / nb_done
+                    eta = (nb_rows-nb_done) * tpi
+                    ett = nb_rows * tpi
                     done_timer = time_now
-                    print '%s/%s' % (nb_done, nb_rows)
+                    def str_s(seconds):
+                        seconds = round(seconds)
+                        return str(timedelta(seconds=seconds))
+                    print '%s/%s Elapsed:%ss Total estimated:%ss ETA:%ss' % (nb_done, nb_rows, str_s(te), str_s(ett), str_s(eta))
                 if limit is not None:
                     limit -= 1
                     if limit == 0:
