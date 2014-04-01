@@ -91,6 +91,7 @@ class ProxyObject(object):
 class OoJsonRPC(object):
     login = None
     password = None
+    admin_passwd = None
     db = None
     url = None
     json_rpc = None
@@ -155,6 +156,8 @@ class OoJsonRPC(object):
                 self.db = value
             if name == 'url':
                 self.url = value
+            if name == 'admin_passwd':
+                self.admin_passwd = value
 
     def get_database_list(self):
         params = {'session_id': self.session_id, 'context':{}}
@@ -165,6 +168,11 @@ class OoJsonRPC(object):
         return self.json_rpc('session/modules', params)
 
     def create_database(self, db_name, create_admin_pwd='admin', super_admin_pwd='admin', db_lang='fr_BE'):
+        if super_admin_pwd is None:
+            if self.admin_passwd is None:
+                super_admin_pwd = 'admin'
+            else:
+                super_admin_pwd = self.admin_passwd
         params = {'session_id': self.session_id, 'context':{},
                   'fields':[
                             {'name':'super_admin_pwd', 'value':super_admin_pwd},
