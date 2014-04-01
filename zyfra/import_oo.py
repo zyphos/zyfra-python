@@ -225,7 +225,10 @@ def get_model_ids(oo, model, key='name', idname='id', where=None, limit=0):
     fields = keys.keys()
     fields.append(idname)
     res = oo.search_read(model, fields, where, limit=limit)
-    return dict([(gen_key(keys, r),r[idname]) for r in res])
+    result = dict([(gen_key(keys, r),r[idname]) for r in res])
+    if '' in result:
+        del result['']
+    return result
 
 def get_model_array(oo, model, field, key='id', where=None, limit=0):
     print 'get_model_array [%s]' % model
