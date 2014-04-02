@@ -453,7 +453,7 @@ class Model(object):
                     raise
                 nb_done += 1
                 time_now = time.time()
-                if show_progress and time_now-done_timer > 1:
+                if show_progress and time_now-done_timer > 2:
                     te = (time_now - start_time)
                     tpi = te / nb_done
                     eta = (nb_rows-nb_done) * tpi
@@ -462,7 +462,7 @@ class Model(object):
                     def str_s(seconds):
                         seconds = round(seconds)
                         return str(timedelta(seconds=seconds))
-                    print '%s/%s Elapsed:%ss Total estimated:%ss ETA:%ss' % (nb_done, nb_rows, str_s(te), str_s(ett), str_s(eta))
+                    print '%s %s/%s Elapsed:%ss Total estimated:%ss ETA:%ss' % (self._name, nb_done, nb_rows, str_s(te), str_s(ett), str_s(eta))
                 if limit is not None:
                     limit -= 1
                     if limit == 0:
