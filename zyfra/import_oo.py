@@ -258,7 +258,7 @@ def get_model_array(oo, model, field, key='id', where=None, limit=0):
     
 class Model(object):
     _id = None
-    loadable = True
+    _loadable = True
     _clear = False
     _update_only = False
     _add_only = False
