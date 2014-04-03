@@ -231,30 +231,45 @@ def get_model_ids(oo, model, key='name', idname='id', where=None, limit=0):
     return result
 
 def get_model_array(oo, model, field, key='id', where=None, limit=0):
+    """ field: str = result value field name, (str, int) = (result value field, index of tupple)
+        key: str = key value field name, (str, int) = (key value field, index of tupple), [multi level keys]
+    """
     print 'get_model_array [%s]' % model
+    if not isinstance(key, list):
+        key = [key]
     field_is_tupple = isinstance(field, tuple)
-    key_is_tupple = isinstance(key, tuple)
     if field_is_tupple:
         fieldname = field[0]
     else:
         fieldname = field
-    if key_is_tupple:
-        keyfieldname = key[0]
-    else:
-        keyfieldname = key
-    #print 'search_read(%s, [%s], %s, limit=%s)' % (repr(model), repr(fieldname), repr(where), repr(limit))
-    res = oo.search_read(model, [keyfieldname, fieldname], where, limit=limit)
-    def _make_record(r):
+    keys_fieldname = [] 
+    for k in key:
+        if isinstance(k, tuple):
+            keys_fieldname.append(k[0])
+        else:
+            keys_fieldname.append(k)
+    #print 'search_read(%s, %s, %s, limit=%s)' % (repr(model), repr(keys_fieldname + [fieldname]), repr(where), repr(limit))
+    res = oo.search_read(model, keys_fieldname + [fieldname], where, limit=limit)
+    def _complete_result(result, data, keys):
+        k = keys[0]
+        if isinstance(k, tuple):
+            key_value = data[k[0]][k[1]]
+        else:
+            key_value = data[k]
+        if len(keys) > 1:
+            new_res = result.setdefault(key_value, {})
+            _complete_result(new_res, data, keys[1:])
+            return
         if field_is_tupple:
-            field_value = r[fieldname][field[1]]
+            value = data[fieldname][field[1]]
         else:
-            field_value = r[fieldname]
-        if key_is_tupple:
-            key_value = r[keyfieldname][key[1]]
-        else:
-            key_value = r[keyfieldname]
-        return (key_value, field_value)
-    return dict(_make_record(r) for r in res)
+            value = data[fieldname]
+        result[key_value] = value 
+            
+    result = {}
+    for r in res:
+        _complete_result(result, r, key)
+    return result
     
 class Model(object):
     _id = None
