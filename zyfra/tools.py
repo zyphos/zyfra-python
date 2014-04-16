@@ -5,6 +5,7 @@ import sys
 import os
 import linecache
 import datetime
+from functools import wraps 
 
 class DictObject(dict):
     def __new__(cls, *args, **kargs):
@@ -300,7 +301,8 @@ def trace(f):
 
 def duration(f): # Decorator for function
     fname = f.func_name
-
+    
+    @wraps(f)
     def _f(*args, **kwargs):
         start = datetime.datetime.now()
         result = f(*args, **kwargs)
