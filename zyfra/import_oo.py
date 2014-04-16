@@ -144,7 +144,15 @@ class O2M(Field):
     pass
 
 class Text(Field):
-    pass
+    language = None
+    language_model_name = None
+
+    def __init__(self, language=None, language_model_name=None, **kwargs):
+        """language: dict: key=column_in_csv, value=language in openerp,
+        Ie: language={'name:fr': 'fr_BE', 'name:nl': 'nl_BE'}"""
+        Field.__init__(self, **kwargs)
+        self.language = language
+        self.language_model_name = language_model_name
 
 class Boolean(Field):
     
@@ -280,6 +288,7 @@ class Model(object):
     _name = None
     _csv_name = None
     _dry_run = False
+    _language_columns = None
 
     def __init__(self, oo, add_only=False):
         self.oo = oo
@@ -287,6 +296,7 @@ class Model(object):
         self._ids = []
         self._columns = {}
         self._new_columns = []
+        self._language_columns = []
         self.csv_columns = None
         self.set_name()
         self.set_columns()
@@ -315,6 +325,9 @@ class Model(object):
             attr = getattr(self, col)
             if isinstance(attr, Field):
                 if isinstance(attr, M2O) and attr.link_field is not None:
+                    self._loadable = False
+                if isinstance(attr, Text) and attr.language is not None:
+                    self._language_columns.append(col)
                     self._loadable = False
                 if isinstance(attr, NewField):
                     self._new_columns.append(col)
@@ -398,9 +411,11 @@ class Model(object):
                                 field_name = col.fieldname[:-3]
                             else:
                                 field_name = col.fieldname
+                            col.fieldname = field_name
                             self.columns_fieldname.append(field_name)
                         else:
                             self.columns_fieldname.append(col_name)
+                            col.fieldname = col_name
                     if debug:
                         print 'src:   ',row
                         print 'evaled:',self.columns_fieldname
@@ -460,6 +475,23 @@ class Model(object):
                         record_id = self.oo[self._name].create(data, context=self.oo.context)
                         for key in record_ids:
                             record_ids[key][row_evaled[col_indexes[key]]] = record_id
+                        #Do translations
+                        for col_name in self._language_columns:
+                            col = self._columns[col_name]
+                            src_translation = data[col.fieldname]
+                            if col.language_model_name is None:
+                                language_model_name = self._name
+                            else:
+                                language_model_name = col.language_model_name 
+                            for csv_col_name, lang in col.language:
+                                trans_data = {'lang': lang,
+                                              'src': src_translation,
+                                              'name': '%s,%s' % (language_model_name, col.fieldname),
+                                              'value': csv_row[csv_col_name],
+                                              'type': 'model'
+                                               }
+                                self.oo['ir.translation'].create(trans_data, context=self.oo.context)
+                            
                 except:
                     print '%s/%s' % (nb_done, nb_rows)
                     print pprint.pprint(csv_row)
