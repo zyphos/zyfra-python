@@ -61,8 +61,10 @@ class JsonRPC(object):
         json = simplejson.loads(res)
         if 'jsonrpc' not in json or json['jsonrpc'] != self.version:
             raise Exception('Bad Json RPC version')
-        if 'id' not in json or json['id'] != idt:
-            raise Exception('Bad answer id')
+        if 'id' not in json:
+            raise Exception('Bad answer id %s != %s' % (json['id'], idt))
+        if json['id'] != idt:
+            raise Exception('Bad answer id not found')
         if 'error' in json:
             error = json['error']
             raise Exception('ERROR: %s\n%s\n%s' % (error['code'], error['message'], error['data']['debug']) )
@@ -129,7 +131,7 @@ class OoJsonRPC(object):
         if self.db is None:
             self.db = self.database_list[0]
         elif self.db not in self.database_list:
-            raise Exception('Provided database not in database list')
+            raise Exception('Provided database [%s] not in database list %s' % (self.db, repr(self.database_list)))
 
         if self.login is None or self.password is None:
             raise Exception('Error, not enough creditential login, password')
