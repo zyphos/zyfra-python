@@ -395,9 +395,11 @@ class Model(object):
                                 field_name = col.fieldname[:-3]
                             else:
                                 field_name = col.fieldname
+                            col.fieldname = field_name
                             self.columns_fieldname.append(field_name)
                         else:
                             self.columns_fieldname.append(column)
+                            col.fieldname = column
                         if isinstance(col, M2O) and col.link_field is not None:
                             record_ids.setdefault(col.link_field,{})
                             col.link_array = record_ids[col.link_field]
