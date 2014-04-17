@@ -485,7 +485,7 @@ class Model(object):
                                 language_model_name = self._name
                             else:
                                 language_model_name = col.language_model_name 
-                            for csv_col_name, lang in col.language:
+                            for csv_col_name, lang in col.language.iteritems():
                                 trans_data = {'lang': lang,
                                               'src': src_translation,
                                               'name': '%s,%s' % (language_model_name, col.fieldname),
