@@ -493,9 +493,10 @@ class Model(object):
                                               'src': src_translation,
                                               'name': '%s,%s' % (language_model_name, col.fieldname),
                                               'value': csv_row[csv_col_name],
-                                              'type': 'model'
+                                              'type': 'model',
+                                              'res_id': record_id
                                                }
-                                self.oo['ir.translation'].create(trans_data, context=self.oo.context)
+                                self.oo['ir.translation'].create(trans_data)
                             
                 except:
                     print '%s/%s' % (nb_done, nb_rows)
