@@ -68,7 +68,7 @@ class JsonRPC(object):
         if 'error' in json:
             error = json['error']
             print error['data']['debug']
-            raise Exception('ERROR: %s\n%s\n%s' % (error['code'], error['message']))
+            raise Exception('ERROR: %s\n%s' % (error['code'], error['message']))
         return json['result']
 
 
