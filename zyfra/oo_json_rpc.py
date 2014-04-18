@@ -67,7 +67,8 @@ class JsonRPC(object):
             raise Exception('Bad answer id not found')
         if 'error' in json:
             error = json['error']
-            raise Exception('ERROR: %s\n%s\n%s' % (error['code'], error['message'], error['data']['debug']) )
+            print error['data']['debug']
+            raise Exception('ERROR: %s\n%s\n%s' % (error['code'], error['message']))
         return json['result']
 
 
