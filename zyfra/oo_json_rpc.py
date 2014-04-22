@@ -72,6 +72,23 @@ class JsonRPC(object):
         return json['result']
 
 
+class ProxyWorkflow(object):
+    def __init__(self, oo_rpc, model):
+        self.oo_rpc = oo_rpc
+        self.model = model
+
+    def __getattr__(self, signal):
+        def fx(id):
+            params = {'model':self.model,
+                      'signal':signal,
+                      'id': id,
+                      "session_id":self.oo_rpc.session_id,
+                      'context': self.oo_rpc.context}
+            return self.oo_rpc.json_rpc('dataset/exec_workflow', params)
+        if method[:2] == '__':
+            return super(ProxyObject, self).__getattr__(method)
+        return fx
+
 class ProxyObject(object):
     def __init__(self, oo_rpc, model):
         self.oo_rpc = oo_rpc
@@ -89,6 +106,11 @@ class ProxyObject(object):
         if method[:2] == '__':
             return super(ProxyObject, self).__getattr__(method)
         return fx
+    
+    def __getitem__(self, service):
+        if service == 'workflow':
+            return ProxyWorkflow(self.oo_rpc, self.model)
+        return None
 
 
 class OoJsonRPC(object):
