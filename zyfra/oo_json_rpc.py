@@ -85,8 +85,6 @@ class ProxyWorkflow(object):
                       "session_id":self.oo_rpc.session_id,
                       'context': self.oo_rpc.context}
             return self.oo_rpc.json_rpc('dataset/exec_workflow', params)
-        if method[:2] == '__':
-            return super(ProxyObject, self).__getattr__(method)
         return fx
 
 class ProxyObject(object):
