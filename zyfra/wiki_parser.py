@@ -424,9 +424,11 @@ class WikiParser(object):
     #
     def getCommon(self, st1, st2):
         shorter = min(len(st1), len(st2))
-        i = 0
+        i = -1
         for i in xrange(shorter):
-            if st1[i] != st2[i]: break
+            if st1[i] != st2[i]:
+                break
+        i += 1
         return i
 
     # These next three functions open, continue, and close the list
