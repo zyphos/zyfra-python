@@ -239,11 +239,7 @@ class OoJsonRPC(object):
         fields = fields[:]
         if key not in fields:
             fields.append(key)
-        params = {'model': model,
-                  'fields': fields,
-                  'domain': domain,
-                  'limit': limit}
-        res = self.json_rpc('dataset/search_read', params)['records']
+        res = self.search_read(model, fields, domain, limit=0)
         fields.remove(key)
         field = fields[0]
         result = {}
