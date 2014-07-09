@@ -234,6 +234,25 @@ class OoJsonRPC(object):
                   'session_id':self.session_id}
         res = self.json_rpc('dataset/search_read', params)
         return res['records']
+    
+    def make_dict(self, model, fields, key, domain=None, limit=0):
+        fields = fields[:]
+        if key not in fields:
+            fields.append(key)
+        params = {'model': model,
+                  'fields': fields,
+                  'domain': domain,
+                  'limit': limit}
+        res = self.json_rpc('dataset/search_read', params)['records']
+        fields.remove(key)
+        field = fields[0]
+        result = {}
+        for r in res:
+            if len(fields) == 1:
+                result[r[key]] = r[field]
+            else:
+                result[r[key]] = r
+        return result
 
     def __del__(self):
         if self.json_rpc and self.session_id:
