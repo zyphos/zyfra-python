@@ -467,6 +467,8 @@ class Model(object):
                     if self._update_only and self._id:
                         _id = data[self._id]
                         del data[self._id]
+                        if debug:
+                            print 'oo[%s].write([%s],%s)' % (repr(self._name), repr(refs[_id]), repr(data)) 
                         self.oo[self._name].write([refs[_id]], data)
                     elif self._add_only and self._id and data[_id_fieldname] in added_refs:
                         pass
