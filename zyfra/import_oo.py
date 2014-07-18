@@ -298,7 +298,7 @@ class ShowProgress(object):
         time_now = time.time()
         if time_now - self.__last_time > self.__interval:
             time_elapsed = time_now - self.__start_time
-            time_per_item = te / nb_done
+            time_per_item = time_elapsed / nb_done
             eta = (self.__total_nb - nb_done) * time_per_item
             estimated_total_time = self.__total_nb * time_per_item
             self.__last_time = time_now
