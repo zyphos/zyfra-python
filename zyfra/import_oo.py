@@ -281,7 +281,29 @@ def get_model_array(oo, model, field, key='id', where=None, limit=0):
     for r in res:
         _complete_result(result, r, key)
     return result
+
+class ShowProgress(object):
+    def __init__(self, name, total_nb, interval=2):
+        self.__name = name
+        self.__total_nb = total_nb
+        self.__start_time = time.time()
+        self.__last_time = 0
+        self.__interval = interval
     
+    def show(self, nb_done):
+        def str_s(seconds):
+            seconds = round(seconds)
+            return str(timedelta(seconds=seconds))
+        
+        time_now = time.time()
+        if time_now - self.__last_time > self.__interval:
+            time_elapsed = time_now - self.__start_time
+            time_per_item = te / nb_done
+            eta = (self.__total_nb - nb_done) * time_per_item
+            estimated_total_time = self.__total_nb * time_per_item
+            self.__last_time = time_now
+            print '%s %s/%s Elapsed:%ss Total estimated:%ss ETA:%ss' % (self.__name, nb_done, self.__total_nb, str_s(time_elapsed), str_s(estimated_total_time), str_s(eta))
+        
 class Model(object):
     _id = None
     _loadable = True
@@ -375,6 +397,7 @@ class Model(object):
                 nb_rows += 1
         if offset is not None and nb_rows < offset:
             raise Exception('Offset %s is too high for number of record [%s] for model %s' % (offset, nb_rows, self.__class__.__name__))
+        progress = ShowProgress(self._name, nb_rows)
         with open(os.path.join('export', self._csv_name + '.csv'), 'rb') as f:
             reader = csv.reader(f, delimiter=';', quotechar='"')
             nb_done = 0
@@ -508,16 +531,8 @@ class Model(object):
                     raise
                 nb_done += 1
                 time_now = time.time()
-                if show_progress and time_now-done_timer > 2:
-                    te = (time_now - start_time)
-                    tpi = te / nb_done
-                    eta = (nb_rows-nb_done) * tpi
-                    ett = nb_rows * tpi
-                    done_timer = time_now
-                    def str_s(seconds):
-                        seconds = round(seconds)
-                        return str(timedelta(seconds=seconds))
-                    print '%s %s/%s Elapsed:%ss Total estimated:%ss ETA:%ss' % (self._name, nb_done, nb_rows, str_s(te), str_s(ett), str_s(eta))
+                if show_progress:
+                    progress.show(nb_done)
                 if limit is not None:
                     limit -= 1
                     if limit == 0:
