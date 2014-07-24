@@ -310,3 +310,36 @@ def duration(f): # Decorator for function
         return result
 
     return _f
+
+class ShowProgress(object):
+    """ This class show progress of a process, and estimated time of arrival
+        Usage:
+            # For 500 iterations
+            # interval = time in seconds between 2 progress notification
+            from time import sleep
+
+            sp = ShowProgress('My Process', 500)
+            for i in xrange(500):
+                sp.show(i)
+                sleep(0.05)
+    """
+    def __init__(self, name, total_nb, interval=2):
+        self.__name = name
+        self.__total_nb = total_nb
+        self.__start_time = time.time()
+        self.__last_time = 0
+        self.__interval = interval
+    
+    def show(self, nb_done):
+        def str_s(seconds):
+            seconds = round(seconds)
+            return str(timedelta(seconds=seconds))
+        
+        time_now = time.time()
+        if time_now - self.__last_time > self.__interval:
+            time_elapsed = time_now - self.__start_time
+            time_per_item = time_elapsed / nb_done
+            eta = (self.__total_nb - nb_done) * time_per_item
+            estimated_total_time = self.__total_nb * time_per_item
+            self.__last_time = time_now
+            print '%s %s/%s Elapsed:%ss Total estimated:%ss ETA:%ss' % (self.__name, nb_done, self.__total_nb, str_s(time_elapsed), str_s(estimated_total_time), str_s(eta))
