@@ -12,6 +12,8 @@ class WebBrowser(object):
         # This method is session aware
         if get_data:
             url += '&' + urllib.urlencode(get_data)
+        if header is None:
+            header = {}
         data_url = None
         if post_data:
             data_url = urllib.urlencode(post_data)
