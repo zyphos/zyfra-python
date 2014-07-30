@@ -28,13 +28,14 @@ class Data(MetaObject):
     def __new__(cls, value):
         obj = MetaObject.__new__(cls, value)
         if (hasattr(value, 'xpath')):
-            obj.__xpath = value.xpath 
+            obj.__xpath = value.xpath
+            obj.__value = value
         return obj
     
-    def __str__(self):
-        if(isinstance(self, lxml.etree._ElementTree) or isinstance(self, lxml.etree._Element)):
-            return lxml.etree.tostring(self)
-        return str(self)
+    #def __str__(self):
+    #    if(isinstance(self, lxml.etree._ElementTree) or isinstance(self, lxml.etree._Element)):
+    #        return lxml.etree.tostring(self)
+    #    return str(self.__value)
         
     def re(self, regex):
         if(not isinstance(self, basestring)): 
@@ -46,13 +47,21 @@ class Data(MetaObject):
         return toData(res)
     
     def xpath(self, xpath):
-        if (hasattr(self, '__xpath')):
-            return toData(self.__xpath(xpath))
+        """if (hasattr(self, '__xpath')):
+            print 'HAs xpath'
+            return toData(self.__xpath(xpath))"""
         if(not isinstance(self, basestring)): 
-            raise Exception('Can not do xpath on this kind of object [' + str(self) + ']')
-        tree = fromstring(self)
+            if(isinstance(self, lxml.etree._ElementTree) or isinstance(self, lxml.etree._Element)):
+                tree = fromstring(lxml.etree.tostring(self))
+            else:
+                raise Exception('Can not do xpath on this kind of object [' + str(self) + ']')
+        else:
+            tree = fromstring(self)
         #self.__class__(
-        return toData(tree.xpath(xpath))
+        res = tree.xpath(xpath)
+        if isinstance(res, lxml.etree._ElementStringResult):
+            res = str(res)
+        return toData(res)
 
 class Scraper(object):
     def __init__(self):
