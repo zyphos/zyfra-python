@@ -5,7 +5,7 @@ import os
 import csv
 import re
 import pprint
-from datetime import datetime, timedelta
+from datetime import datetime
 import time
 
 from tools import ShowProgress
@@ -382,7 +382,6 @@ class Model(object):
             reader = csv.reader(f, delimiter=';', quotechar='"')
             nb_done = 0
             done_timer = 0
-            start_time = time.time()
             for row in reader:
                 if self.csv_columns is None:
                     self.csv_columns = row
@@ -510,7 +509,6 @@ class Model(object):
                     pprint.pprint(zip(self.columns_fieldname,row_evaled))
                     raise
                 nb_done += 1
-                time_now = time.time()
                 if show_progress:
                     progress.show(nb_done)
                 if limit is not None:
