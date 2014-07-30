@@ -206,7 +206,7 @@ class Model(object):
         if self._read_only:
             return None
         if tools.is_numeric(where):
-            where = self._key + '=' + where
+            where = self._key + '=' + str(where)
         elif tools.is_array(where):
             where = self._key + ' in (' + ','.join(where) + ')'
         sql_write = SQLWrite(cr, self, values, where, where_datas)
