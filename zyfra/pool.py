@@ -9,9 +9,13 @@ from singleton import Singleton
 
 class Pool(object):
     __metaclass__ = Singleton
-    __pool = None;
+    __pool = None
+    __module_args = None
+    __module_kargs = None
 
-    def __init__(self, module_path, lazy_load=True):
+    def __init__(self, module_path, lazy_load=True, module_args=None, module_kargs=None):
+        self.__module_args = () if module_args is None else module_args
+        self.__module_kargs = {} if module_kargs is None else module_kargs
         self.__pool = {}
         self.module_path = module_path
         sys.path.insert(1, os.path.abspath(module_path))
@@ -57,7 +61,7 @@ class Pool(object):
             finally:
                 if f:
                     f.close()
-            return getattr(mod, name.capitalize())()  # Istanciate class
+            return getattr(mod, name.capitalize())(*self.__module_args, **self.__module_kargs)  # Istanciate class
         except:
             print 'Exception during load of module: %s' % name
             raise
