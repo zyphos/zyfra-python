@@ -5,6 +5,7 @@ import sys
 import os
 import linecache
 import datetime
+import time
 from functools import wraps 
 
 class DictObject(dict):
@@ -331,9 +332,11 @@ class ShowProgress(object):
         self.__interval = interval
     
     def show(self, nb_done):
+        if nb_done == 0:
+            return
         def str_s(seconds):
             seconds = round(seconds)
-            return str(timedelta(seconds=seconds))
+            return str(datetime.timedelta(seconds=seconds))
         
         time_now = time.time()
         if time_now - self.__last_time > self.__interval:
