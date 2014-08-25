@@ -221,7 +221,7 @@ def get_model_ids(oo, model, key='name', idname='id', where=None, limit=0):
                 value = int(ks[1])
             except:
                 value = ks[1]
-        keys[ks[0]] = value     
+        keys[ks[0]] = value
 
     def gen_key(keys, r):
         values = []
@@ -282,6 +282,21 @@ def get_model_array(oo, model, field, key='id', where=None, limit=0):
     result = {}
     for r in res:
         _complete_result(result, r, key)
+    return result
+
+def get_model_list(oo, model, field, where=None, limit=0):
+    field_is_tupple = isinstance(field, tuple)
+    if field_is_tupple:
+        fieldname = field[0]
+    else:
+        fieldname = field
+    result = []
+    res = oo.search_read(model, fieldname, where, limit=limit)
+    for r in res:
+        if field_is_tupple:
+            result.append(r[fieldname][field[1]])
+        else:
+            result.append(r[fieldname])
     return result
 
 class Model(object):
