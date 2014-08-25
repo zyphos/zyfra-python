@@ -364,7 +364,7 @@ class Model(object):
                 attr._name = col_name
                 self._columns[col_name] = attr
     
-    def __call__(self, record_ids=None, show_progress=False, limit=None, offset=None, debug=False):
+    def __call__(self, record_ids=None, show_progress=False, limit=None, offset=None, debug=False, dry_run=False):
         title = 'Doing %s' % self._name 
         print
         print title
@@ -485,8 +485,9 @@ class Model(object):
                         _id = data[self._id]
                         del data[self._id]
                         if debug:
-                            print 'oo[%s].write([%s],%s)' % (repr(self._name), repr(refs[_id]), repr(data)) 
-                        self.oo[self._name].write([refs[_id]], data)
+                            print 'oo[%s].write([%s],%s)' % (repr(self._name), repr(refs[_id]), repr(data))
+                        if not dry_run: 
+                            self.oo[self._name].write([refs[_id]], data)
                     elif self._add_only and self._id and data[_id_fieldname] in added_refs:
                         pass
                     elif self._loadable:   
@@ -496,7 +497,10 @@ class Model(object):
                             if data[key] is None:
                                 del data[key]
                         #print data
-                        record_id = self.oo[self._name].create(data, context=self.oo.context)
+                        if not dry_run:
+                            record_id = self.oo[self._name].create(data, context=self.oo.context)
+                        else:
+                            record_id = 0
                         for key in record_ids:
                             record_ids[key][row_evaled[col_indexes[key]]] = record_id
                         #Do translations
@@ -515,7 +519,8 @@ class Model(object):
                                               'type': 'model',
                                               'res_id': record_id
                                                }
-                                self.oo['ir.translation'].create(trans_data)
+                                if not dry_run:
+                                    self.oo['ir.translation'].create(trans_data)
                             
                 except:
                     print '%s/%s' % (nb_done, nb_rows)
@@ -534,13 +539,14 @@ class Model(object):
         if self._update_only and self._id:
             return refs
         elif self._loadable:
-            res = self.oo[self._name].load(self.columns_fieldname, datas)
-            for r in res['messages']:
-                print '%s[%s] %s' % (r['field'],r['record'],r['message'])
-            #pprint.pprint(res['messages'])
-            if self._id is not None:
-                #print res['ids']
-                return dict(zip(self._ids, res['ids']))
+            if not dry_run:
+                res = self.oo[self._name].load(self.columns_fieldname, datas)
+                for r in res['messages']:
+                    print '%s[%s] %s' % (r['field'],r['record'],r['message'])
+                #pprint.pprint(res['messages'])
+                if self._id is not None:
+                    #print res['ids']
+                    return dict(zip(self._ids, res['ids']))
         else:
             if self._id is not None:
                 return record_ids[self._id]
