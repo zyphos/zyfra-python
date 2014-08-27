@@ -8,7 +8,7 @@ import pprint
 from datetime import datetime
 import time
 
-from tools import ShowProgress
+from tools import ShowProgress, print_table
 
 
 def field_logger(func):
@@ -291,7 +291,7 @@ def get_model_list(oo, model, field, where=None, limit=0):
     else:
         fieldname = field
     result = []
-    res = oo.search_read(model, fieldname, where, limit=limit)
+    res = oo.search_read(model, [fieldname], where, limit=limit)
     for r in res:
         if field_is_tupple:
             result.append(r[fieldname][field[1]])
@@ -364,7 +364,7 @@ class Model(object):
                 attr._name = col_name
                 self._columns[col_name] = attr
     
-    def __call__(self, record_ids=None, show_progress=False, limit=None, offset=None, debug=False, dry_run=False):
+    def __call__(self, record_ids=None, show_progress=False, limit=None, offset=None, debug=False, dry_run=False, debug_table=False):
         title = 'Doing %s' % self._name 
         print
         print title
@@ -449,7 +449,10 @@ class Model(object):
                 #print row
                 csv_row = dict(zip(self.csv_columns, row))
                 if debug:
-                    pprint.pprint(csv_row)
+                    if debug_table:
+                        print_table(csv_row)
+                    else:
+                        pprint.pprint(csv_row)
                 try:
                     for col_name in self.csv_columns:
                         val = csv_row[col_name]
@@ -480,7 +483,10 @@ class Model(object):
                     data = dict(zip(self.columns_fieldname,row_evaled))
                     if debug:
                         print 'evaled'
-                        pprint.pprint(data)
+                        if debug_table:
+                            print_table(data)
+                        else:
+                            pprint.pprint(data)
                     if self._update_only and self._id:
                         _id = data[self._id]
                         del data[self._id]
@@ -524,9 +530,15 @@ class Model(object):
                             
                 except:
                     print '%s/%s' % (nb_done, nb_rows)
-                    print pprint.pprint(csv_row)
+                    if debug_table:
+                        print_table(csv_row)
+                    else:
+                        pprint.pprint(csv_row)
                     print 'evaled'
-                    pprint.pprint(zip(self.columns_fieldname,row_evaled))
+                    if debug_table:
+                        print_table(zip(self.columns_fieldname,row_evaled))
+                    else:
+                        pprint.pprint(zip(self.columns_fieldname,row_evaled))
                     raise
                 nb_done += 1
                 if show_progress:
