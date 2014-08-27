@@ -272,6 +272,23 @@ def dump_result(func):
 
     return echo_func
 
+def print_table(table):
+    "Prety print dict as a table"
+    if not isinstance(table, dict):
+        return
+    names = []
+    values = []
+    line = []
+    for c in table:
+        name = repr(c)
+        value = repr(table[c])
+        width = max(len(name), len(value))
+        names.append(name.center(width))
+        values.append(value.center(width))
+        line.append('-' * width)
+    print ' | '.join(names)
+    print '-|-'.join(line)
+    print ' | '.join(values)
 
 # source : https://wiki.python.org/moin/PythonDecoratorLibrary#Line_Tracing_Individual_Functions
 def trace(f):
