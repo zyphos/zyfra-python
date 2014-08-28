@@ -274,7 +274,7 @@ def get_model_array(oo, model, field, key='id', where=None, limit=0):
             _complete_result(new_res, data, keys[1:])
             return
         value = data[fieldname]
-        if field_is_tupple and isinstance(value, [tuple, list, dict]):
+        if field_is_tupple and isinstance(value, (tuple, list, dict)):
             value = value[field[1]]
         result[key_value] = value 
             
