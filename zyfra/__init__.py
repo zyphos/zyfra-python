@@ -11,3 +11,4 @@ from oo_json_rpc import OoJsonRPC
 import import_oo
 from pool import Pool
 import xml2dict
+from sms import Sms
