@@ -55,13 +55,14 @@ class State(object):
 
     def __call__(self, value):
         if value != self.value:
+            self.old_value = self.value
             self.timestamp = time.time()
             self.value = value
     
     def get_since_txt(self):
         return time_delta2str(self.timestamp, time.time())
 
-def render_status(status):
+def render_status(status, console=False):
     color = COLOR_CLEAR
     txt = 'UNKNOWN'
     if status == OK:
@@ -73,20 +74,28 @@ def render_status(status):
     elif status == CRITICAL:
         txt = 'CRITICAL'
         color = COLOR_RED
-    return '%s%s%s' % (color, txt, COLOR_CLEAR)
+    if console:
+        return '%s%s%s' % (color, txt, COLOR_CLEAR)
+    else:
+        return txt
 
 class Monitor(object):
-    def __init__(self, hostfilename, interval=10):
+    def __init__(self, hostfilename, interval=10, internet_hosts=None):
         self.interval = interval
+        if internet_hosts is None:
+            internet_hosts = ['www.yahoo.fr','www.yahoo.com']
+        self.get_internet_state = network_services.InternetCheck(internet_hosts)
         self.hosts = self.read_hosts(hostfilename)
         self.host_by_hostname = dict([(host['hostname'],host) for host in self.hosts])
+        self.internet_needed = False
         self.__instanciate_services()
         self.service_states = {}
         self.init()
     
     def init(self):
         # need to be overcharged
-        self.get_internet_state = network_services.InternetCheck(['www.weller.de','www.yahoo.fr'])
+        self.check_services(first_check=True)
+        time.sleep(self.interval)
         while(True):
             self.check_services()
             time.sleep(self.interval)
@@ -105,17 +114,22 @@ class Monitor(object):
                 raise Exception('Service not found: %s' % service)
         for host in self.hosts:
             host['service_objs'] = []
+            if not host.get('disabled') and host.get('internet_needed'):
+                self.internet_needed = True
             services = host['services']
             if isinstance(services, basestring):
                 services = services.split(',')
             for service in services:
                 host['service_objs'].append(get_service_instance(service))
 
-    def check_services(self):
+    def check_services(self, first_check=False):
         service_states = {}
         state_changed = {}
-        internet_state = self.get_internet_state()
-        print 'Internet access is %s' % render_status(internet_state)
+        if self.internet_needed:
+            internet_state = self.get_internet_state()
+            print 'Internet access is %s' % render_status(internet_state)
+        else:
+            internet_state = False
         print 'Checking services',
         for host in self.hosts:
             if host.get('disabled'):
@@ -143,12 +157,12 @@ class Monitor(object):
         print 'Done.'
         print
         self.service_states = service_states
-        if len(state_changed):
+        if not first_check and len(state_changed):
             self.on_changed_state(service_states, state_changed)
         self.on_after_check_services()
         return state_changed
     
-    def report_state(self, service_states):
+    def report_state(self, service_states, console=False):
         txt = 'Service status:\n'
         for hostname in service_states:
             host = self.host_by_hostname[hostname]
@@ -157,16 +171,22 @@ class Monitor(object):
             for service_obj in host['service_objs']:
                 service_name = service_obj.name
                 state = service_states[hostname][service_name]
-                txt += '%s: %s (since %s)\n' % (service_name, render_status(state.value), state.get_since_txt())
+                txt += '%s: %s (since %s)\n' % (service_name,
+                                                render_status(state.value, console),
+                                                state.get_since_txt())
         return txt
     
-    def report_changed(self, service_states, state_changed):
+    def report_changed(self, service_states, state_changed, console=False):
         txt = 'Service status changes:\n'
         for hostname in state_changed:
-            txt += '%s\n' % hostname
-            for service_name in service_states[hostname]:
+            host = self.host_by_hostname[hostname]
+            name = host['name']
+            txt += '\n%s (%s)\n' % (name, hostname)
+            for service_name in state_changed[hostname]:
                 state = service_states[hostname][service_name]
-                txt += '%s: %s=>%s\n' % (service_name, render_status(state.old_value), render_status(state.value))
+                txt += '%s: %s=>%s\n' % (service_name,
+                                         render_status(state.old_value, console),
+                                         render_status(state.value, console))
         return txt
     
     def on_after_check_services(self):
