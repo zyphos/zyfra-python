@@ -134,7 +134,7 @@ class SQLQuery(object):
 
     def mql2sql(self, cr, mql, no_init= False):
         debug = cr.context.get('debug', False)
-        self.context = cr.context
+        self.context = cr.context.copy() # it can be modified by sql_query
         mql = tools.special_lower(mql)
         keywords = ['limit', 'order by', 'having', 'group by', 'where']
         query_datas = {}
@@ -157,7 +157,7 @@ class SQLQuery(object):
             print '== MQL[' + str(self.__uid__) + ']: =='
             print txt 
         sql = 'SELECT ' + self.parse_mql_fields(mql)
-        if 'order by' not in query_datas and not self.context.get('no_order_by', False):
+        if 'order by' not in query_datas:
             query_datas['order by'] = ''
 
         if len(self.group_by) and 'group by' not in query_datas:
@@ -381,7 +381,10 @@ class SQLQuery(object):
             field_name.strip()
             if field_name != '':
                 sql_fields.append(self.field2sql(field_name))
-        return ','.join(sql_fields)
+        new_group_by = ','.join(sql_fields)
+        if new_group_by != '':
+            self.context['no_order_by'] = True 
+        return new_group_by
 
     def parse_mql_having(self, mql_having):
         return self.mql_where.parse(mql_having)
@@ -399,7 +402,8 @@ class SQLQuery(object):
         sql_order = []
         self.convert_order_by(sql_order, mql_order_by)
         sql_order += self.order_by
-        self.convert_order_by(sql_order, self.object._order_by)
+        if not self.context.get('no_order_by'):
+            self.convert_order_by(sql_order, self.object._order_by)
         return ','.join(sql_order)
 
     def parse_mql_limit(self, mql_limit):
