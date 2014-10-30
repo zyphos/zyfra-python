@@ -1,0 +1,50 @@
+h1 {
+	color:red;
+}
+
+h2 {
+	font-size:14px;
+	font-family:arial;
+	padding: 2px;
+	margin:0px;
+}
+
+ul{
+	list-style-type: none;
+    margin: 0px;
+    padding: 0px;
+}
+
+body > ul > li {
+	width:200px;
+	margin: 5px;
+	background-color:#EEE;
+	border 
+}
+
+li > ul > li{
+	margin: 2px;
+	padding: 1px;
+}
+li{
+	float: left;
+	border: 1px solid #AAA;
+	display: inline;
+}
+
+div.state{
+	display: none;
+}
+
+li.OK > h2, li > ul > li.OK{
+	background-color:#7F7;
+}
+li.WARNING > h2, li > ul > li.WARNING{
+	background-color:#FF7;
+}
+li.CRITICAL > h2, li > ul > li.CRITICAL{
+	background-color:#F77;
+}
+li.UNKNOWN > h2, li > ul > li.UNKNOWN{
+	background-color:#9CF;
+}

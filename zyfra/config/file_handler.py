@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-import ssh_session
+from zyfra import ssh_session
 
 class FileLocal(object):
     def __init__(self, filename):

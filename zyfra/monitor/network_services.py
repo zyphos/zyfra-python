@@ -4,11 +4,14 @@
 import socket
 import os
 
-from probe_common import UNKNOWN, OK, WARNING, CRITICAL
+from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service
 
 hostnames = {}
 tcp = socket.SOCK_STREAM
 udp = socket.SOCK_DGRAM
+
+class NetworkService(Service):
+    pass
 
 def get_hostname_ip(hostname):
     # Caching system for IP
@@ -18,11 +21,7 @@ def get_hostname_ip(hostname):
     hostnames[hostname] = remote_ip
     return remote_ip
 
-class Service(object):
-    def __init__(self):
-        self.name = self.__class__.__name__
-
-class NetworkTcpService(Service):
+class NetworkTcpService(NetworkService):
     port = 0
     
     def __init__(self, port=None):
@@ -38,7 +37,7 @@ class NetworkTcpService(Service):
             return OK
         return CRITICAL
 
-class NetworkUdpService(Service):
+class NetworkUdpService(NetworkService):
     port = 0
     
     def __init__(self, port=None):
@@ -64,7 +63,7 @@ class NetworkUdpService(Service):
             return OK
         return CRITICAL
 
-class ping(Service):
+class ping(NetworkService):
     def __call__(self, hostname):
         remote_ip = get_hostname_ip(hostname)
         response = os.system("ping -c 1 " + remote_ip + " > /dev/null")
