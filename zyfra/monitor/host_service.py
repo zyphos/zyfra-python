@@ -4,27 +4,32 @@ from zyfra import ssh_session
 from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service
 
 """TODO:
+- [BUG] reboot_needed: only work on localhost
 - Add a probe for memory usage
 - Add a probe for Free inode  ['df','-i']
 - Add failure messages
-- Add a probe for Update available
 """
 
-class CmdSsh(object):
+class Cmd(object):
+    def file_exists(self, filename):
+        result = self('if [ -f %s ]; then echo 1;else echo 0; fi' % filename, shell=True)
+        return result == '1'
+
+class CmdSsh(Cmd):
     def __init__(self, target, password=None):
         self.target = target
         self.password = password
     
-    def __call__(self, cmd, raise_empty=True):
+    def __call__(self, cmd, raise_empty=True, shell=False):
         lnk = ssh_session.get_ssh_link(self.target, password=self.password)
         result = lnk.cmd(' '.join(cmd))
         if raise_empty and result == '':
             raise Exception('Empty result for CmdSsh: %s' % cmd)
         return result
 
-class CmdLocalhost(object):
-    def __call__(self, cmd, raise_empty=True):
-        result = subprocess.check_output(cmd)
+class CmdLocalhost(Cmd):
+    def __call__(self, cmd, raise_empty=True, shell=False):
+        result = subprocess.check_output(cmd, shell=shell)
         if raise_empty and result == '':
             raise Exception('Empty result for CmdSsh: %s' % cmd)
         return result
@@ -210,6 +215,13 @@ class linux_updates(HostService):
             return WARNING
         return OK
 
+class reboot_needed(HostService):
+    def get_state(self, cmd_exec):
+        if cmd_exec.file_exists('/var/run/reboot-required'):
+            return CRITICAL
+        else:
+            return OK
+
 #from pprint import pprint
 
 """cmd_exec = CmdLocalhost()
@@ -218,4 +230,8 @@ print 'LOAD: %s' % LoadAvg().get_state(cmd_exec)
 print 'RAID: %s' % Raid().get_state(cmd_exec)
 print 'SMART: %s' % SmartHdd().get_state(cmd_exec)
 """
+
+if __name__ == "__main__":
+    print reboot_needed().ssh('monitor@10.0.0.10', password='dptoik87974')
+#print 'reboot needed [%s]' % reboot_needed().get_state(CmdLocalhost())
 #pprint(Process('auto_print', 'auto_print.py').ssh('root@10.0.0.15'))

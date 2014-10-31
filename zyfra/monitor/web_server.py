@@ -10,20 +10,25 @@ import tornado.web
 SCRIPT_PATH=os.path.dirname(os.path.realpath(__file__))
 
 class MainHandler(tornado.web.RequestHandler):
-    def initialize(self, queue2middle, queue2web):
+    def initialize(self, queue2middle, queue2web, debug):
         self.queue2middle = queue2middle
         self.queue2web = queue2web
+        self.debug = debug
     
-    def _render_status(self, status):
-        self.render
-        
-    def get(self):
-        print '[HTTP] Received http get'
+    def get(self, path):
+        if self.debug:
+            print '[HTTP] Received http get [%s]' % path 
+        if path == '':
+            self.render('base.html')
+            return
         #print '[HTTP] Sending put'
         self.queue2middle.put(('get_status',''))
         #print '[HTTP] receiving get'
         status = self.queue2web.get()
-        self.render('service_status.html', status=status)
+        if len(status) == 0:
+            self.write('Probing hosts... Please wait')
+        else:
+            self.render('service_status.html', status=status)
         
 is_alive = True
 def middleware(queue2middle, queue2web):
@@ -47,15 +52,15 @@ def middleware(queue2middle, queue2web):
         else:
             print '[MIDDLE] Command [%s] not found' % cmd
 
-def start_server(port=8888):
+def start_server(port=8888, debug=False):
     queue2middle = Queue()
     queue2web = Queue()
     favicon_path = os.path.join(SCRIPT_PATH, 'favicon.ico')
     static_path = os.path.join(SCRIPT_PATH, 'static')
     application = tornado.web.Application([
-                                           (r'/favicon.ico', tornado.web.StaticFileHandler, {'path': favicon_path}),
+                                           (r'/(favicon\.ico)', tornado.web.StaticFileHandler, {'path': SCRIPT_PATH}),
                                            (r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path}),
-                                           (r"/", MainHandler, {'queue2middle': queue2middle, 'queue2web': queue2web}),
+                                           (r"/(.*)", MainHandler, {'queue2middle': queue2middle, 'queue2web': queue2web, 'debug': debug}),
                                            ], compiled_template_cache=False)
     application.listen(port)
     ioloop = tornado.ioloop.IOLoop.instance()

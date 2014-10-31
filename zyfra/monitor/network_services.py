@@ -32,6 +32,7 @@ class NetworkTcpService(NetworkService):
     def __call__(self, hostname):
         remote_ip = get_hostname_ip(hostname)
         sock = socket.socket(socket.AF_INET, tcp)
+        sock.settimeout(0.2)
         result = sock.connect_ex((remote_ip, self.port))
         if result == 0:
             return OK

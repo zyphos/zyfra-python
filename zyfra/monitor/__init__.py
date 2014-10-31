@@ -22,6 +22,12 @@ YAML file:
   hostname: hostb.mydomain.net
   services: ping,http
 """
+
+"""TODO:
+- Add 1 thread per host scanned 
+"""
+#from zyfra.tools import duration
+import threading
 import time
 import dateutil.relativedelta
 import datetime
@@ -87,6 +93,71 @@ def render_status(status, target='txt'):
     else:
         return txt
 
+def probe_host(host, hostname, old_service_states, all_results, debug):
+    name = host['name']
+    service_states = {}
+    state_changed = []
+    new_criticals = []
+    bad_states = []
+    ping = None
+    #print '%s (%s)' % (name, hostname)
+    for service_obj in host['service_objs']:
+        service_name = service_obj.name
+        if service_name in old_service_states:
+            old_state = old_service_states[service_name]
+        else:
+            old_state = State()
+        try:
+            if isinstance(service_obj, network_services.NetworkService):
+                state_value = service_obj(hostname)
+                if service_obj.name == 'ping':
+                    ping = state_value == OK
+            elif isinstance(service_obj, host_service.HostService):
+                if ping is None or ping:
+                    state_value = service_obj.get_state(host['cmd_exec'])
+                else:
+                    state_value = UNKNOWN
+            else:
+                # Unknown service type
+                continue
+        except Exception as e:
+            state_value = UNKNOWN
+            print 'Exception for host [%s(%s)] in module [%s]: %s' % (name, hostname, service_name, e)
+            if debug:
+                raise
+        old_state_value = old_state.value
+        if state_value != old_state_value:
+            state_changed.append(service_name)
+        if old_state_value != CRITICAL and state_value == CRITICAL:
+            new_criticals.append(service_name)
+        old_state(state_value)
+        if state_value > 0:
+            bad_states.append(service_name)
+        service_states[service_name] = old_state
+    all_results.set_result(hostname, service_states, state_changed, new_criticals, bad_states)
+
+class ProbeAllResult():
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.service_states = {}
+        self.state_changed = {}
+        self.new_criticals = {}
+        self.bad_states = {}
+
+    def set_result(self, hostname, service_states, state_changed, new_criticals, bad_states):
+        self.lock.acquire()
+        try:
+            if len(service_states):
+                self.service_states[hostname] = service_states
+            if len(state_changed):
+                self.state_changed[hostname] = state_changed
+            if len(new_criticals):
+                self.new_criticals[hostname] = new_criticals
+            if len(bad_states):
+                self.bad_states[hostname] = bad_states
+        finally:
+            self.lock.release()  
+
 class Monitor(object):
     default_remote_username = 'monitor'
     default_remote_password = None
@@ -117,14 +188,15 @@ class Monitor(object):
         # need to be overcharged
         #signal.signal(signal.SIGINT, self.stop)
         try:
-            self.check_services(first_check=True)
+            self.probe_hosts(first_check=True)
             time.sleep(self.interval)
             while(True):
-                self.check_services()
+                self.probe_hosts()
                 time.sleep(self.interval)
         except KeyboardInterrupt:
             print 'CTRL-C pressed, quitting'
-            self.queue2middle.put(['exit',''])
+            if self.webserver_port is not None:
+                self.queue2middle.put(['exit',''])
             
     def read_hosts(self, hostfilename):
         f = open(hostfilename)
@@ -164,9 +236,50 @@ class Monitor(object):
             for service in services:
                 host['service_objs'].append(get_service_instance(service))
 
+    def probe_hosts(self, first_check=False):
+        if self.internet_needed:
+            internet_state = self.get_internet_state()
+            print 'Internet access is %s' % render_status(internet_state)
+        else:
+            internet_state = False
+        print 'Checking services'
+        all_results = ProbeAllResult()
+        active_threads = []
+        for host in self.hosts:
+            if host.get('disabled'):
+                continue
+            if host.get('internet_needed') and internet_state != OK:
+                continue
+            hostname = host['hostname']
+            if hostname in self.service_states:
+                old_service_state = self.service_states[hostname]
+            else:
+                old_service_state = {}
+            
+            t = threading.Thread(target=probe_host, args=(host, hostname, old_service_state, all_results, self.debug))
+            t.start()
+            active_threads.append(t)
+            #probe_host(host, hostname, old_service_state, all_results)
+        
+        for t in active_threads:
+            t.join()
+        print 'Done.'
+        print
+        self.service_states = all_results.service_states
+        self.bad_states = all_results.bad_states
+        if not first_check and len(all_results.state_changed):
+            self.on_changed_state(all_results.service_states, all_results.state_changed)
+        if not first_check and len(all_results.new_criticals):
+            self.on_new_critical_state(all_results.service_states, all_results.new_criticals)
+        if self.webserver_port is not None:
+            self.queue2middle.put(['set_status', self.convert_state2report(all_results.service_states)]) #
+        self.on_after_check_services()
+        return all_results.state_changed
+    
     def check_services(self, first_check=False):
         service_states = {}
         state_changed = {}
+        new_criticals = {}
         bad_states = {}
         if self.internet_needed:
             internet_state = self.get_internet_state()
@@ -205,6 +318,8 @@ class Monitor(object):
                 old_state_value = old_state.value
                 if state_value != old_state_value:
                     state_changed.setdefault(hostname, []).append(service_name)
+                if old_state_value != CRITICAL and state_value == CRITICAL:
+                    new_criticals.setdefault(hostname, []).append(service_name)
                 old_state(state_value)
                 if state_value > 0:
                     bad_states.setdefault(hostname, []).append(service_name)
@@ -217,6 +332,8 @@ class Monitor(object):
         self.bad_states = bad_states
         if not first_check and len(state_changed):
             self.on_changed_state(service_states, state_changed)
+        if not first_check and len(new_criticals):
+            self.on_new_critical_state(service_states, new_criticals)
         if self.webserver_port is not None:
             self.queue2middle.put(['set_status', self.convert_state2report(service_states)]) #
         self.on_after_check_services()
@@ -297,4 +414,7 @@ class Monitor(object):
         pass
     
     def on_changed_state(self, service_states, state_changed):
+        pass
+    
+    def on_new_critical_state(self, service_states, new_critical_states):
         pass

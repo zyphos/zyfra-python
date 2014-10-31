@@ -15,7 +15,7 @@ ul{
     padding: 0px;
 }
 
-body > ul > li {
+div > ul > li {
 	width:200px;
 	margin: 5px;
 	background-color:#EEE;

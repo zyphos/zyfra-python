@@ -13,10 +13,14 @@ class SshLink(paramiko.SSHClient):
         username, host = ([''] + target.split('@'))[-2:]
         self.load_system_host_keys()
         self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.connect(host, username=username, password=password)
+        self.connect(host, username=username, password=password, timeout=2)
     
     def cmd(self, commmand):
-        return self.exec_command(commmand)[1].read()
+        try:
+            return self.exec_command(commmand)[1].read()
+        except:
+            del pool[self.target]
+            raise
         
 
 def get_ssh_link(target, password=''):
