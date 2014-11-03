@@ -12,7 +12,8 @@ from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service
 
 class Cmd(object):
     def file_exists(self, filename):
-        result = self('if [ -f %s ]; then echo 1;else echo 0; fi' % filename, shell=True)
+        #result = self('if [ -f %s ]; then echo 1;else echo 0; fi' % filename, shell=True)
+        result = self(['[ -f %s ] && echo -n 1 || echo -n 0' % filename], shell=True)
         return result == '1'
 
 class CmdSsh(Cmd):
@@ -29,9 +30,11 @@ class CmdSsh(Cmd):
 
 class CmdLocalhost(Cmd):
     def __call__(self, cmd, raise_empty=True, shell=False):
-        result = subprocess.check_output(cmd, shell=shell)
+        if shell:
+            cmd = ' '.join(cmd)
+        result = subprocess.check_output(cmd, shell=shell, stderr=subprocess.STDOUT)
         if raise_empty and result == '':
-            raise Exception('Empty result for CmdSsh: %s' % cmd)
+            raise Exception('Empty result for CmdLocalhost: %s' % cmd)
         return result
         
 class HostService(Service):
@@ -197,14 +200,18 @@ class smart(HostService):
 
 class linux_updates(HostService):
     def _get_update_availables(self, cmd_exec):
-        result = cmd_exec(['sudo','/usr/lib/update-notifier/update-motd-updates-available']).split('\n')
+        """result = cmd_exec(['sudo','/usr/lib/update-notifier/update-motd-updates-available']).split('\n')
         updates = {}
         if len(result) < 3:
             updates['normal'] = 0
             updates['security'] = 0
         else:
             updates['normal'] = int(result[1].split()[0])
-            updates['security'] = int(result[2].split()[0])
+            updates['security'] = int(result[2].split()[0])"""
+        result = cmd_exec(['/usr/lib/update-notifier/apt-check']).split(';')
+        updates = {}
+        updates['normal'] = int(result[0])
+        updates['security'] = int(result[1])
         return updates
     
     def get_state(self, cmd_exec):

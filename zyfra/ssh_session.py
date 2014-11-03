@@ -17,7 +17,11 @@ class SshLink(paramiko.SSHClient):
     
     def cmd(self, commmand):
         try:
-            return self.exec_command(commmand)[1].read()
+            stdin, stdout, stderr = self.exec_command(commmand)
+            result = stdout.read() 
+            if result == '':
+                return stderr.read()
+            return result
         except:
             del pool[self.target]
             raise
