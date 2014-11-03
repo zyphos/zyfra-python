@@ -1,0 +1,41 @@
+<html>
+	<head>
+		<title>Service Monitor</title>
+		<link rel="stylesheet" type="text/css" href="static/style.css">
+		<link href="/favicon.ico" rel="shortcut icon" type="image/x-icon" />
+		<script>
+		function ajax(url, callback, callback_error){
+		    var xmlhttp;
+		    // compatible with IE7+, Firefox, Chrome, Opera, Safari
+		    xmlhttp = new XMLHttpRequest();
+		    xmlhttp.onreadystatechange = function(){
+		        if (xmlhttp.readyState != 4) return;
+		        if (xmlhttp.status == 200){
+		        	if (callback !== undefined) callback(xmlhttp.responseText);
+		        }else{
+		        	if (callback_error !== undefined) callback_error();
+		        }
+		    }
+		    xmlhttp.open("GET", url, true);
+		    xmlhttp.send();
+		}
+		</script>
+	</head>
+<body>
+	<h1>Service Monitor</h1>
+	<div id='content'></div>
+	<script>
+	function refresh_content(){
+		ajax('/ddd', function(data){
+			content = document.getElementById('content')
+			content.innerHTML = data;
+			setTimeout(refresh_content,2000);
+		}, function(){
+			content.innerHTML = 'Server not available';
+			setTimeout(refresh_content,2000);
+		});
+	}
+	refresh_content();
+	</script>
+</body>
+</html>

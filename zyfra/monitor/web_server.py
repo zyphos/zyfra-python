@@ -19,7 +19,7 @@ class MainHandler(tornado.web.RequestHandler):
         if self.debug:
             print '[HTTP] Received http get [%s]' % path 
         if path == '':
-            self.render('base.html')
+            self.render('templates/base.html')
             return
         #print '[HTTP] Sending put'
         self.queue2middle.put(('get_status',''))
@@ -28,7 +28,7 @@ class MainHandler(tornado.web.RequestHandler):
         if len(status) == 0:
             self.write('Probing hosts... Please wait')
         else:
-            self.render('service_status.html', status=status)
+            self.render('templates/service_status.html', status=status)
         
 is_alive = True
 def middleware(queue2middle, queue2web):
