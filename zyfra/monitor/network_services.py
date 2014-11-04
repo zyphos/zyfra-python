@@ -100,8 +100,14 @@ class telnet(NetworkTcpService):
 class smtp(NetworkTcpService):
     port = 25
 
+class smtps(NetworkTcpService):
+    port = 465
+
 class imap(NetworkTcpService):
     port = 143
+
+class imaps(NetworkTcpService):
+    port = 993
 
 class samba(NetworkTcpService):
     port = 445
@@ -115,7 +121,7 @@ class postgresql(NetworkTcpService):
 class openvpn(NetworkUdpService):
     port = 1194
 
-class dns(NetworkUdpService):
+class dns(NetworkTcpService):
     port = 53
 
 class dhcp(NetworkUdpService):
