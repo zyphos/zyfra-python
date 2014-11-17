@@ -22,12 +22,14 @@ def field_logger(func):
 class Field(object):
     _name = None
     _default = None
+    _none_accepted = False
 
-    def __init__(self, fieldname=None, translation=None, name=None, log=False, **kwargs):
+    def __init__(self, fieldname=None, translation=None, name=None, log=False, none_accepted=False, **kwargs):
         self.fieldname = fieldname
         self.translation = translation
         self.name = name
         self.log = log
+        self._none_accepted = none_accepted
         if 'default' in kwargs:
             self._default = kwargs['default']
 
@@ -107,7 +109,7 @@ class M2O(Relational):
             if value in self.link_array:
                 return self.link_array[value]
             else:
-                if self.must_be_found:
+                if self.must_be_found and not self._none_accepted:
                     if len(self.link_array) > 20:
                         raise Exception('%s not in %s... (not complete)' % (value, repr(self.link_array.keys()[:20])))
                     else:
@@ -176,8 +178,8 @@ class NewField(Field):
         return self._default
 
 class Default(NewField):
-    def __init__(self, value, fieldname=None, translation=None, name=None):
-        NewField.__init__(self, fieldname=fieldname,translation=translation,name=name)
+    def __init__(self, value, fieldname=None, translation=None, name=None, **kwargs):
+        NewField.__init__(self, fieldname=fieldname,translation=translation,name=name, **kwargs)
         self.value = value
     
     def eval(self, row):
