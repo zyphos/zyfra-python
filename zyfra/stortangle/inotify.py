@@ -1,0 +1,176 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import threading
+import Queue
+import time
+import pyinotify as pi
+
+#mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE  # watched events
+mask = pi.ALL_EVENTS
+#mask = pi.IN_CLOSE_WRITE | pi.IN_MOVED_TO | pi.IN_DELETE | pi.IN_MOVED_FROM
+
+class PathWatcher(object):
+    def __init__(self, path, timeout=5, queue=None, debug=False):
+        self.__timeout = timeout
+        self.__path = path
+        if queue is None:
+            self.__queue = Queue.Queue()
+        else:
+            self.__queue = queue
+        self.__event = threading.Event()
+        self.__event.clear()
+        self.__thread = None
+        self.__debug = debug
+    
+    def start(self, threaded=False):
+        if self.__event.is_set(): # Only run the thread once
+            return
+        if threaded:
+            self.__thread = threading.Thread(target=self.__start)
+            self.__thread.start()
+        else:
+            self.__start()
+        return self
+
+    def __start(self):
+        self.__event.set()
+        self.__events = []
+        self.__timer = 0
+        self.__wm = pi.WatchManager()
+        handler = pi.ProcessEvent(self._on_event)
+        self.__notifier = pi.Notifier(self.__wm, handler)
+        self.__wdd = self.__wm.add_watch(self.__path, mask, rec=True, auto_add=True)
+        while self.__event.is_set():
+            try:
+                #print 'Process events'
+                self.__notifier.process_events()
+                #print 'Check events'
+                if self.__notifier.check_events(10):
+                    #print 'Read events'
+                    self.__notifier.read_events()
+                #print time.time()
+                if self.__timer != 0 and time.time() > self.__timer:
+                    self._on_events(self.__queue, self.__events)
+                    self.__events = []
+                    self.__timer = 0
+            except KeyboardInterrupt:
+                break
+            pass
+            #print 'Sleep 1'
+            time.sleep(0.1)
+        self.__events = []
+        self.__notifier.stop()
+        #self.__wm.stop()
+        self.__event.clear()
+    
+    def stop(self):
+        self.__event.clear()
+    
+    def join(self):
+        if self.__thread is None:
+            return
+        self.stop()
+        self.__thread.join()
+    
+    def get_queue(self):
+        return self.__queue
+    
+    def is_running(self):
+        return self.__event.is_set()
+    
+    def _on_event(self, event):
+        maskname = event.maskname
+        src = ''
+        the_event = None
+        if maskname == 'IN_MOVED_TO':
+            if hasattr(event, 'src_pathname'):
+                previous_event = self.__events[-1]
+                if previous_event[0] == 'delete' and previous_event[1] == event.src_pathname:
+                    self.__events.pop()
+                the_event = ('move', (event.src_pathname, event.pathname))
+            else:
+                the_event = ('add', event.pathname)
+        elif maskname == 'IN_MOVED_TO|IN_ISDIR':
+            if hasattr(event, 'src_pathname'):
+                previous_event = self.__events[-1]
+                if previous_event[0] == 'delete_dir' and previous_event[1] == event.src_pathname:
+                    self.__events.pop()
+                the_event = ('move_dir', (event.src_pathname, event.pathname))
+            else:
+                the_event = ('add_dir', event.pathname)
+        elif maskname == 'IN_MOVED_FROM' or maskname == 'IN_DELETE':    
+            the_event = ('delete', event.pathname)
+        elif maskname == 'IN_CLOSE_WRITE':
+            the_event = ('add', event.pathname)
+        elif maskname == 'IN_CREATE|IN_ISDIR':
+            the_event = ('add_dir', event.pathname)
+        elif maskname == 'IN_MOVED_FROM|IN_ISDIR' or maskname == 'IN_DELETE|IN_ISDIR':
+            the_event = ('delete_dir', event.pathname)
+        if hasattr(event, 'src_pathname'):
+            src = ' from %s' % event.src_pathname
+        if self.__debug:
+            print 'Event %s on %s%s' % (event.maskname, event.pathname,src)
+        if the_event is not None:
+            path = the_event[1]
+            if the_event[0] == 'delete_dir' and path in self.__wdd:
+                wd = self.__wdd[path]
+                # w = wm.get_watch(wm.get_wd(path))
+                #wm.del_watch(wd)
+                self.__wm.rm_watch(wd)
+            self.__events.append(the_event)
+            self.__timer = time.time() + self.__timeout
+        #if maskname == 'IN_DELETE' or maskname == '':
+            
+        #event.maskname
+        #event.pathname
+        
+        #if hasattr(event, 'src_pathname'):
+        #    pass
+        #pass
+    
+    def _on_events(self, queue, events):
+        if self.__debug:
+            print 'Events:'
+            print events
+        queue.put(events)
+        
+
+"""class EventHandler(pi.ProcessEvent):
+    #def process_IN_CREATE(self, event):
+    #    print "Creating:", event.pathname
+
+    #def process_IN_DELETE(self, event):
+    #    print "Removing:", event.pathname
+    
+    
+    #IN_CLOSE_WRITE
+    #IN_MOVED_TO event.src_pathname
+    #IN_DELETE
+    #IN_MOVED_FROM  (move to external)
+    
+    def __init__(self):
+        
+        
+    def process_default(self, event):
+        src = ''
+        if hasattr(event, 'src_pathname'):
+            src = ' from %s' % event.src_pathname
+        print 'Event %s on %s%s' % (event.maskname, event.pathname,src)
+
+    handler = EventHandler()
+    notifier = pi.Notifier(wm, handler)
+    
+    wdd = wm.add_watch('/tmp/inotify', mask, rec=True)
+    
+    notifier.loop()"""
+if __name__ == "__main__":
+    pw = PathWatcher('/tmp/inotify', debug=True).start(threaded=True)
+    try:
+        while pw.is_running():
+            print 'Running'
+            time.sleep(1)
+    except:
+        pw.join()
+        raise
+    pw.join()
