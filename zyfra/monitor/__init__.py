@@ -100,9 +100,12 @@ def probe_host(host, hostname, old_service_states, all_results, debug):
     new_criticals = []
     bad_states = []
     ping = None
-    #print '%s (%s)' % (name, hostname)
+    if debug:
+        print 'Probing %s (%s)' % (name, hostname)
     for service_obj in host['service_objs']:
         service_name = service_obj.name
+        if debug:
+            print service_name
         if service_name in old_service_states:
             old_state = old_service_states[service_name]
         else:
@@ -164,6 +167,7 @@ class Monitor(object):
     debug = False
     webserver_port = None
     running = True
+    thread_limit = None
 
     def __init__(self, hostfilename, interval=10, internet_hosts=None):
         self.interval = interval
@@ -185,13 +189,13 @@ class Monitor(object):
         print 'Stop required'
     
     def init(self):
-        # need to be overcharged
+        # can be overcharged
         #signal.signal(signal.SIGINT, self.stop)
         try:
-            self.probe_hosts(first_check=True)
+            self.probe_hosts(first_check=True, thread_limit=self.thread_limit)
             time.sleep(self.interval)
             while(True):
-                self.probe_hosts()
+                self.probe_hosts(thread_limit=self.thread_limit)
                 time.sleep(self.interval)
         except KeyboardInterrupt:
             print 'CTRL-C pressed, quitting'
@@ -236,7 +240,7 @@ class Monitor(object):
             for service in services:
                 host['service_objs'].append(get_service_instance(service))
 
-    def probe_hosts(self, first_check=False):
+    def probe_hosts(self, first_check=False, thread_limit=None):
         if self.internet_needed:
             internet_state = self.get_internet_state()
             print 'Internet access is %s' % render_status(internet_state)
@@ -255,10 +259,16 @@ class Monitor(object):
                 old_service_state = self.service_states[hostname]
             else:
                 old_service_state = {}
-            
-            t = threading.Thread(target=probe_host, args=(host, hostname, old_service_state, all_results, self.debug))
-            t.start()
-            active_threads.append(t)
+            if thread_limit == 0: # No thread at all
+                probe_host(host, hostname, old_service_state, all_results, self.debug)
+            else:
+                while thread_limit is not None and len(active_threads) >= thread_limit:
+                    for i, thread in enumerate(reversed(active_threads)):
+                        if not thread.is_alive():
+                             del active_threads[i]
+                t = threading.Thread(target=probe_host, args=(host, hostname, old_service_state, all_results, self.debug))
+                t.start()
+                active_threads.append(t)
             #probe_host(host, hostname, old_service_state, all_results)
         
         for t in active_threads:
