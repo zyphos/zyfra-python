@@ -304,6 +304,7 @@ class Model(object):
     _id = None
     _loadable = True
     _clear = False
+    _add_update = False
     _update_only = False
     _add_only = False
     _name = None
@@ -381,7 +382,7 @@ class Model(object):
                 _id_fieldname = self._columns[self._id].fieldname
             else:
                 _id_fieldname = self._id
-        if self._update_only and self._id:
+        if (self._update_only or self._add_update) and self._id:
             refs = dict([(r[_id_fieldname],r['id']) for r in self.oo.search_read(self._name, [_id_fieldname, 'id'],limit=0)])
             self._loadable = False
         if self._add_only and self._id:
@@ -494,7 +495,7 @@ class Model(object):
                         if debug:
                             print 'oo[%s].write([%s],%s)' % (repr(self._name), repr(refs[_id]), repr(data))
                         if not dry_run: 
-                            self.oo[self._name].write([refs[_id]], data)
+                            self.oo[self._name].write([refs[_id]], data, context=self.oo.context)
                     elif self._add_only and self._id and data[_id_fieldname] in added_refs:
                         pass
                     elif self._loadable:   
@@ -505,7 +506,15 @@ class Model(object):
                                 del data[key]
                         #print data
                         if not dry_run:
-                            record_id = self.oo[self._name].create(data, context=self.oo.context)
+                            if self._id:
+                                _id = data[self._id]
+                            if self._add_update and self._id and _id in refs:
+                                del data[self._id]
+                                record_id = refs[_id]
+                                self.oo[self._name].write([record_id], data, context=self.oo.context)
+                                continue
+                            else:
+                                record_id = self.oo[self._name].create(data, context=self.oo.context)
                         else:
                             record_id = 0
                         for key in record_ids:
