@@ -491,8 +491,8 @@ class Model(object):
                         else:
                             pprint.pprint(data)
                     if self._update_only and self._id:
-                        _id = data[self._id]
-                        del data[self._id]
+                        _id = data[self._id_fieldname]
+                        del data[self._id_fieldname]
                         if debug:
                             print 'oo[%s].write([%s],%s)' % (repr(self._name), repr(refs[_id]), repr(data))
                         if not dry_run: 
@@ -508,9 +508,9 @@ class Model(object):
                         #print data
                         if not dry_run:
                             if self._id:
-                                _id = data[self._id]
+                                _id = data[self._id_fieldname]
                             if self._add_update and self._id and _id in refs:
-                                del data[self._id]
+                                del data[self._id_fieldname]
                                 record_id = refs[_id]
                                 self.oo[self._name].write([record_id], data, context=self.oo.context)
                                 continue
