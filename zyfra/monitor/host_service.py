@@ -4,10 +4,9 @@ from zyfra import ssh_session
 from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service
 
 """TODO:
-- [BUG] reboot_needed: only work on localhost
 - Add a probe for memory usage
 - Add a probe for Free inode  ['df','-i']
-- Add failure messages
+- Add module failure messages to result for critical, warning, ...
 """
 
 class Cmd(object):

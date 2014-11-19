@@ -441,8 +441,8 @@ class Model(object):
                             self.columns_fieldname.append(col_name)
                             col.fieldname = col_name
                     if debug:
-                        print 'src:   ',row
-                        print 'evaled:',self.columns_fieldname
+                        print 'src (row):',row
+                        print 'evaled (columns_fieldname):',self.columns_fieldname
                     continue
                 if offset is not None and nb_done < offset:
                     nb_done += 1
@@ -451,6 +451,7 @@ class Model(object):
                 #print row
                 csv_row = dict(zip(self.csv_columns, row))
                 if debug:
+                    print 'csv_row:'
                     if debug_table:
                         print_table(csv_row)
                     else:
@@ -484,7 +485,7 @@ class Model(object):
                 try:
                     data = dict(zip(self.columns_fieldname,row_evaled))
                     if debug:
-                        print 'evaled'
+                        print 'evaled (data)'
                         if debug_table:
                             print_table(data)
                         else:
@@ -540,11 +541,12 @@ class Model(object):
                             
                 except:
                     print '%s/%s' % (nb_done, nb_rows)
+                    print 'csv_row:'
                     if debug_table:
                         print_table(csv_row)
                     else:
                         pprint.pprint(csv_row)
-                    print 'evaled'
+                    print 'evaled (row_evaled=data)'
                     if debug_table:
                         print_table(zip(self.columns_fieldname,row_evaled))
                     else:
