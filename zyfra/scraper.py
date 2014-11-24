@@ -1,6 +1,45 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+ Scrapper
+ --------
+ 
+ Class to parse HTML website
+ 
+ Copyright (C) 2015 De Smet Nicolas (<http://ndesmet.be>).
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+Usage:
+from zyfra import scraper
+
+class Product(scraper.Page):
+    name = scraper.Text(xpath="h1/text()")
+    code = scraper.Text(xpath="td[@class='code']/text()")
+
+class Categories(scraper.Objects):
+    name = scraper.Text(xpath="h3/text()")
+    img = scraper.Text(xpath="img/@src")
+
+class CategoryPage(scraper.Page):
+    name = scraper.Text(xpath="h1/text()")
+    category_ids = Categories(xpath="div[@class='subcategory']/a")
+
+cats = CategoryPage()('http://www.website.com/category/x.html')
+print cats
+"""
+
 import re
 from lxml.html import fromstring
 import lxml.etree
@@ -141,8 +180,6 @@ class Objects(Object):
         return res
 
 class Page(Object):
-    url = None
-    
     def __init__(self, web_browser = None):
         if web_browser is None:
             self._web_browser = WebBrowser()
@@ -150,10 +187,6 @@ class Page(Object):
             self._web_browser = browser
         Object.__init__(self)
     
-    def __call__(self, url=None):
-        if url is None:
-            url = self.url
-        if url is None:
-            raise Exception('No url defined !')
-        data = Data(self._web_browser(url))
+    def __call__(self, *args, **kargs):
+        data = Data(self._web_browser(*args, **kargs))
         return self.parse_value(data)
