@@ -512,9 +512,13 @@ class Model(object):
                             if self._add_update and self._id and _id in refs:
                                 del data[_id_fieldname]
                                 record_id = refs[_id]
+                                if debug:
+                                    print 'oo[%s].write([%s],%s)' % (repr(self._name), repr(record_id), repr(data))
                                 self.oo[self._name].write([record_id], data, context=self.oo.context)
                                 continue
                             else:
+                                if debug:
+                                    print 'oo[%s].create(%s)' % (repr(self._name), repr(data))
                                 record_id = self.oo[self._name].create(data, context=self.oo.context)
                         else:
                             record_id = 0
