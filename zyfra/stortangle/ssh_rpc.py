@@ -14,6 +14,7 @@ import threading
 from multiprocessing import Process, Pipe, Event, Queue
 import traceback
 import signal
+import time
 
 import paramiko
 #import zyfra.thread_process
@@ -83,9 +84,11 @@ class ChannelException(Exception):
     pass
 
 class ChannelHandler(object):
-    def __init__(self, queue=None, threaded=False, processed=False):
-        self.__event = threading.Event()
-        self.__event.set()
+    def __init__(self, queue=None, threaded=False, processed=False, log_level=0):
+        self.__log_level = log_level
+        self._event = threading.Event()
+        self._event.set()
+        self.__in_queue = Queue()
         if queue is None:
             self.__queue = Queue()
         else:
@@ -100,34 +103,56 @@ class ChannelHandler(object):
         else:
             self._start()
     
+    def _log(self, msg, level=1):
+        if level <= self.__log_level:
+            print 'SSH', msg
+    
     def _start(self):
         self._init()
         self._loop()
+        self._log('stopped', 2)
     
     def _init(self):
         pass
+    
+    def _in_loop_call(self):
+        pass
 
     def _loop(self):
-        for cmd in self._get_cmd():
-            if self.__event.is_set():
-                self._on_receive_cmd(cmd)
-    
-    def send(self, cmd):
-        self._channel.send(cmd + '\n')
-    
-    def _get_cmd(self, data=''):
-        while self.__event.is_set():
-            try:
-                res = self._channel.recv(10000)
+        data = ''
+        while self._event.is_set() and self._is_ssh_connection_active():
+            if self._channel.recv_ready():
+                self._log('data ready', 3)
+                res = self._channel.recv(1024)
                 if len(res) == 0:
                     raise ChannelException('Channel closed')
                 data += res
                 cmds = data.split('\n')
-                for r in cmds[:-1]:
-                    yield r
+                for cmd in cmds[:-1]:
+                    self._log('_on_receive_cmd(%s)' % cmd, 2)
+                    self._on_receive_cmd(self.__queue, cmd)
                 data = cmds[-1]
-            except socket.timeout:
-                pass
+            if not self.__in_queue.empty():
+                while not self.__in_queue.empty():
+                    msg = self.__in_queue.get()
+                    self.send(msg)
+            self._in_loop_call()
+            self._log('In _loop', 3)
+            time.sleep(0.5)
+        self._log('Exiting loop: event(%s) ssh(%s)' % (repr(self._event.is_set()), repr(self._is_ssh_connection_active())), 3)
+    
+    def _is_ssh_connection_active(self):
+        #transport = self._channel.get_transport() if self._channel else None
+        return self._transport and self._transport.is_active()
+    
+    def send(self, cmd):
+        self._log('send(%s)' % cmd, 2)
+        if not self._is_ssh_connection_active():
+            raise ChannelException('Channel not active')
+        self._channel.send(cmd + '\n')
+    
+    def send_from_ext(self, cmd):
+        self.__in_queue.put(cmd)
     
     """def check_pipe_msg(self):
         if self.__pipe is None:
@@ -142,10 +167,10 @@ class ChannelHandler(object):
         pass"""
     
     def disconnect(self):
-        self.__event.clear()
+        self._event.clear()
     
     def is_running(self):
-        return self.__event.is_set()
+        return self._event.is_set()
     
     def join(self):
         self.disconnect()
@@ -157,51 +182,57 @@ class ChannelHandler(object):
         return self.__queue
 
 class ChannelHandlerServer(ChannelHandler):
-    def __init__(self, client_socket, id, allowed_users, client_addr, queue=None):
-        self.__id = id
+    def __init__(self, client_socket, id, allowed_users, client_addr, queue=None, log_level=2):
+        self._id = id
         self.__client_socket = client_socket
         self.__client_addr = client_addr
         self.__allowed_users = allowed_users
-        ChannelHandler.__init__(self, queue=queue, processed=True)
+        self._transport = None
+        ChannelHandler.__init__(self, queue=queue, processed=True, log_level=log_level)
     
     def _on_receive_cmd(self, queue, cmd):
-        queue.put((self.id, cmd))
+        queue.put((self._id, cmd))
+    
+    def _get_id(self):
+        return self._id
 
     def _start(self):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         try:
-            t = paramiko.Transport(self.__client_socket)
+            self._transport = paramiko.Transport(self.__client_socket)
             try:
-                t.load_server_moduli()
+                self._transport.load_server_moduli()
             except:
                 raise ServerException('(Failed to load moduli -- gex will be unsupported.)')
             host_key = paramiko.RSAKey(filename=private_key)
-            t.add_server_key(host_key)
+            self._transport.add_server_key(host_key)
             server = ParamikoServer(self.__allowed_users)
             try:
-                t.start_server(server=server)
+                self._transport.start_server(server=server)
             except paramiko.SSHException, x:
                 raise ServerException('*** SSH negotiation failed.')
         
             # wait for auth
-            self._channel = t.accept(20)
+            self._channel = self._transport.accept(20)
+            #self._channel.settimeout(0.01)
             if self._channel is None:
                 raise ServerException('*** No channel.')
-            print 'Authenticated!'
+            self._log('Authenticated!')
         
             server.event.wait(10)
             if not server.event.isSet():
                 raise ServerException('*** Client never asked for a shell.')
             try:
                 ChannelHandler._start(self)
-            except ChannelException:
+            except ChannelException as e:
+                self._log('Channel Exception %s' % e)
                 pass
-            print 'Closing session'
+            self._log('Closing session')
             self._channel.close()
         
         except:
             try:
-                t.close()
+                self._transport.close()
             except:
                 pass
             raise
@@ -213,46 +244,64 @@ class Server(object):
         self.__event.set()
         self.__channel_handler = channel_handler
         self.__queue = queue
+        self.__in_queue = Queue()
         self.__port = port
         if allowed_users is None:
             self.__allowed_users = {}
         else:
             self.__allowed_users = allowed_users.copy()
         if threaded:
-            self.__thread = threading.Thread(target=self._start)
+            self.__thread = threading.Thread(target=self.__start)
             self.__thread.start()
         else:
             self.__start()
+    
+    def _loop_action(self):
+        pass
 
     def __start(self):
         # now connect
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.setblocking(0)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind(('', self.__port))
         except Exception, e:
             raise ServerException('*** Bind failed: ' + str(e))
         
         sock.listen(100)
-        print 'Listening for connection ...'
+        print 'SSH Listening for connection ...'
         id = 0
         self.__handlers = {}
         while self.__event.is_set():
             try:
                 client_socket, addr = sock.accept()
-                print 'Got a connection from %s:%s' % (addr[0], addr[1])
+                print '\nSSH Got a connection from %s:%s' % (addr[0], addr[1])
                 p = self.__channel_handler(client_socket, id, self.__allowed_users, addr, self.__queue)
                 self.__lock.acquire()
-                self.__handlers[nb] = p
+                self.__handlers[id] = p
                 self.__lock.release()
                 id += 1
             except KeyboardInterrupt:
-                print 'Quitting, waiting for end of connections'
+                print 'SSH Quitting, waiting for end of connections'
                 break
+            except socket.error:
+                time.sleep(0.1)
+                #print 'SSH server Looping'
+            if not self.__in_queue.empty():
+                while not self.__in_queue.empty():
+                    id, msg = self.__in_queue.get()
+                    self.__handlers[id].send_from_ext(msg)
+            self._loop_action()
+        print 'Stoping server, waiting children'
         for id in self.__handlers:
             self.__handlers[id].join()
     
+    def send_to_id(id, msg):
+        self.__in_queue.put((id, msg))
+    
     def get_handler_by_id(self, id):
+        print 'SSH get_handler_by_id(%s)' % id
         self.__lock.acquire()
         handler = self.__handlers[id]
         self.__lock.release()
@@ -271,21 +320,45 @@ class Server(object):
         self.__thread.join()
 
 class ChannelHandlerClient(ChannelHandler):
-    def __init__(self, host, username, password, port=2200, queue=None, threaded=False):
+    def __init__(self, host, username, password, port=2200, queue=None, threaded=False, log_level=2):
         hosts_filename = os.path.expanduser("~/.ssh/paramiko_known_hosts")
         #print hosts_filename
-        
-        client = paramiko.client.SSHClient()
-        if os.path.isfile(hosts_filename):
-            client.load_host_keys(hosts_filename) #'~/.ssh/known_hosts'
-        client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
+        self.__host = host
+        self.__username = username
+        self.__password = password
+        self.__port = port
+        self.__hosts_filename = hosts_filename
+        self._transport = None
         #print client.get_host_keys()
-        client.connect(host, port, username=username, password=password)
-        client.save_host_keys(hosts_filename)
+        ChannelHandler.__init__(self, queue, threaded=threaded, log_level=log_level)
+    
+    def _start(self):
+        while self._event.is_set():
+            try:
+                self._connect()
+                #self._log('connect is active (%s)' % (repr(self._is_ssh_connection_active())))
+                self._init()
+                self._loop()
+            except socket.error as e:
+                self._log('Socket error %s' % e)
+                time.sleep(1)
+            except ChannelException as e:
+                self._log('ChannelException: %s' % e)
+                time.sleep(1)
+        self._log('Ssh stopped')
+    
+    def _connect(self):
+        self._client = paramiko.client.SSHClient()
+        if os.path.isfile(self.__hosts_filename):
+            self._client.load_host_keys(self.__hosts_filename) #'~/.ssh/known_hosts'
+        self._client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
+        self._client.connect(self.__host, self.__port, username=self.__username, password=self.__password)
+        self._client.save_host_keys(self.__hosts_filename)
         #print client.get_host_keys()
-        self._channel = client.invoke_shell()
-        self._channel.settimeout(0)
-        ChannelHandler.__init__(self, queue, threaded=threaded)
+        self._channel = self._client.invoke_shell()
+        self._transport = self._channel.get_transport()
+        #self._log('connect is active (%s)' % (repr(self._is_ssh_connection_active())))
+        #self._channel.settimeout(0.01)
 
 class ChannelHandlerClientTest(ChannelHandlerClient):
     def _init(self):
@@ -298,7 +371,7 @@ class ChannelHandlerClientTest(ChannelHandlerClient):
 
 class ChannelHandlerServerTest(ChannelHandlerServer):
     def _on_receive_cmd(self, queue, cmd):
-        print '%s from %s' % (cmd, self.id)
+        print '%s from %s' % (cmd, self._get_id())
         self.send('pong')
 
 if __name__ == "__main__":
@@ -307,6 +380,12 @@ if __name__ == "__main__":
     
     if len(args) == 1:
         allowed_users = {'bucky': 'foo'}
-        Server(ChannelHandlerServerTest, allowed_users=allowed_users)
+        srv = Server(ChannelHandlerServerTest, allowed_users=allowed_users,threaded=True)
+        try:
+            while True:
+                pass
+        except:
+            pass
+        srv.stop()
     else:
         ChannelHandlerClientTest('localhost', 'bucky', 'foo')

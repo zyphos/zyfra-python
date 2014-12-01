@@ -40,38 +40,46 @@ class PathWatcher(object):
         self.__wm = pi.WatchManager()
         handler = pi.ProcessEvent(self._on_event)
         self.__notifier = pi.Notifier(self.__wm, handler)
-        self.__wdd = self.__wm.add_watch(self.__path, mask, rec=True, auto_add=True)
         while self.__event.is_set():
-            try:
-                #print 'Process events'
-                self.__notifier.process_events()
-                #print 'Check events'
-                if self.__notifier.check_events(10):
-                    #print 'Read events'
-                    self.__notifier.read_events()
-                #print time.time()
-                if self.__timer != 0 and time.time() > self.__timer:
-                    self._on_events(self.__queue, self.__events)
-                    self.__events = []
-                    self.__timer = 0
-            except KeyboardInterrupt:
-                break
-            pass
-            #print 'Sleep 1'
+            self.__wdd = self.__wm.add_watch(self.__path, mask, rec=True, auto_add=True)
+            if len(self.__wdd) > 0:
+                try:
+                    while self.__event.is_set():
+                        #print 'Process events'
+                        self.__notifier.process_events()
+                        #print 'Check events'
+                        if self.__notifier.check_events(10):
+                            #print 'Read events'
+                            self.__notifier.read_events()
+                        #print time.time()
+                        if self.__timer != 0 and time.time() > self.__timer:
+                            self._on_events(self.__queue, self.__events)
+                            self.__events = []
+                            self.__timer = 0
+                    
+                    pass
+                    #print 'Sleep 1'
+                    time.sleep(0.1)
+                except KeyboardInterrupt:
+                        break
             time.sleep(0.1)
+        print 'Inotify stopping'
         self.__events = []
         self.__notifier.stop()
         #self.__wm.stop()
         self.__event.clear()
+        print 'Inotify stopped'
     
     def stop(self):
         self.__event.clear()
     
     def join(self):
         if self.__thread is None:
+            self.stop()
             return
         self.stop()
         self.__thread.join()
+        print 'Inotify joined'
     
     def get_queue(self):
         return self.__queue
