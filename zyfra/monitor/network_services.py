@@ -112,7 +112,7 @@ class ntp(NetworkTcpService):
 class imap(NetworkTcpService):
     port = 143
 
-class imap(NetworkTcpService):
+class ldap(NetworkTcpService):
     port = 389
 
 class https(NetworkTcpService):
