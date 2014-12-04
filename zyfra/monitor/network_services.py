@@ -82,12 +82,6 @@ class InternetCheck(ping):
                 return OK
         return CRITICAL
 
-class http(NetworkTcpService):
-    port = 80
-
-class https(NetworkTcpService):
-    port = 443
-    
 class ftp(NetworkTcpService):
     port = 21
 
@@ -100,29 +94,56 @@ class telnet(NetworkTcpService):
 class smtp(NetworkTcpService):
     port = 25
 
-class smtps(NetworkTcpService):
-    port = 465
-
-class imap(NetworkTcpService):
-    port = 143
-
-class imaps(NetworkTcpService):
-    port = 993
-
-class samba(NetworkTcpService):
-    port = 445
-
-class mysql(NetworkTcpService):
-    port = 3306
-
-class postgresql(NetworkTcpService):
-    port = 5432
-
-class openvpn(NetworkUdpService):
-    port = 1194
-
 class dns(NetworkTcpService):
     port = 53
 
 class dhcp(NetworkUdpService):
     port = 67
+
+class http(NetworkTcpService):
+    port = 80
+
+class pop3(NetworkTcpService):
+    port = 110
+
+class ntp(NetworkTcpService):
+    port = 123
+
+class imap(NetworkTcpService):
+    port = 143
+
+class imap(NetworkTcpService):
+    port = 389
+
+class https(NetworkTcpService):
+    port = 443
+
+class samba(NetworkTcpService):
+    port = 445
+
+class smtps(NetworkTcpService):
+    port = 465
+
+class imaps(NetworkTcpService):
+    port = 993
+
+class pop3s(NetworkTcpService):
+    port = 995
+
+class openvpn(NetworkUdpService):
+    port = 1194
+
+class mysql(NetworkTcpService):
+    port = 3306
+
+class sieve(NetworkTcpService):
+    port = 4190
+
+class sip(NetworkTcpService):
+    port = 5060    
+
+class postgresql(NetworkTcpService):
+    port = 5432
+
+class amavis(NetworkTcpService):
+    port = 10024
