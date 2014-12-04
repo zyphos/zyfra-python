@@ -1,7 +1,7 @@
 import subprocess
 
 from zyfra import ssh_session
-from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service
+from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, ProbeException
 
 """TODO:
 - Add a probe for memory usage
@@ -24,7 +24,7 @@ class CmdSsh(Cmd):
         lnk = ssh_session.get_ssh_link(self.target, password=self.password)
         result = lnk.cmd(' '.join(cmd))
         if raise_empty and result == '':
-            raise Exception('Empty result for CmdSsh: %s' % cmd)
+            raise ProbeException('Empty result for CmdSsh: %s' % cmd)
         return result
 
 class CmdLocalhost(Cmd):
@@ -33,17 +33,18 @@ class CmdLocalhost(Cmd):
             cmd = ' '.join(cmd)
         result = subprocess.check_output(cmd, shell=shell, stderr=subprocess.STDOUT)
         if raise_empty and result == '':
-            raise Exception('Empty result for CmdLocalhost: %s' % cmd)
+            raise ProbeException('Empty result for CmdLocalhost: %s' % cmd)
         return result
         
 class HostService(Service):
     cmd = ['ls']
+    shell = False
     
     def _parse_result(self, result):
         return result
     
     def get_state(self, cmd_exec):
-        result = cmd_exec(self.cmd)
+        result = cmd_exec(self.cmd, shell=self.shell)
         return self._parse_result(result)
 
     def ssh(self, target, password=None):
@@ -97,10 +98,19 @@ class loadavg(HostService):
         return WARNING
 
 class process(HostService):
-    def __init__(self, name, cmd):
-        self.cmd = ['ps', 'aux', '|', 'grep "%s"' % cmd]
+    process_name = None
+    shell = True
+
+    def __init__(self, name = None, cmd = None):
+        if cmd is None:
+            cmd = self.process_name
+        if cmd is None:
+            raise ProbeException('No process cmd defined')
+        #self.cmd = ['ps', 'aux', '|', 'grep "%s"' % cmd]
+        self.cmd = ['ps', 'aux', '|', 'grep', '"%s"' % cmd]
         HostService.__init__(self)
-        self.name = name
+        if name is not None:
+            self.name = name
 
     def _parse_result(self, result):
         if len(result.split('\n')) > 3:
@@ -227,6 +237,9 @@ class reboot_needed(HostService):
             return CRITICAL
         else:
             return OK
+
+class clamav(process):
+    process_name = 'clamd'
 
 #from pprint import pprint
 
