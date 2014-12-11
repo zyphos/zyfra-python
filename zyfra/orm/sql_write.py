@@ -48,7 +48,7 @@ class SQLWrite(SQLInterface):
                 print 'SQLWrite: No column found'
             return
         sql = 'UPDATE ' + object._table + ' AS t0 SET ' + ','.join(self.col_assign) + ' WHERE ' + where
-        sql = cr(self.object).safe_sql(sql, self.col_assign_data + where_datas)
+        sql = cr(self.object)._safe_sql(sql, self.col_assign_data + where_datas)
         if debug:
             print sql
         if not test_only:

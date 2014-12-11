@@ -8,7 +8,10 @@ class VirtualCursor(object):
 
     def __init__(self, master, db, db_encoding):
         self.master = master
-        self.cr = db.cursor(db_encoding)
+        if db_encoding is not None:
+            self.cr = db.cursor(db_encoding)
+        else:
+            self.cr = db.cursor()
         self.db_encoding = db_encoding
     
     def commit(self):

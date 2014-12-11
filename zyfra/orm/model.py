@@ -99,19 +99,20 @@ class Model(object):
             return
         self._pool = pool
         if self._db is None:
-            self._db = pool.db
+            self._db = pool._db
         if self._db_encoding is None:
-            self._db_encoding = pool.db_encoding
+            self._db_encoding = pool._db_encoding
         self._instanciated = True
         if not self._name:
             self._name = self.__class__.__name__
-        self.set_column_instance(self._key, self._columns[self._key])
+        if self._key in self._columns:
+            self.set_column_instance(self._key, self._columns[self._key])
         for name, col in self._columns.iteritems():
             if name == self._key:
                 continue
             self.set_column_instance(name, col)
         if not self._table:
-            self._table = pool.table_prefix + self._name
+            self._table = pool._table_prefix + self._name
         if self._pool.get_auto_create():
             self.update_sql()
 
@@ -145,7 +146,7 @@ class Model(object):
         if hasattr(self, '__update_sql_done'):
             return
         # 1 Check if table exists
-        db = self._pool.db
+        db = self._pool._db
         if not db.get_object('SHOW TABLES like %s', [self._table]):
             # Does not exists
             columns_def = []
@@ -157,7 +158,7 @@ class Model(object):
             db.query(sql)
         else:
             sql = 'SHOW COLUMNS FROM ' + self._table
-            fields = db.get_array_object(sql, 'Field')
+            fields = db.get_array_object(sql, key='Field')
             columns_def = []
             for field_name, field in self._columns.iteritems():
                 if not field.stored:
@@ -223,14 +224,14 @@ class Model(object):
         columns = array_merge(columns_before, columns_after)
         if (count(columns) > 0):
             sql = 'SELECT ' + self._key + ', ' + ','.join(columns) + ' FROM ' + self._table + ' WHERE ' + where
-            rows = self._pool.db.get_array_object(sql, '', datas)
+            rows = self._pool._db.get_array_object(sql, data=datas, key='')
         for column in columns_before:
             old_values = {}
             for row in rows:
                 old_values[getattr(row, self._key)] = getattr(row, column)
             self._columns[column].before_unlink_trigger(old_values)
         sql = 'DELETE FROM ' + self._table + ' WHERE ' + where
-        self._pool.db.safe_query(sql, datas)
+        self._pool._db.safe_query(sql, datas)
         for column in columns_after:
             old_values = {}
             for row in rows:
@@ -247,7 +248,7 @@ class Model(object):
 
     def select(self, cr, mql='*', datas=None, **kargs):
         try:
-            mql = cr(self).safe_sql(mql, datas)
+            mql = cr(self)._safe_sql(mql, datas)
         except:
             if 'debug' in cr.context and cr.context['debug']:
                 raise

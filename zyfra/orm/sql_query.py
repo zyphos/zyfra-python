@@ -221,7 +221,8 @@ class SQLQuery(object):
         key = cr.context.get('key', '')
         if key != self.object._key and key not in self.object._columns:
             key = ''
-        res = cr(self.object).get_array_object(sql, key, **kargs)
+        res = cr(self.object).get_array_object(sql, key=key, **kargs)
+        #print 'res', res
         if isinstance(res, dict):
             for key in res.keys():
                 row = res[key]
@@ -242,6 +243,7 @@ class SQLQuery(object):
                         row[col] = row[col].rstrip()
         
         datas = tools.DictObject(res)
+        #print 'datas', datas
         field_alias_ids = {}
         row_field_alias_ids = {}
         if len(datas):
