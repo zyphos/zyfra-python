@@ -85,7 +85,7 @@ class OdbcCursor(Cursor):
             params = []
         sql.replace('%s','?')
         try:
-            print 'sql: %s (%s)' % (sql, repr(params))
+            #print 'sql: %s (%s)' % (sql, repr(params))
             self.cr.execute(sql, params)
         except self.cnx.pyodbc.ProgrammingError as e:
             print e
