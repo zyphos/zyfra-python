@@ -98,8 +98,10 @@ class OdbcCursor(Cursor):
         def after_query_fx():
             self.cr.skip(offset)
         res = super(OdbcCursor, self).get_array_object(sql, data, key, limit, offset, after_query_fx)
-        
         return res
+    
+    def _get_column_names(self, row):
+        return [c[0].lower() for c in row.cursor_description]
 
 class Odbc(Database):
     cursor_class = OdbcCursor
@@ -107,9 +109,6 @@ class Odbc(Database):
         import pyodbc
         self.pyodbc = pyodbc
         self.cnx = pyodbc.connect(*args, **kargs)
-    
-    def _get_column_names(self, row):
-        return [c[0].lower() for c in row.cursor_description]
         
     def cursor(self, encoding=None):
         return OdbcCursor(self, self.cnx.cursor(), encoding)
