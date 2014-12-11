@@ -24,4 +24,8 @@ class Relational(Field):
                 raise
                 #raise Exception('Could not find object [' + self.relation_object_name + '] field ' + self.__class__.__name__ + ' [' + self.name + '] from object [' + self.object._name + ']')
         return self.__rel_obj
-    relation_object = property(get_relation_object)
+    
+    def set_relation_object(self, relation_obj):
+        self.__rel_obj = relation_obj
+
+    relation_object = property(get_relation_object, set_relation_object)

@@ -15,8 +15,8 @@ class Many2Many(One2Many):
     rt_foreign_field=None
     equal2equal = False
 
-    def __init__(self, label, relation_object_name, args = None):
-        super(Many2Many, self).__init__(label, relation_object_name, '', args)
+    def __init__(self, label, relation_object_name, **args):
+        super(Many2Many, self).__init__(label, relation_object_name, '', **args)
         self.left_right = False
 
     def set_instance(self, object, name):
@@ -50,14 +50,13 @@ class Many2Many(One2Many):
                                 {'relation_table': self.relation_table,
                                         'rt_foreign_field': self.rt_local_field,
                                         'rt_local_field': self.rt_foreign_field}))
+        #print 'relation table', self.relation_table
         pool = object._pool
-        if not pool.object_in_pool(self.relation_table):
+        if self.relation_table not in pool:
             from .. import Model
-            rel_table_object = Model(pool, {
-                    '_name':self.relation_table,
-                    '_columns':{self.rt_local_field: Many2One(None, object._name),
+            rel_table_object = Model(_name=self.relation_table, _columns={self.rt_local_field: Many2One(None, object._name),
                             self.rt_foreign_field: Many2One(None, robj._name)
-                    }})
+                    })
             pool[self.relation_table] = rel_table_object
         else:
             rel_table_object = object._pool[self.relation_table]
@@ -91,14 +90,17 @@ class Many2Many(One2Many):
         if context is None:
             context = {}
         nb_fields = len(fields)
-        new_fields = fields.copy() 
+        new_fields = fields[:] 
         new_ctx = context.copy()
         if nb_fields:
             if nb_fields == 1 and fields[0] == self.m2m_relation_object._key:
                 new_fields = array(self.rt_foreign_field)
+                #print 'new_fields1', new_fields
             else:
-                new_fields = ['(' + self.rt_foreign_field + '.' + implode('.',fields) + ' as  ' + context['parameter'] + ')']
+                #print 'rt_foreign_field', self.rt_foreign_field
+                new_fields = ['(' + self.rt_foreign_field + '.' + '.'.join(fields) + ' as  ' + context['parameter'] + ')']
                 del new_ctx['parameter']
+                #print 'new_fields2', new_fields
         return super(Many2Many, self).get_sql(parent_alias, new_fields, sql_query, new_ctx)
 
     def sql_write(self, sql_write, value, fields, context):
