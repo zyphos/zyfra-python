@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from zyfra import tools
-from fields import Field
+from fields import Field, Relational, One2Many
 from active_record import ActiveRecord
 from sql_write import SQLWrite
 from sql_create import SQLCreate
@@ -306,3 +306,19 @@ class Model(object):
                 txt += validation_error + "\n"
             return txt
         return False
+    
+    def help(self):
+        print self._name
+        print '-' * len(self._name)
+        print 'Table[%s] Key[%s]' % (self._table, self._key)
+        print 'Columns:'
+        col_names = self._columns.keys()
+        col_names.sort()
+        for col_name in col_names:
+            col_obj = self._columns[col_name]
+            details = ''
+            if isinstance(col_obj, One2Many):
+                details = '[%s, %s]' % (col_obj.relation_object_name, col_obj.relation_object_field)
+            elif isinstance(col_obj, Relational):
+                details = '[%s]' % col_obj.relation_object_name 
+            print '%s %s%s' % (col_name, col_obj.__class__.__name__, details)
