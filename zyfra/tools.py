@@ -272,7 +272,7 @@ def dump_result(func):
 
     return echo_func
 
-def print_table(table):
+def print_table_dict(table):
     "Prety print dict as a table"
     if not isinstance(table, dict):
         return
@@ -296,6 +296,33 @@ def print_table(table):
     print '|'.join(names)
     print '|'.join(line)
     print '|'.join(values)
+
+def print_table(table, columns=None):
+    "Prety print data as a table"
+    if isinstance(table, dict):
+        print_table_dict(table)
+        return
+    if not isinstance(table, list):
+        print 'print_table: Type not supported %s' % repr(table)
+        return
+    # calculate column size
+    col_sizes = [len(c) for c in columns]
+    for row in table:
+        for i, value in enumerate(row):
+            length = len(value)
+            if length > col_sizes[i]:
+                col_sizes[i] = length
+    
+    columns = [c.ljust(col_sizes[i]) for i, c in enumerate(columns)]
+    lines = ['-' * s for s in col_sizes]
+    for row in table:
+        for i, value in enumerate(row):
+            row[i] = row[i].ljust(col_sizes[i])
+    
+    print '|'.join(columns)
+    print '|'.join(lines)
+    for row in table:
+        print '|'.join(row)
 
 # source : https://wiki.python.org/moin/PythonDecoratorLibrary#Line_Tracing_Individual_Functions
 def trace(f):
