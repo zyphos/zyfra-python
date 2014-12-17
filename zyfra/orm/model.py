@@ -314,11 +314,13 @@ class Model(object):
         print 'Columns:'
         col_names = self._columns.keys()
         col_names.sort()
+        table = []
         for col_name in col_names:
             col_obj = self._columns[col_name]
-            details = ''
+            col_type = col_obj.__class__.__name__
             if isinstance(col_obj, One2Many):
-                details = '[%s, %s]' % (col_obj.relation_object_name, col_obj.relation_object_field)
+                col_type += '[%s, %s]' % (col_obj.relation_object_name, col_obj.relation_object_field)
             elif isinstance(col_obj, Relational):
-                details = '[%s]' % col_obj.relation_object_name 
-            print '%s %s%s' % (col_name, col_obj.__class__.__name__, details)
+                col_type += '[%s]' % col_obj.relation_object_name
+            table.append([col_name, col_type, col_obj.label])
+        tools.print_table(table, ['Name', 'Type', 'Description'])
