@@ -32,8 +32,6 @@ print o['res.partner'].select('name')
 
 from zyfra import orm, OoJsonRPC
 
-oo = OoJsonRPC()
-
 class OdooModel(orm.Model):
     _read_only = True
     
@@ -43,13 +41,15 @@ class OdooModel(orm.Model):
     write_uid = orm.fields.Many2One('Write user ID', 'res.users')
     write_date = orm.fields.Datetime('Write date')
 
-def generate_object(db, obj_name):
+def generate_object(oo, db, obj_name):
     #print 'Generating object(%s)' % obj_name
     fields = oo[obj_name].fields_get()
     #print fields
     obj = OdooModel()
     obj._name = obj_name
     table_name = obj_name.replace('.', '_')
+    cr = db.cursor(autocommit=True)
+    real_table_columns = [r['column_name'] for r in cr.get_array_object("select column_name from information_schema.columns where table_name='%s'" % table_name)]
     obj._table = table_name
     for field_name in fields:
         field = fields[field_name]
@@ -82,7 +82,7 @@ def generate_object(db, obj_name):
             field_obj = orm.fields.Datetime(txt)
         elif type == 'selection':
             selection = dict(field['selection'])
-            field_obj = orm.fields.Text(txt, select='')
+            field_obj = orm.fields.Text(txt, select=selection)
         elif type == 'many2one':
             relation = field['relation']
             field_obj = orm.fields.Many2One(txt, relation)
@@ -103,20 +103,24 @@ def generate_object(db, obj_name):
             print field
             continue
         #print 'Add Field(%s) Type(%s) to Obj(%s)' % (field_name, type, obj_name)
-        obj._columns[field_name] = field_obj
+        if not field_obj.stored or field_name in real_table_columns:
+            obj._columns[field_name] = field_obj
         #obj.add_column(field_name, field_obj)
     #print 'Object %s is generated' % obj_name
     return obj
 
 class Pool(orm.Pool):
-    def __init__(self, database):
+    def __init__(self, database, oo_rpc_options=None):
+        if oo_rpc_options is None:
+            oo_rpc_options = {}
         db = orm.PostgreSQL(database=database)
+        self.__oo = OoJsonRPC(**oo_rpc_options)
         orm.Pool.__init__(self, db)
         
     def __getattr__(self, key):
         if key in self.__pool:
             return self.__pool[key]
-        obj = generate_object(self._db, key)
+        obj = generate_object(self.__oo, self._db, key)
         self[key] = obj
         return obj
         
