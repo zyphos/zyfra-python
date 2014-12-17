@@ -109,7 +109,7 @@ class M2O(Relational):
             if value in self.link_array:
                 return self.link_array[value]
             else:
-                if self.must_be_found and not self._none_accepted:
+                if self.must_be_found and not (self._none_accepted and (value is None or value == '')):
                     if len(self.link_array) > 20:
                         raise Exception('%s not in %s... (not complete)' % (value, repr(self.link_array.keys()[:20])))
                     else:
