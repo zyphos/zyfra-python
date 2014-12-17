@@ -7,6 +7,7 @@ from active_record import ActiveRecord
 from sql_write import SQLWrite
 from sql_create import SQLCreate
 from sql_query import SQLQuery
+from cursor import Cursor
 
 class Model(object):
     _columns = None
@@ -247,6 +248,8 @@ class Model(object):
         return self.select(cr, mql, **kargs)
 
     def select(self, cr, mql='*', datas=None, **kargs):
+        if not isinstance(cr, Cursor):
+            raise Exception('cr parameter must be a cursor class got this instead %s' % repr(cr))
         try:
             mql = cr(self)._safe_sql(mql, datas)
         except:
@@ -318,9 +321,12 @@ class Model(object):
         for col_name in col_names:
             col_obj = self._columns[col_name]
             col_type = col_obj.__class__.__name__
+            label = col_obj.label
+            if col_obj.select is not None:
+                label += ' ' + repr(col_obj.select)
             if isinstance(col_obj, One2Many):
                 col_type += '[%s, %s]' % (col_obj.relation_object_name, col_obj.relation_object_field)
             elif isinstance(col_obj, Relational):
                 col_type += '[%s]' % col_obj.relation_object_name
-            table.append([col_name, col_type, col_obj.label])
+            table.append([col_name, col_type, label])
         tools.print_table(table, ['Name', 'Type', 'Description'])
