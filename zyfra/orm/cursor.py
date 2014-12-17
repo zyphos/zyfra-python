@@ -9,9 +9,9 @@ class VirtualCursor(object):
     def __init__(self, master, db, db_encoding):
         self.master = master
         if db_encoding is not None:
-            self.cr = db.cursor(db_encoding)
+            self.cr = db.cursor(db_encoding, autocommit=master.autocommit)
         else:
-            self.cr = db.cursor()
+            self.cr = db.cursor(autocommit=master.autocommit)
         self.db_encoding = db_encoding
     
     def commit(self):
@@ -27,9 +27,13 @@ class Cursor(object):
     cursors = None
     context = None
 
-    def __init__(self, context = None):
+    def __init__(self, context = None, autocommit=False):
         self.cursors = {}
-        self.context = {}
+        if context is None:
+            self.context = {}
+        else:
+            self.context = context
+        self.autocommit = autocommit
 
     def __call__(self, model):
         db = model._db

@@ -71,9 +71,11 @@ class Database(object):
     cnx = None
     cursor_class = Cursor
     
-    def cursor(self):
+    def cursor(self, autocommit=False):
         if self.cnx is None:
             raise DatabaseException('No connection available for this database.')
+        if autocommit:
+            self.cnx.autocommit = True
         return self.cursor_class(self, self.cnx.cursor())
 
 
@@ -110,7 +112,7 @@ class Odbc(Database):
         self.pyodbc = pyodbc
         self.cnx = pyodbc.connect(*args, **kargs)
         
-    def cursor(self, encoding=None):
+    def cursor(self, encoding=None, autocommit=False):
         return OdbcCursor(self, self.cnx.cursor(), encoding)
 
 
