@@ -111,9 +111,9 @@ class M2O(Relational):
             else:
                 if self.must_be_found and not (self._none_accepted and (value is None or value == '')):
                     if len(self.link_array) > 20:
-                        raise Exception('%s not in %s... (not complete)' % (value, repr(self.link_array.keys()[:20])))
+                        raise Exception('%s: %s not in %s... (not complete)' % (self._name, repr(value), repr(self.link_array.keys()[:20])))
                     else:
-                        raise Exception('%s not in %s' % (value, repr(self.link_array.keys())))
+                        raise Exception('%s: %s not in %s' % (self._name, repr(value), repr(self.link_array.keys())))
                 return self._default
         try:
             return int(value)
@@ -135,10 +135,11 @@ class M2M(Relational):
                 if x in self.link_array:
                     res.append(self.link_array[x])
                 else:
-                    if self.must_be_found:
-                        raise Exception('%s not in %s' % (x, repr(self.link_array)))
-                    return self._default
+                    if self.must_be_found and not (self._none_accepted and (x is None or x == '')):
+                        raise Exception('%s: %s not in %s' % (self._name, repr(x), repr(self.link_array)))
             values = res
+        if len(values) == 0:
+             return self._default
         #print values
         #return [(6,0,values)]
         return [(4,_id) for _id in values]
