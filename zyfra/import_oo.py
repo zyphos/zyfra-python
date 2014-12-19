@@ -171,6 +171,16 @@ class Boolean(Field):
             return False
         return self._default
 
+class IdField(Field):
+    def __init__(id_name='', **kargs):
+        self.id_name = id_name
+        Field.__init__(self, **kargs)
+
+class GetIdField(Field):
+    def __init__(id_name='', **kargs):
+        self.id_name = id_name
+        Field.__init__(self, **kargs)
+
 class NewField(Field):
     def eval(self, row):
         return self._default
@@ -319,6 +329,7 @@ class Model(object):
         self._ids = []
         self._columns = {}
         self._new_columns = []
+        self._id_fields = []
         self._language_columns = []
         self.csv_columns = None
         self.set_name()
@@ -352,6 +363,11 @@ class Model(object):
                 if isinstance(attr, Text) and attr.language is not None:
                     self._language_columns.append(col)
                     self._loadable = False
+                if isinstance(attr, GetIdField):
+                    self._loadable = False
+                if isinstance(attr, IdField):
+                    self._loadable = False
+                    self._id_fields.append(col)
                 if isinstance(attr, NewField):
                     self._new_columns.append(col)
                 if attr.name is None:
@@ -375,6 +391,7 @@ class Model(object):
         if self._dry_run:
             return []
         datas = []
+        id_fields = {}
         if record_ids is None:
             record_ids = {}
         col_indexes = {}
@@ -412,6 +429,8 @@ class Model(object):
                             continue
                         col = self._columns[column]
                         if isinstance(col, NewField):
+                            continue
+                        if isinstance(col, IdField):
                             continue
                         if col.fieldname is not None:
                             if not self._loadable and col.fieldname[-3:] == '.id':
@@ -458,6 +477,7 @@ class Model(object):
                     else:
                         pprint.pprint(csv_row)
                 try:
+                    id_fields_row = {}
                     for col_name in self.csv_columns:
                         val = csv_row[col_name]
                         if col_name not in self._columns:
@@ -465,6 +485,11 @@ class Model(object):
                         col = self._columns[col_name]
                         if isinstance(col, NewField):
                             continue
+                        if isinstance(col, GetIdField):
+                            value = id_fields[col.id_name][val]
+                        if isinstance(col, IdField):
+                            id_fields_row[col.id_name] = val
+                            continue;
                         if self._loadable:
                             value = col.eval_load(val)
                         else:
@@ -521,6 +546,8 @@ class Model(object):
                                 if debug:
                                     print 'oo[%s].create(%s)' % (repr(self._name), repr(data))
                                 record_id = self.oo[self._name].create(data, context=self.oo.context)
+                                for col_name in self._id_fields:
+                                    id_fields.setdefault(col_name, {})[id_fields_row[col_name]] = record_id
                         else:
                             record_id = 0
                         for key in record_ids:
