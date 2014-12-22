@@ -486,12 +486,13 @@ class Model(object):
                         if isinstance(col, NewField):
                             continue
                         if isinstance(col, GetIdField):
-                            if val == '':
-                                value = None
                             col_id_name = col.id_name
-                            if col_id_name not in id_fields or val not in id_fields[col_id_name] :
+                            if val == '' or col_id_name not in id_fields or val not in id_fields[col_id_name]:
                                 value = None
-                            value = id_fields[col.id_name][val]
+                            else:
+                                value = id_fields[col.id_name][val]
+                            row_evaled.append(value)
+                            continue
                         if isinstance(col, IdField):
                             id_fields_row[col.id_name] = val
                             continue;
