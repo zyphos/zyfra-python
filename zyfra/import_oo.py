@@ -486,6 +486,8 @@ class Model(object):
                         if isinstance(col, NewField):
                             continue
                         if isinstance(col, GetIdField):
+                            print val
+                            print id_fields
                             value = id_fields[col.id_name][val]
                         if isinstance(col, IdField):
                             id_fields_row[col.id_name] = val
