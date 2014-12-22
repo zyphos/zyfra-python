@@ -367,7 +367,7 @@ class Model(object):
                     self._loadable = False
                 if isinstance(attr, IdField):
                     self._loadable = False
-                    self._id_fields.append(col)
+                    self._id_fields.append(attr)
                 if isinstance(attr, NewField):
                     self._new_columns.append(col)
                 if attr.name is None:
@@ -552,8 +552,8 @@ class Model(object):
                                 if debug:
                                     print 'oo[%s].create(%s)' % (repr(self._name), repr(data))
                                 record_id = self.oo[self._name].create(data, context=self.oo.context)
-                                for col_name in self._id_fields:
-                                    id_fields.setdefault(col_name, {})[id_fields_row[col_name]] = record_id
+                                for col in self._id_fields:
+                                    id_fields.setdefault(col.id_name, {})[id_fields_row[col.id_name]] = record_id
                         else:
                             record_id = 0
                         for key in record_ids:
