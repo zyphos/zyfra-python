@@ -172,12 +172,12 @@ class Boolean(Field):
         return self._default
 
 class IdField(Field):
-    def __init__(id_name='', **kargs):
+    def __init__(self, id_name='', **kargs):
         self.id_name = id_name
         Field.__init__(self, **kargs)
 
 class GetIdField(Field):
-    def __init__(id_name='', **kargs):
+    def __init__(self, id_name='', **kargs):
         self.id_name = id_name
         Field.__init__(self, **kargs)
 
