@@ -487,10 +487,10 @@ class Model(object):
                             continue
                         if isinstance(col, GetIdField):
                             if val == '':
-                                return None
+                                value = None
                             col_id_name = col.id_name
                             if col_id_name not in id_fields or val not in id_fields[col_id_name] :
-                                return None
+                                value = None
                             value = id_fields[col.id_name][val]
                         if isinstance(col, IdField):
                             id_fields_row[col.id_name] = val
