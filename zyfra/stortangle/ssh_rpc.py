@@ -86,13 +86,16 @@ class ChannelException(Exception):
 class ChannelHandler(object):
     def __init__(self, queue=None, threaded=False, processed=False, log_level=0):
         self.__log_level = log_level
-        self._event = threading.Event()
-        self._event.set()
+        self.__event = threading.Event()
         self.__in_queue = Queue()
         if queue is None:
             self.__queue = Queue()
         else:
             self.__queue = queue
+        self.connect()
+    
+    def connect(self):
+        self._log('connecting', 2)
         self.__thread = None
         if processed:
             self.__thread = Process(target=self._start)
@@ -108,6 +111,7 @@ class ChannelHandler(object):
             print 'SSH', msg
     
     def _start(self):
+        self.__event.set()
         self._init()
         self._loop()
         self._log('stopped', 2)
@@ -120,7 +124,7 @@ class ChannelHandler(object):
 
     def _loop(self):
         data = ''
-        while self._event.is_set() and self._is_ssh_connection_active():
+        while self.__event.is_set() and self._is_ssh_connection_active():
             if self._channel.recv_ready():
                 self._log('data ready', 3)
                 res = self._channel.recv(1024)
@@ -137,9 +141,9 @@ class ChannelHandler(object):
                     msg = self.__in_queue.get()
                     self.send(msg)
             self._in_loop_call()
-            self._log('In _loop', 3)
+            self._log('In _loop' + repr(self.__event.is_set()), 3)
             time.sleep(0.5)
-        self._log('Exiting loop: event(%s) ssh(%s)' % (repr(self._event.is_set()), repr(self._is_ssh_connection_active())), 3)
+        self._log('Exiting loop: event(%s) ssh(%s)' % (repr(self.__event.is_set()), repr(self._is_ssh_connection_active())), 3)
     
     def _is_ssh_connection_active(self):
         #transport = self._channel.get_transport() if self._channel else None
@@ -167,12 +171,14 @@ class ChannelHandler(object):
         pass"""
     
     def disconnect(self):
-        self._event.clear()
+        self._log('disconnecting', 2)
+        self.__event.clear()
     
     def is_running(self):
-        return self._event.is_set()
+        return self.__event.is_set()
     
     def join(self):
+        self._log('joining', 2)
         self.disconnect()
         if self.__thread is None:
             return
@@ -320,7 +326,7 @@ class Server(object):
         self.__thread.join()
 
 class ChannelHandlerClient(ChannelHandler):
-    def __init__(self, host, username, password, port=2200, queue=None, threaded=False, log_level=2):
+    def __init__(self, host, username, password, port=2200, queue=None, threaded=False, log_level=3):
         hosts_filename = os.path.expanduser("~/.ssh/paramiko_known_hosts")
         #print hosts_filename
         self.__host = host
@@ -333,7 +339,9 @@ class ChannelHandlerClient(ChannelHandler):
         ChannelHandler.__init__(self, queue, threaded=threaded, log_level=log_level)
     
     def _start(self):
-        while self._event.is_set():
+        self.__event.set()
+        while self.__event.is_set():
+            self._log('Trying to connect', 3)
             try:
                 self._connect()
                 #self._log('connect is active (%s)' % (repr(self._is_ssh_connection_active())))

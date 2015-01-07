@@ -19,16 +19,22 @@ class PathWatcher(object):
         else:
             self.__queue = queue
         self.__event = threading.Event()
+        self.__starting_event = threading.Event()
         self.__event.clear()
         self.__thread = None
         self.__debug = debug
     
     def start(self, threaded=False):
+        print 'Inotify start'
         if self.__event.is_set(): # Only run the thread once
             return
         if threaded:
+            self.__starting_event.clear()
             self.__thread = threading.Thread(target=self.__start)
             self.__thread.start()
+            while not self.__starting_event.is_set():
+                pass
+            
         else:
             self.__start()
         return self
@@ -42,6 +48,7 @@ class PathWatcher(object):
         self.__notifier = pi.Notifier(self.__wm, handler)
         while self.__event.is_set():
             self.__wdd = self.__wm.add_watch(self.__path, mask, rec=True, auto_add=True)
+            self.__starting_event.set()
             if len(self.__wdd) > 0:
                 try:
                     while self.__event.is_set():
@@ -74,6 +81,7 @@ class PathWatcher(object):
         self.__event.clear()
     
     def join(self):
+        print 'Inotify joining'
         if self.__thread is None:
             self.stop()
             return

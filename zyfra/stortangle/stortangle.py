@@ -12,6 +12,8 @@ import ssh_rpc
 import inotify
 """
 TODO:
+Client: on receive quit, disconnect ssh, and relaunch
+
 Check Ack, if no re send
 
 
@@ -28,6 +30,9 @@ Server
 'cmd,timestamp,'
 'addchg,timestamp,filenames'
 'del,timestamp,filenames'
+
+dry_run = False
+
 def rsync(cmds):
     return subprocess.check_output(['rsync', '-a'] + cmds)
 
@@ -105,14 +110,27 @@ class StortangleCommon(object):
     
     def rm(self, filename):
         full_path = os.path.join(self.storage_path, filename)
-        print 'rm file %s' % full_path
-        #shutil.rmtree(full_path)
+        if os.path.isdir(full_path):
+            self.rm_dir(full_path)
+        else:
+            self.rm_file(full_path)
+    
+    def rm_file(self, filename):
+        print 'rm file %s' % filename
+        if not dry_run:
+            os.remove(filename)
+    
+    def rm_dir(self, filename):
+        print 'rm dir %s' % filename
+        if not dry_run:
+            shutil.rmtree(filename)
     
     def mv(self, old, new):
         old = os.path.join(self.storage_path, old)
         new = os.path.join(self.storage_path, new)
         print 'rename %s -> %s' % (old, new)
-        #os.rename(old, new)
+        if not dry_run:
+            os.rename(old, new)
         
     def main_loop(self):
         while self.__event.is_set():
@@ -224,9 +242,11 @@ class StortangleClient(StortangleCommon):
     
     def parse_message(self, message):
         cmd, param = message
-        print 'parse_message [%s]: %s' % (cmd, param)
+        self.log('parse_message [%s]: %s' % (cmd, param))
         if cmd == 'srvpath':
             self.server_path = param
+            self.rsync_pull()
+            self.rsync_push()
         elif cmd == 'rsync':
             self.rsync_pull(param)
         elif cmd == 'inotify':
@@ -237,7 +257,7 @@ class StortangleClient(StortangleCommon):
                     """
                     TODO: Get the real path to do rsync only on specified path
                     """
-                    print 'Do rsync'
+                    self.log('Do rsync')
                     self.rsync_push('')
                 elif action in ['move', 'move_dir']:
                     arg = (self.strip_path(arg[0]), self.strip_path(arg[1]))
@@ -252,12 +272,22 @@ class StortangleClient(StortangleCommon):
             self.inotify.start(threaded=self.inotify_threaded)
         elif cmd == 'quit':
             #self.stop()
+            self.ssh.join()
+            if self.ssh.is_running():
+                print 'running'
+            else:
+                print 'not running'
+            print 'sleep 5'
+            time.sleep(5)
+            print 'hello'
+            self.ssh.connect()
             pass
 
     def rsync(self, cmds):
-        cmds = ['rsync', '-a'] + cmds
+        cmds = ['rsync', '-auH'] + cmds
         print cmds
-        #result = subprocess.check_output(cmds)
+        if not dry_run:
+            result = subprocess.check_output(cmds)
     
     def get_server_path(self, path):
         return self.rsync_target + ':' + os.path.join(self.server_path, path)
@@ -265,7 +295,7 @@ class StortangleClient(StortangleCommon):
     def get_local_path(self, path):
         return os.path.join(self.storage_path, path)
     
-    def rsync_push(self, path):
+    def rsync_push(self, path=''):
         #self.ssh.send('disable_inotify')
         from_path = self.get_local_path(path)
         to_path = self.get_server_path(path)
@@ -273,12 +303,12 @@ class StortangleClient(StortangleCommon):
         self.send('rsync','')
         #self.ssh.send('enable_inotify')
     
-    def rsync_pull(self, path):
+    def rsync_pull(self, path=''):
         self.inotify.join()
         from_path = self.get_server_path(path)
         to_path = self.get_local_path(path)
         self.rsync([from_path, to_path])
-        self.inotify.start()
+        self.inotify.start(threaded=self.inotify_threaded)
     
     def send(self, action, param):
         self.ssh.send_from_ext((action, param))
