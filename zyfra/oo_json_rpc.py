@@ -11,14 +11,14 @@ from zyfra import WebBrowser
 """
 Usage:
 
-from zyfra import Oo7RPC
+from zyfra import OoJsonRPC
 
 url = 'http://localhost'
 db = 'my_openerp'
 login = 'my_login'
 password = 'my_password'
 
-oo = Oo7RPC(url, db, login, password)
+oo = OoJsonRPC(url, db, login, password)
 
 print oo.search_read('product.product', limit=1)
 print oo['product.product'].fields_get()
@@ -34,8 +34,8 @@ password = my_password
 
 
 then in python:
-from zyfra import Oo7RPC
-oo = Oo7RPC()
+from zyfra import OoJsonRPC
+oo = OoJsonRPC()
 """
 
 class JsonRPC(object):
