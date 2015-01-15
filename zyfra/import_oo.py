@@ -604,7 +604,7 @@ class Model(object):
             if not dry_run:
                 res = self.oo[self._name].load(self.columns_fieldname, datas)
                 for r in res['messages']:
-                    print '%s[%s] %s' % (r['field'],r['record'],r['message'])
+                    print '%s[%s] %s' % (r['field'],repr(r['record']),repr(r['message']))
                 #pprint.pprint(res['messages'])
                 if self._id is not None:
                     #print res['ids']
