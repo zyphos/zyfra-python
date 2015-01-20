@@ -24,7 +24,7 @@ class SQLWrite(SQLInterface):
         self.col_assign = []
         self.col_assign_data = []
         old_values = {}
-        db = object._pool.db
+        #db = object._pool.db
         #sql = 'SELECT ' + object._key + ' FROM ' + object._table + ' WHERE ' + where
         #self.ids = db.get_array(sql, object._key, '', where_datas)
         #if len(self.ids) == 0:

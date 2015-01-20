@@ -52,13 +52,13 @@ class Decimal(Field):
     widget = 'double'
 
     def sql_format(self, value):
-        return str(decimal.Decimal(value))
+        return str(decimal.Decimal(str(value)))
 
     def get_sql_def(self):
         return 'DOUBLE'
     
     def sql_create(self, sql_create, value, fields, context):
-        return str(decimal.Decimal(value))
+        return str(decimal.Decimal(str(value)))
 
 class Boolean(Field):
     default_value = 0
