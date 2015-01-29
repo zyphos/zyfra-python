@@ -242,7 +242,10 @@ def get_model_ids(oo, model, key='name', idname='id', where=None, limit=0):
             if keys[key] is None:
                 value = r[key]
             else:
-                value = r[key][keys[key]]
+                try:
+                    value = r[key][keys[key]]
+                except:
+                    raise Exception('%s not in %s' % (keys[key], repr(r[key])))
             if not isinstance(value, basestring):
                 value = str(value)
             values.append(value)
