@@ -245,7 +245,7 @@ def get_model_ids(oo, model, key='name', idname='id', where=None, limit=0):
                 try:
                     value = r[key][keys[key]]
                 except:
-                    raise Exception('%s not in %s' % (keys[key], repr(r[key])))
+                    raise Exception('%s: %s not in %s [%s]' % (model, keys[key], repr(r[key])), repr(r))
             if not isinstance(value, basestring):
                 value = str(value)
             values.append(value)
