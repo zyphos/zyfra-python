@@ -3,17 +3,28 @@
 
 """
 Usage:
+from zyfra import monitor
+
 class MyMonitor(Monitor):
     def on_after_check_services(self):
         # Do what you want
         pass
     
     def on_changed_state(self, service_states, state_changed):
+        # service_states = {'hostname':{'service_name': STATE,},} # STATE == monitor.UNKNOWN, monitor.OK, monitor.WARNING, monitor.CRITICAL
+        # state_changed = {'hostname':['service_name',],}
         # Do what you want
         pass
+    
+    def on_new_critical_state(self, service_states, new_critical_states):
+        # service_states = {'hostname':{'service_name': STATE,},} STATE == monitor.UNKNOWN, monitor.OK, monitor.WARNING, monitor.CRITICAL
+        # new_critical_states = {'hostname':['service_name',],}
+        # Do what you want
+        pass
+
 monitor = MyMonitor('myconfig.yaml')
 
-YAML file:
+YAML file: myconfig.yaml
 - name: HostA
   hostname: 192.168.1.4
   services: ping,telnet
@@ -23,9 +34,6 @@ YAML file:
   services: ping,http
 """
 
-"""TODO:
-- Add 1 thread per host scanned 
-"""
 #from zyfra.tools import duration
 import threading
 import time
@@ -424,7 +432,11 @@ class Monitor(object):
         pass
     
     def on_changed_state(self, service_states, state_changed):
+        # service_states = {'hostname':{'service_name': STATE,},} STATE == UNKNOWN, OK, WARNING, CRITICAL
+        # state_changed = {'hostname':['service_name',],}
         pass
     
     def on_new_critical_state(self, service_states, new_critical_states):
+        # service_states = {'hostname':{'service_name': STATE,},} STATE == UNKNOWN, OK, WARNING, CRITICAL
+        # new_critical_states = {'hostname':['service_name',],}
         pass
