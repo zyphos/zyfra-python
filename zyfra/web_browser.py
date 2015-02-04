@@ -5,8 +5,9 @@ import urllib2
 import urllib
 
 class WebBrowser(object):
-    def __init__(self):
+    def __init__(self, header=None):
         self.cookie = None
+        self.default_header = header
     
     def __call__(self, url, get_data=None, post_data=None, raw_data=None, header=None):
         # This method is session aware
@@ -14,6 +15,10 @@ class WebBrowser(object):
             url += '?' + urllib.urlencode(get_data)
         if header is None:
             header = {}
+        if self.default_header is not None:
+            new_header = self.default_header.copy()
+            new_header.update(header)
+            header = new_header
         data_url = None
         if post_data:
             data_url = urllib.urlencode(post_data)
