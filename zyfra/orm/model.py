@@ -293,6 +293,47 @@ class Model(object):
             else:
                 txt += "\n"
         return txt
+    
+    def get_dot_full_diagram(self, max_depth=0, lvl=0, done=None, relations=None, parent=None):
+        if relations is None:
+            relations = []
+        name_under = self._name.replace('.','_')
+        if done is None:
+            done = [self._name]
+        elif self._name in done:
+            return ''
+        else:
+            done.append(self._name)
+        
+        other_txt = ''
+        columns = []
+        for col_name in self._columns:
+            col = self._columns[col_name]
+            columns.append('+ ' + col_name + '[' + col.__class__.__name__ + '] ' + col.label)
+            if col.relational:
+                robj = col.get_relation_object()
+                if max_depth == 0 or lvl + 1 < max_depth or robj._name in done:
+                    rname_under = robj._name.replace('.','_')
+                    relation_name = '%s -> %s' % (name_under, rname_under)
+                    rrelation_name = '%s -> %s' % (rname_under, name_under)
+                    if relation_name not in relations and rrelation_name not in relations:
+                        relations.append(relation_name)
+
+                if max_depth == 0 or lvl + 1 < max_depth:
+                    other_txt += robj.get_dot_full_diagram(max_depth, lvl + 1, done, relations, parent=name_under)
+        txt = '%s [label = "{%s|%s}"]\n' % (name_under, self._name, '\\l'.join(columns)) + other_txt
+        if lvl == 0:
+            txt = """digraph G {
+             edge [dir="both"]
+             node [
+                fontname = "Bitstream Vera Sans"
+                fontsize = 8
+                shape = "record"
+            ]
+            %s
+            %s
+            }""" % (txt, '\n'.join(relations))
+        return txt
 
     def validate_values(self, cr, values):
         validation_errors = []
