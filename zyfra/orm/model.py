@@ -307,7 +307,9 @@ class Model(object):
         
         other_txt = ''
         columns = []
-        for col_name in self._columns:
+        columns_name = self._columns.keys()
+        columns_name.sort()
+        for col_name in columns_name:
             col = self._columns[col_name]
             columns.append('+ ' + col_name + '[' + col.__class__.__name__ + '] ' + col.label)
             if col.relational:
