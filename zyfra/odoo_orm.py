@@ -89,6 +89,7 @@ def generate_object(oo, db, obj_name):
         elif type == 'one2many':
             relation = field['relation']
             relation_field = field['relation_field']
+            #print 'M2O %s[%s]' % (field_name, relation_field)
             field_obj = orm.fields.One2Many(txt, relation, relation_field)
         elif type == 'many2many':
             relation = field['relation']
@@ -105,7 +106,7 @@ def generate_object(oo, db, obj_name):
         #print 'Add Field(%s) Type(%s) to Obj(%s)' % (field_name, type, obj_name)
         if not field_obj.stored or field_name in real_table_columns:
             obj._columns[field_name] = field_obj
-        #obj.add_column(field_name, field_obj)
+            #obj.add_column(field_name, field_obj)
     #print 'Object %s is generated' % obj_name
     return obj
 
