@@ -21,8 +21,9 @@ class One2Many(Relational):
             self.relation_object_field = self.relation_object_sql_key
         else:
             if self.relation_object_field in self.relation_object:
-                self.relation_object_field = self.relation_object[self.relation_object_field].sql_name
-
+                sql_name = self.relation_object[self.relation_object_field].sql_name
+                if sql_name != '':
+                    self.relation_object_field = sql_name
 
     def get_sql(self, parent_alias, fields, sql_query, context=None):
         if context is None:
