@@ -311,7 +311,13 @@ class Model(object):
         columns_name.sort()
         for col_name in columns_name:
             col = self._columns[col_name]
-            columns.append('+ ' + col_name + '[' + col.__class__.__name__ + '] ' + col.label)
+            if isinstance(col, One2Many):
+                params = '(%s, %s)' % (col.relation_object_name, col.relation_object_field)
+            elif isinstance(col, Relational):
+                params = '(%s)' % (col.relation_object_name)
+            else:
+                params = ''
+            columns.append('+ ' + col_name + '[' + col.__class__.__name__ + params + '] ' + col.label)
             if col.relational:
                 robj = col.get_relation_object()
                 if max_depth == 0 or lvl + 1 < max_depth or robj._name in done:
