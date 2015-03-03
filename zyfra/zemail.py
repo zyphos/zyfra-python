@@ -20,7 +20,7 @@ class Email(object):
                 raise Exception('No destination email defined')
             email_to = self.default_email_to
     
-        mime_msg = MIMEText(content)
+        mime_msg = MIMEText(content, 'plain', 'UTF-8')
         mime_msg['Subject'] = title
         mime_msg['From'] = email_from
         mime_msg['To'] = email_to
