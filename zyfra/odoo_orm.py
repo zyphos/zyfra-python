@@ -32,6 +32,34 @@ print o['res.partner'].select('name')
 
 from zyfra import orm, OoJsonRPC
 
+class FieldPropertyMany2One(orm.fields.Function,orm.fields.Many2One):
+    # Only support remote ID for now
+    def __init__(self, label, relation_object_name, **kargs):
+        self.required_fields = []
+        orm.fields.Many2One.__init__(self, label, relation_object_name, **kargs)
+    
+    def set_instance(self, object, name):
+        orm.fields.Many2One.set_instance(self, object, name)
+        self._property_obj = self.object._pool['ir.property']
+
+    def get(self, cr, ids, datas):
+        #  'WHERE name=%s AND LEFT(res_id, %s)=%s' % (self.name, len(self.object._name), self.object._name)
+        mql = "res_id,value_reference WHERE name='%s' AND LEFT(res_id, %s)='%s'" % (self.name, len(self.object._name), self.object._name)
+        res = self._property_obj.select(cr, mql)
+        result = {}
+        remote_ids = []
+        for r in res:
+            local_id = int(r.res_id.split(',')[1])
+            remote_id = int(r.value_reference.split(',')[1])
+            if remote_id not in remote_ids:
+                remote_ids.append(remote_id)
+            result[local_id] = remote_id
+        #sql_query.add_sub_query(robject, self.relation_object_field, sub_mql, field_alias, parameter)
+        return result
+
+    def set(self, cr, ids, value):
+        pass
+
 class OdooModel(orm.Model):
     _read_only = True
     
