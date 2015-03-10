@@ -83,9 +83,15 @@ def generate_object(oo, db, obj_name):
         field = fields[field_name]
         type = field['type']
         txt = field['string']
-        if 'store' in field and not field['store']:
-            continue
         if 'function' in field:
+            if type == 'many2one' and field_name[:9] == 'property_':
+                relation = field['relation']
+                field_obj = FieldPropertyMany2One(txt, relation)
+                obj._columns[field_name] = field_obj
+                continue
+            else:
+                continue
+        if 'store' in field and not field['store']:
             continue
         #print 'field', field
         if type == 'char':
