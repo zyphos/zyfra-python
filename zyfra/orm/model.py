@@ -294,7 +294,7 @@ class Model(object):
                 txt += "\n"
         return txt
     
-    def get_dot_full_diagram(self, max_depth=0, lvl=0, done=None, relations=None, parent=None):
+    def get_dot_full_diagram(self, max_depth=0, lvl=0, done=None, relations=None, parent=None, column2skip=None):
         if relations is None:
             relations = []
         name_under = self._name.replace('.','_')
@@ -304,12 +304,16 @@ class Model(object):
             return ''
         else:
             done.append(self._name)
+        if column2skip is None:
+            column2skip = []
         
         other_txt = ''
         columns = []
         columns_name = self._columns.keys()
         columns_name.sort()
         for col_name in columns_name:
+            if col_name in column2skip:
+                continue
             col = self._columns[col_name]
             if isinstance(col, One2Many):
                 params = '(%s, %s)' % (col.relation_object_name, col.relation_object_field)
@@ -317,22 +321,25 @@ class Model(object):
                 params = '(%s)' % (col.relation_object_name)
             else:
                 params = ''
-            columns.append('+ ' + col_name + '[' + col.__class__.__name__ + params + '] ' + col.label)
+            columns.append('+ ' + col_name + '[' + col.__class__.__name__ + params + '] ' + col.label.replace('>',''))
             if col.relational:
                 robj = col.get_relation_object()
                 if max_depth == 0 or lvl + 1 < max_depth or robj._name in done:
                     rname_under = robj._name.replace('.','_')
-                    relation_name = '%s -> %s' % (name_under, rname_under)
-                    rrelation_name = '%s -> %s' % (rname_under, name_under)
-                    if relation_name not in relations and rrelation_name not in relations:
+                    
+                    relation_name = '%s -> %s [label="%s[%s]",fontname="Bitstream Vera Sans",fontsize=8]' % (name_under, rname_under, col_name, col.__class__.__name__)
+                    # rrelation_name = '%s -> %s' % (rname_under, name_under)
+                    #if relation_name not in relations and rrelation_name not in relations:
+                    if relation_name not in relations:
                         relations.append(relation_name)
 
                 if max_depth == 0 or lvl + 1 < max_depth:
-                    other_txt += robj.get_dot_full_diagram(max_depth, lvl + 1, done, relations, parent=name_under)
+                    other_txt += robj.get_dot_full_diagram(max_depth, lvl + 1, done, relations, parent=name_under, column2skip=column2skip)
         txt = '%s [label = "{%s|%s}"]\n' % (name_under, self._name, '\\l'.join(columns)) + other_txt
         if lvl == 0:
+            # edge [dir="both"]
             txt = """digraph G {
-             edge [dir="both"]
+             
              node [
                 fontname = "Bitstream Vera Sans"
                 fontsize = 8
