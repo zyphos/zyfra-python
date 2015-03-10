@@ -46,6 +46,8 @@ class MqlWhere(object):
                 continue
             if field == '':
                 continue
+            if field[0] in ('"', "'"):
+                continue
             if lfield in self.operators:
                 fields[key] = ''
             elif lfield in self.reserved_words:
