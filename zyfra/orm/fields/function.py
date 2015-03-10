@@ -24,21 +24,21 @@ class Function(Field):
             field_alias = context['field_alias']
         else:
             field_alias = ''
+        reqf = {}
         if len(self.required_fields):
-            reqf = {}
             for rf in self.required_fields:
                 reqf[rf] = sql_query.field2sql(rf, self.object, parent_alias)
             sql_query.add_required_fields(reqf)
         sql_query.add_sub_query(self.object, self.name, '!function!', field_alias, reqf)
         return parent_alias.alias + '.' + self.object._key
 
-    def get(self, ids, context, datas):
+    def get(self, cr, ids, datas):
         # should return an array of object with array[id] = result
         if self.get_fx is None:
             return {}
-        return self.get_fx(ids, context, datas)
+        return self.get_fx(cr, ids, datas)
 
-    def set(self, ids, value, context):
+    def set(self, cr, ids, value):
         if self.set_fx is None:
             return {}
-        return self.set_fx(ids, value, context, parameters)
+        return self.set_fx(cr, ids, value, self.parameters)

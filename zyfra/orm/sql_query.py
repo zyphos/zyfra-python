@@ -270,20 +270,23 @@ class SQLQuery(object):
                     field_alias_ids[field_alias] = ids
                     row_field_alias_ids[field_alias] = row_alias_ids
                 if is_fx:
+                    fx_data = {}
                     if len(parameter):
-                        fx_data = {}
                         for id in ids:
                             obj = {}
                             for key, field in parameter.iteritems():
                                 for row_id in row_alias_ids[id]:
                                     obj[key] = datas[row_id][self.sql_field_alias[field]]
                             fx_data[id] = tools.DictObject(obj)
-                    sub_datas = robject.rfield.get(ids, context, fx_data)
+                    sub_datas = robject[rfield].get(cr, ids, fx_data)
                     for id, row_ids in row_alias_ids.iteritems():
                         if id=='':
                             continue
                         for row_id in row_ids:
-                            datas[row_id][field_alias] = sub_datas[id]
+                            if id in sub_datas:
+                                datas[row_id][field_alias] = sub_datas[id]
+                            else:
+                                datas[row_id][field_alias] = None
                 else:
                     if parameter != '':
                         parameter = '(' + parameter + ') AND '
@@ -300,8 +303,8 @@ class SQLQuery(object):
                                         datas[row_id][field_alias] = []
                                     datas[row_id][field_alias].append(sub_row)
                     cr.context = old_context
-                for sub_row in sub_datas:
-                   del sub_row.subid_
+                    for sub_row in sub_datas:
+                        del sub_row.subid_
         if len(self.remove_from_result):
             for id in keys(datas):
                 for alias in self.remove_from_result:
