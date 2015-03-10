@@ -14,7 +14,12 @@ class Cursor(object):
         args = []
         if data is not None:
             args = [data]
-        self.cr.execute(sql, *args)
+        try:
+            self.cr.execute(sql, *args)
+        except:
+            print 'SQL: %s' % sql
+            print 'Arg: %s' % repr(args)
+            raise
     
     def _get_column_names(self, row):
         return [c[0] for c in self.cr.description]
@@ -88,7 +93,13 @@ class OdbcCursor(Cursor):
         sql.replace('%s','?')
         try:
             #print 'sql: %s (%s)' % (sql, repr(params))
-            self.cr.execute(sql, params)
+            try:
+                self.cr.execute(sql, params)
+            except:
+                print 'sql:'
+                print sql
+                print 'param: %s' % repr(params) 
+                raise
         except self.cnx.pyodbc.ProgrammingError as e:
             print e
             raise
