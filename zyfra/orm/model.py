@@ -259,6 +259,18 @@ class Model(object):
         sql_query = SQLQuery(self)
         return sql_query.get_array(cr, mql, **kargs)
     
+    def get_scalar(self, cr, mql, datas=None):
+        if not isinstance(cr, Cursor):
+            raise Exception('cr parameter must be a cursor class got this instead %s' % repr(cr))
+        try:
+            mql = cr(self)._safe_sql(mql, datas)
+        except:
+            if 'debug' in cr.context and cr.context['debug']:
+                raise
+            return []
+        sql_query = SQLQuery(self)
+        return sql_query.get_scalar(cr, mql)
+    
     def sql(self, cr, sql, **kargs):
         sql_query = SQLQuery(self)
         return sql_query.get_array_sql(cr, sql, **kargs)

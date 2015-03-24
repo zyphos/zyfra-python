@@ -217,6 +217,11 @@ class SQLQuery(object):
     def get_array_sql(self, cr, sql, **kargs):
         res = cr(self.object).get_array_object(sql, **kargs)
         return tools.DictObject(res)
+    
+    def get_scalar(self, cr, mql):
+        # Retrieve a simple list with the first column
+        sql = self.mql2sql(cr, mql)
+        return cr(self.object).get_scalar(sql)
 
     def get_array(self, cr, mql, **kargs):
         sql = self.mql2sql(cr, mql, True)

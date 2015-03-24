@@ -23,6 +23,16 @@ class Cursor(object):
     
     def _get_column_names(self, row):
         return [c[0] for c in self.cr.description]
+    
+    def get_scalar(self, sql, data=None):
+        self.execute(sql, data)
+        result = []
+        while(True):
+            row = self.cr.fetchone()
+            if row is None:
+                break
+            result.append(row[0])
+        return result
 
     def get_array_object(self, sql, data=None, key='', limit=None, offset=0, after_query_fx=None):
         self.execute(sql, data)
