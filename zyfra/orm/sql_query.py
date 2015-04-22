@@ -128,7 +128,9 @@ class SQLQuery(object):
 
     def get_table_sql(self):
         tables = ''
-        for alias in self.table_alias:
+        aliases = self.table_alias.keys()
+        aliases.sort()
+        for alias in aliases:
             table_alias = self.table_alias[alias]
             if table_alias.used:
                 tables  += ' ' + table_alias.sql
