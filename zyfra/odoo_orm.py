@@ -149,13 +149,13 @@ class Pool(orm.Pool):
         if oo_rpc_options is None:
             oo_rpc_options = {}
         db = orm.PostgreSQL(database=database)
-        self.__oo = OoJsonRPC(**oo_rpc_options)
+        self._oo = OoJsonRPC(**oo_rpc_options)
         orm.Pool.__init__(self, db)
         
     def __getattr__(self, key):
         if key in self.__pool:
             return self.__pool[key]
-        obj = generate_object(self.__oo, self._db, key)
+        obj = generate_object(self._oo, self._db, key)
         self[key] = obj
         return obj
         
