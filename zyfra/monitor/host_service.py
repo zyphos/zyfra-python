@@ -234,7 +234,7 @@ class linux_updates(HostService):
 class reboot_needed(HostService):
     def get_state(self, cmd_exec):
         if cmd_exec.file_exists('/var/run/reboot-required'):
-            return CRITICAL
+            return WARNING
         else:
             return OK
 
