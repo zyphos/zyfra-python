@@ -34,7 +34,7 @@ Server
 dry_run = False
 
 def rsync(cmds):
-    return subprocess.check_output(['rsync', '-a'] + cmds)
+    return subprocess.check_output(['rsync', '-azuH'] + cmds)
 
 class ChannelHandlerClientStortangle(ssh_rpc.ChannelHandlerClient):
     def __init__(self, host, username, password, port=2200, queue=None, name=None):
