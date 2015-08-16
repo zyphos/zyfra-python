@@ -8,11 +8,16 @@ import time
 import threading
 import multiprocessing
 
+import sqlite3
+
 import ssh_rpc
 import inotify
 """
 TODO:
-Client: on receive quit, disconnect ssh, and relaunch
+Client:
+- on receive quit, disconnect ssh, and relaunch
+- make loop for queue processing (to send, to treat) check nb2send, nb2treat
+- make nb2send, nb2treat thread safe, or use a lock (so we can use wait, in the loop)
 
 Check Ack, if no re send
 
@@ -88,6 +93,74 @@ def start_ssh_client(host, username, password, port, queue, name):
 class InotifyWatcher(inotify.PathWatcher):
     def _on_events(self, queue, events):
         queue.put(('inotify', events))
+
+class MessageQueue(object):
+    def __init__(self, dbname='stortangle.db'):
+        self.db = sqlite3.connect(dbname)
+        self.create_table()
+        self.nb2send = self.get_nb2send() # nb2send must be threat safe
+        self.nb2treat = self.get_nb2treat() # nb2treat must be threat safe
+    
+    def create_table(self):
+        cr = self.db.cursor()
+        cr.execute('''CREATE TABLE IF NOT EXISTS messages_to_send
+             (id INTEGER PRIMARY KEY ASC, host TEXT, date TEXT, action TEXT, file1 TEXT, file2 TEXT)''')
+        cr.execute('''CREATE TABLE IF NOT EXISTS messages_received
+             (id INTEGER, host TEXT, date TEXT, action TEXT, file1 TEXT, file2 TEXT, treated INTEGER)''')
+        self.db.commit()
+    
+    def get_nb2send(self):
+        cr = self.db.cursor()
+        cr.execute("SELECT count(*) AS nb FROM messages_to_send")
+        res = cr.fetchone()
+        self.db.commit()
+        return res['nb']
+    
+    def get_nb2treat(self):
+        cr = self.db.cursor()
+        cr.execute("SELECT count(*) AS nb FROM messages_received WHERE treated=0")
+        res = cr.fetchone()
+        self.db.commit()
+        return res['nb']
+    
+    def add_msg_to_send(self, target_host, date, action, file1='', file2=''):
+        cr = self.db.cursor()
+        cr.execute("INSERT INTO messages_to_send (host,date,action,file1,file2) VALUES ('%s','%s','%s','%s','%s')" % (target_host, date, action, file1, file2))
+        self.db.commit()
+    
+    def add_msg_received(self, id, src_host, date, action, file1, file2):
+        cr = self.db.cursor()
+        cr.execute("SELECT id,host FROM messages_received WHERE id=%s AND host='%s'" % (id, src_host))
+        res = cr.fetchone()
+        if res:
+            return
+        cr.execute("INSERT INTO messages_received (id,host,date,action,file1,file2,treated) VALUES (%s,'%s','%s','%s','%s','%s',0)" % (id, src_host, date, action, file1, file2))
+        self.db.commit()
+    
+    def confirm_received(self, id):
+        cr = self.db.cursor()
+        cr.execute('DELETE FROM messages_to_send WHERE id=%s' % id)
+        self.db.commit()
+    
+    def confirm_treated(self, id, host):
+        cr = self.db.cursor()
+        cr.execute("DELETE FROM messages_received WHERE treated=1 AND host='%s'" % (host,))
+        cr.execute("UPDATE messages_received SET treated=1 WHERE id=%s AND host='%s'" % (id, host))
+        self.db.commit()
+    
+    def get_next2treat(self):
+        cr = self.db.cursor()
+        cr.execute("SELECT id,host,date,action,file1,file2 FROM messages_received ORDER BY date,id LIMIT 1")
+        res = cr.fetchone()
+        self.db.commit()
+        return res
+    
+    def get_next2send(self):
+        cr = self.db.cursor()
+        cr.execute("SELECT id,host,date,action,file1,file2 FROM messages_to_send ORDER BY id LIMIT 1")
+        res = cr.fetchone()
+        self.db.commit()
+        return res
 
 class StortangleCommon(object):
     def __init__(self, storage_path='~/stortangle'):
