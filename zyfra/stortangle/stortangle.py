@@ -29,6 +29,13 @@ Client
 Server
 1. Read sql lite and threat
 2. Do loop
+
+On event:
+- File Deleted or FIle moved:
+ Client1 - 'file deleted' > Server Send to all -> do rm localy -> client do rm
+- File added
+ Client1 - 'file added' > Send 'push incomming'  > 'ok for rsync'
+ > rsync push  > send 'rsync finished'
 """
 
 
@@ -89,6 +96,8 @@ class ChannelHandlerServerStortangle(ssh_rpc.ChannelHandlerServer):
 
 def start_ssh_client(host, username, password, port, queue, name):
     ChannelHandlerClientStortangle(host, username, password, port, queue, name)"""
+
+inotify_threaded = True
 
 class InotifyWatcher(inotify.PathWatcher):
     def _on_events(self, queue, events):
@@ -162,6 +171,134 @@ class MessageQueue(object):
         self.db.commit()
         return res
 
+#Decorator
+def disable_inotify(fx):
+    def new_fx(self, *args):
+        self.__inotify.join()
+        res = fx(self, *args)
+        self.__inotify.start(threaded=inotify_threaded)
+        return res
+    return new_fx
+
+class DiskAction(object):
+    def __init__(self, inotify, rsync_target, storage_path, server_path):
+        self.__inotify = inotify
+        self.__rsync_target = rsync_target
+        self.__storage_path = storage_path
+        self.__server_path = server_path
+    
+    @disable_inotify
+    def rm(self, filename):
+        full_path = os.path.join(self.__storage_path, filename)
+        if os.path.isdir(full_path):
+            self.rm_dir(full_path)
+        else:
+            self.rm_file(full_path)
+    
+    def rm_file(self, filename):
+        print 'rm file %s' % filename
+        if not dry_run:
+            os.remove(filename)
+    
+    def rm_dir(self, filename):
+        print 'rm dir %s' % filename
+        if not dry_run:
+            shutil.rmtree(filename)
+    
+    @disable_inotify
+    def mv(self, old, new):
+        old = os.path.join(self.__storage_path, old)
+        new = os.path.join(self.__storage_path, new)
+        print 'rename %s -> %s' % (old, new)
+        if not dry_run:
+            os.rename(old, new)
+    
+    def rsync(self, cmds):
+        cmds = ['rsync', '-auH'] + cmds
+        print cmds
+        if not dry_run:
+            result = subprocess.check_output(cmds)
+    
+    def get_server_path(self, path):
+        return self.__rsync_target + ':' + os.path.join(self.__server_path, path)
+    
+    def get_local_path(self, path):
+        return os.path.join(self.__storage_path, path)
+    
+    def rsync_push(self, path=''):
+        #self.ssh.send('disable_inotify')
+        from_path = self.get_local_path(path)
+        to_path = self.get_server_path(path)
+        self.rsync([from_path, to_path])
+        """self.send('rsync','')"""
+        #self.ssh.send('enable_inotify')
+    
+    @disable_inotify
+    def rsync_pull(self, path=''):
+        from_path = self.get_server_path(path)
+        to_path = self.get_local_path(path)
+        self.rsync([from_path, to_path])
+
+class Worker(object):
+    queue_def_name = ''
+    queue_nb_def_name = ''
+
+    def __init__(self, message_queue):
+        self.__running_event = threading.Event()
+        self.__data_ready_event = threading.Event()
+        self.__data_ready_event.set()
+    
+    def thread(self, running_event, data_ready_event, message_queue):
+        while not running_event.is_set():
+            data_ready_event.wait()
+            data_ready_event.clear()
+            if not running_event.is_set():
+                while getattr(message_queue, queue_nb_def_name):
+                    msg = getattr(message_queue, queue_def_name)
+                    self.treat(msg)
+    
+    def treat(self, msg):
+        pass
+
+    def data_are_ready(self):
+        self.__data_ready_event.set()
+    
+    def stop(self):
+        self.__running_event.set()
+        self.__data_ready_event.set()
+
+class TreatmentWorker(Worker):
+    queue_def_name = 'get_next2treat'
+    queue_nb_def_name = 'get_nb2treat'
+    
+    def __init__(self, message_queue, disk_action):
+        self.disk_action = disk_action
+        super(TreatmentWorker, self).__init__(message_queue)
+
+    def treat(self, msg):
+        cmd = msg['action']
+        file1 = msg['file1']
+        if cmd in ['delete', 'delete_dir']:
+            disk_action.rm(file1)
+        elif cmd in ['move','move_dir']:
+            disk_action.mv(file1, msg['file2'])
+        elif cmd == 'rsync_push':
+            disk_action.rsync_push(file1)
+        elif cmd == 'rsync_pull':
+            disk_action.rsync_pull(file1)
+        message_queue.confirm_treated(msg['id'], msg['host'])
+
+class SendWorker(Worker):
+    queue_def_name = 'get_next2send'
+    queue_nb_def_name = 'get_nb2send'
+    
+    def __init__(self, message_queue, channel_handler):
+        self.channel_handler = channel_handler
+        super(TreatmentWorker, self).__init__(message_queue)
+
+    def treat(self, msg):
+        self.channel_handler.send()
+
 class StortangleCommon(object):
     def __init__(self, storage_path='~/stortangle'):
         self.storage_path = storage_path
@@ -180,30 +317,6 @@ class StortangleCommon(object):
     
     def log(self, msg, level=1):
         print 'Stortangle %s' % msg
-    
-    def rm(self, filename):
-        full_path = os.path.join(self.storage_path, filename)
-        if os.path.isdir(full_path):
-            self.rm_dir(full_path)
-        else:
-            self.rm_file(full_path)
-    
-    def rm_file(self, filename):
-        print 'rm file %s' % filename
-        if not dry_run:
-            os.remove(filename)
-    
-    def rm_dir(self, filename):
-        print 'rm dir %s' % filename
-        if not dry_run:
-            shutil.rmtree(filename)
-    
-    def mv(self, old, new):
-        old = os.path.join(self.storage_path, old)
-        new = os.path.join(self.storage_path, new)
-        print 'rename %s -> %s' % (old, new)
-        if not dry_run:
-            os.rename(old, new)
         
     def main_loop(self):
         while self.__event.is_set():
@@ -356,32 +469,7 @@ class StortangleClient(StortangleCommon):
             self.ssh.connect()
             pass
 
-    def rsync(self, cmds):
-        cmds = ['rsync', '-auH'] + cmds
-        print cmds
-        if not dry_run:
-            result = subprocess.check_output(cmds)
     
-    def get_server_path(self, path):
-        return self.rsync_target + ':' + os.path.join(self.server_path, path)
-    
-    def get_local_path(self, path):
-        return os.path.join(self.storage_path, path)
-    
-    def rsync_push(self, path=''):
-        #self.ssh.send('disable_inotify')
-        from_path = self.get_local_path(path)
-        to_path = self.get_server_path(path)
-        self.rsync([from_path, to_path])
-        self.send('rsync','')
-        #self.ssh.send('enable_inotify')
-    
-    def rsync_pull(self, path=''):
-        self.inotify.join()
-        from_path = self.get_server_path(path)
-        to_path = self.get_local_path(path)
-        self.rsync([from_path, to_path])
-        self.inotify.start(threaded=self.inotify_threaded)
     
     def send(self, action, param):
         self.ssh.send_from_ext((action, param))
