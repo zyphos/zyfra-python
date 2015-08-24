@@ -1,6 +1,6 @@
 import subprocess
 
-from zyfra import ssh_session
+from zyfra import ssh_session, tools
 from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, ProbeException
 
 """TODO:
@@ -197,7 +197,8 @@ class smart(HostService):
                                 'raw_value':int(raw_value),
                                 }
         return attributes
-        
+    
+    @tools.delay_cache(300) # 5 min cached    
     def get_state(self, cmd_exec):
         state = OK
         devices = self._get_devices(cmd_exec)
@@ -223,6 +224,7 @@ class linux_updates(HostService):
         updates['security'] = int(result[1])
         return updates
     
+    @tools.delay_cache(300) # 5 min cached
     def get_state(self, cmd_exec):
         updates = self._get_update_availables(cmd_exec)
         if updates['security'] > 0:
@@ -232,6 +234,7 @@ class linux_updates(HostService):
         return OK
 
 class reboot_needed(HostService):
+    @tools.delay_cache(300) # 5 min cached
     def get_state(self, cmd_exec):
         if cmd_exec.file_exists('/var/run/reboot-required'):
             return WARNING
