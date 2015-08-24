@@ -113,7 +113,8 @@ def probe_host(host, hostname, old_service_states, all_results, debug):
     for service_obj in host['service_objs']:
         service_name = service_obj.name
         if debug:
-            print service_name
+            start_time = float(time.time())
+            print service_name,
         if service_name in old_service_states:
             old_state = old_service_states[service_name]
         else:
@@ -129,6 +130,8 @@ def probe_host(host, hostname, old_service_states, all_results, debug):
                 else:
                     state_value = UNKNOWN
             else:
+                if debug:
+                    print 'Unknown service type'
                 # Unknown service type
                 continue
         except Exception as e:
@@ -136,6 +139,8 @@ def probe_host(host, hostname, old_service_states, all_results, debug):
             print 'Exception for host [%s(%s)] in module [%s]: %s' % (name, hostname, service_name, e)
             if debug:
                 raise
+        if debug:
+            print '%.3f' % (float(time.time()) - start_time) 
         old_state_value = old_state.value
         if state_value != old_state_value:
             state_changed.append(service_name)

@@ -73,6 +73,7 @@ class mount_usage(HostService):
                                    'pc': pc}
         return mounts
     
+    @tools.delay_cache(60) # 1 min cached
     def get_state(self, cmd_exec):
         state = OK
         mount_usages = self._get_mount_usages(cmd_exec)
@@ -91,6 +92,7 @@ class loadavg(HostService):
         result = cmd_exec(cmd)
         return [float(x) for x in result.split()[:3]]
     
+    @tools.delay_cache(60) # 1 min cached
     def get_state(self, cmd_exec):
         state_5m = self._get_loads(cmd_exec)[1]
         if state_5m < 1:
@@ -142,6 +144,7 @@ class raid(HostService):
                            'status': status[1:-1]}
         return raids
     
+    @tools.delay_cache(60) # 1 min cached
     def get_state(self, cmd_exec):
         state = OK
         raid_status = self._get_raid_status(cmd_exec)
