@@ -140,7 +140,11 @@ def probe_host(host, hostname, old_service_states, all_results, debug):
             if debug:
                 raise
         if debug:
-            print '%.3f' % (float(time.time()) - start_time) 
+            diff_time = float(time.time()) - start_time
+            if diff_time < 0.001:
+                print
+            else:
+                print '%.3f s' % (diff_time) 
         old_state_value = old_state.value
         if state_value != old_state_value:
             state_changed.append(service_name)
