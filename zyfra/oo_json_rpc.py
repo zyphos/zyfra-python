@@ -219,18 +219,22 @@ class OoJsonRPC(object):
         return ProxyObject(self, model)
 
     def search_read(self, model, fields=None, domain=None, offset=0,
-                      limit=40, sort=''):
+                      limit=40, sort='', context=None):
         if fields is None:
             fields = []
         if domain is None:
             domain = []
+        if context is None:
+            context = {}
+        new_context = self.context.copy()
+        new_context.update(context)
         params = {'model':model,
                   'fields':fields,
                   'domain': domain,
                   'offset': offset,
                   'limit': limit,
                   'sort': sort,
-                  'context': self.context,
+                  'context': new_context,
                   'session_id':self.session_id}
         res = self.json_rpc('dataset/search_read', params)
         return res['records']
