@@ -363,6 +363,40 @@ def duration(f): # Decorator for function
 
     return _f
 
+class CacheData(object):
+    cached_result = None
+    next_query_timestamp = None
+
+def delay_cache(delay=60, garbage_collector=False, debug=False): # fn decorator
+    # delay in second for cache
+    def decorator(fn):
+        datas = {}
+        
+        def do_garbage_collector():
+            timestamp = int(time.time())
+            for args, data in datas.iteritems():
+                if data.next_query_timestamp <= timestamp:
+                    del datas[args]
+        
+        def _fn(*args):
+            if garbage_collector:
+                do_garbage_collector()
+            data = datas.setdefault(args, CacheData())
+            timestamp = int(time.time())
+            if data.next_query_timestamp is not None and data.next_query_timestamp > timestamp:
+                if debug:
+                    print 'Cached result for %s sec' % (data.next_query_timestamp - timestamp)
+                return data.cached_result
+            if debug:
+                print 'Not cached'
+            data.next_query_timestamp = timestamp + delay
+            result = fn(*args)
+            data.cached_result = result
+            return result
+    
+        return _fn
+    return decorator
+
 class ShowProgress(object):
     """ This class show progress of a process, and estimated time of arrival
         Usage:
