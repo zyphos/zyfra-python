@@ -69,7 +69,7 @@ class OdooModel(orm.Model):
     write_uid = orm.fields.Many2One('Write user ID', 'res.users')
     write_date = orm.fields.Datetime('Write date')
 
-def generate_object(oo, db, obj_name):
+def generate_object(oo, db, obj_name, debug=False):
     #print 'Generating object(%s)' % obj_name
     fields = oo[obj_name].fields_get()
     #print fields
@@ -133,7 +133,7 @@ def generate_object(oo, db, obj_name):
                                              relation_table=m2m_join_table,
                                              rt_local_field=rt_local_field,
                                              rt_foreign_field=rt_foreign_field)
-        else:
+        elif debug:
             print 'Obj(%s) Field(%s) Type(%s) unknown type' % (obj_name, field_name, type)
             print field
             continue
@@ -145,17 +145,18 @@ def generate_object(oo, db, obj_name):
     return obj
 
 class Pool(orm.Pool):
-    def __init__(self, database, oo_rpc_options=None):
+    def __init__(self, database, oo_rpc_options=None, debug=False):
         if oo_rpc_options is None:
             oo_rpc_options = {}
         db = orm.PostgreSQL(database=database)
         self._oo = OoJsonRPC(**oo_rpc_options)
+        self.__debug = debug
         orm.Pool.__init__(self, db)
         
     def __getattr__(self, key):
         if key in self.__pool:
             return self.__pool[key]
-        obj = generate_object(self._oo, self._db, key)
+        obj = generate_object(self._oo, self._db, key, self.__debug)
         self[key] = obj
         return obj
         
