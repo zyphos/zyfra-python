@@ -106,6 +106,8 @@ def generate_object(oo, db, obj_name, debug=False):
             field_obj = orm.fields.Float(txt)
         elif type == 'integer':
             field_obj = orm.fields.Int(txt)
+        elif type == 'reference':
+            field_obj = orm.fields.Text(txt)
         elif type == 'binary':
             field_obj = orm.fields.Binary(txt)
         elif type in ('text', 'html'):
