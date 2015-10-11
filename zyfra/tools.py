@@ -7,6 +7,7 @@ import linecache
 import datetime
 import time
 from functools import wraps 
+import threading
 
 class DictObject(dict):
     def __new__(cls, *args, **kargs):
@@ -394,6 +395,26 @@ def delay_cache(delay=60, garbage_collector=False, debug=False): # fn decorator
             data.cached_result = result
             return result
     
+        return _fn
+    return decorator
+
+# Threading safe lock, be sure that the function is not executed in parallel mode
+# if lock is basestring, use getattr(obj, lock) as a lock
+def fn_lock(lock=None):
+    if lock is None:
+        lock = threading.Lock()
+    def decorator(fn):
+        def _fn(*args, **kargs):
+            if isinstance(lock, basestring):
+                the_lock = getattr(args[0], lock)
+                the_lock.acquire()
+                result = fn(*args, **kargs)
+                the_lock.release()
+                return result
+            lock.acquire()
+            result = fn(*args, **kargs)
+            lock.release()
+            return result
         return _fn
     return decorator
 
