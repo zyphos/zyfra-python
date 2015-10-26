@@ -1,7 +1,7 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # TODO: Auto prune treated with rules
+# Auto prune with max delay
 
 """
 Message Queue
@@ -32,7 +32,7 @@ class Field(object):
             def_type += ' PRIMARY KEY ASC'
         return def_type
     
-    def sqlify(value):
+    def sqlify(self, value):
         return "'%s'" % value
 
 class FieldText(Field):
@@ -41,17 +41,39 @@ class FieldText(Field):
 class FieldInt(Field):
     sql_type = 'INTEGER'
     
-    def sqlify(value):
-        return int(value)
+    def sqlify(self, value):
+        return str(int(value))
+
+class Cursor(object):
+    def __init__(self, db, lock):
+        self.__db = db
+        self.__lock = lock
+        
+        #self.__cr = db.cursor()
+        
+    def __enter__(self):
+        self.__lock.acquire()
+        return self.__db.cursor()
+
+    def __exit__(self, type, value, traceback):
+        self.__db.commit()
+        self.__lock.release()
+    
+    #def execute(self, sql):
+    #    self.__cr.execute(sql)
+    
+    #def commit(self):
+    #    self.__cr.commit()
+    #    self.__lock.release()
 
 class MessageQueue(object):
     _columns = None
     _db = None
-    id = FieldInt(primary=True)
-    date = Fieldtext()
+    id = FieldInt(primary_key=True)
+    date = FieldText()
     treated = FieldInt()
     
-    def __init__(self, name, dbname='message_queue.db'):
+    def __init__(self, name, db_name='message_queue.db'):
         self._lock = threading.Lock()
         self.name = name
         self._columns = {}
@@ -62,31 +84,30 @@ class MessageQueue(object):
                 col_name = col.lower()
                 self._columns[col_name] = attr
                 self._columns_order.append(col_name)
-        self._db = sqlite3.connect(dbname)
+        self._db = sqlite3.connect(db_name)
         self.create_table()
     
     def create_table(self):
-        with self.__lock:
-            cr = self.db.cursor()
+        with self.get_cursor() as cr:
             columns = []
             for column in self._columns_order:
                 columns.append('%s %s' % (column, self._columns[column].get_type()))
             cr.execute('CREATE TABLE IF NOT EXISTS %s (%s)' % (self.name, ','.join(columns)))
-            cr.commit()
+    
+    def get_cursor(self):
+        return Cursor(self._db, self._lock)
     
     def get_count(self):
-        with self.__lock:
-            cr = self.db.cursor()
+        with self.get_cursor() as cr:
             cr.execute("SELECT count(*) AS nb FROM messages_to_send")
             res = cr.fetchone()
-            self.db.commit()
-            return res['nb']
+        return res['nb']
     
     def add(self, **kargs):
         #Ignore unknown fields
         for key in kargs.keys():
             if key not in self._columns or key in ['id']:
-                del kargs
+                del kargs[key]
         if 'date' not in kargs:
             kargs['date'] = str(datetime.now())
         kargs['treated'] = 0
@@ -94,92 +115,43 @@ class MessageQueue(object):
         values = []
         for column, value in kargs.iteritems():
             columns.append(column)
-            values.append(self._columns[column].sqlify(values))
-        with self.__lock:
-            cr = self.db.cursor()
-            cr.execute("INSERT INTO %s (%s) VALUES (%s)" % (self.name, columns, values))
-            self.db.commit()
+            values.append(self._columns[column].sqlify(value))
+        with self.get_cursor() as cr:
+            sql = "INSERT INTO %s (%s) VALUES (%s)" % (self.name, ','.join(columns), ','.join(values))
+            #print sql
+            cr.execute(sql)
     
     def _where2sql(self, where):
         wheresql = []
-        for key, value in where:
+        for key, value in where.iteritems():
             if key not in self._columns:
                 continue
-            wheresql.append('%s=%s' % (key, self._columns[column].sqlify(values)))
+            wheresql.append('%s=%s' % (key, self._columns[key].sqlify(value)))
         return ' AND '.join(wheresql)
     
     def delete(self, **where):
-        wheresql = self._where2sql(id, where)
-        with self.__lock:
-            cr = self.db.cursor()
+        wheresql = self._where2sql(where)
+        with self.get_cursor() as cr:
             cr.execute("DELETE FROM %s WHERE %s" % (self.name, wheresql))
-            self.db.commit()
     
     def mark_as_treated(self, **where):
-        wheresql = self._where2sql(id, where)
-        with self.__lock:
-            cr = self.db.cursor()
-            cr.execute("UPDATE %s SET treated=1 WHERE %s" % (id, wheresql))
-            self.db.commit()
+        wheresql = self._where2sql(where)
+        if wheresql == '':
+            return
+        with self.get_cursor() as cr:
+            cr.execute("UPDATE %s SET treated=1 WHERE %s" % (self.name, wheresql))
     
     def get_next(self, **where):
-        # here add treated=0 in where
-        wheresql = self._where2sql(id, where)        
+        wheresql = self._where2sql(where)        
         if wheresql:
-            wheresql = 'WHERE %s' % wheresql
-        with self.__lock:
-            cr = self.db.cursor()
-            cr.execute("SELECT %s FROM %s WHERE treated=0 %s ORDER BY date,id LIMIT 1" % (','.join(self._columns_order, self.name, wheresql)))
+            wheresql = 'AND %s' % wheresql
+        with self.get_cursor() as cr:
+            cr.execute("SELECT %s FROM %s WHERE treated=0 %s ORDER BY date,id LIMIT 1" % (','.join(self._columns_order), self.name, wheresql))
             res = cr.fetchone()
-            self.db.commit()
-            return res
-            
-    # HERE
+        if res is None:
+            return None
+        return DictObject(dict(zip(self._columns_order, res)))
     
-    
-    def get_nb2send(self):
-        cr = self.db.cursor()
-        cr.execute("SELECT count(*) AS nb FROM messages_to_send")
-        res = cr.fetchone()
-        self.db.commit()
-        return res['nb']
-    
-    def add_msg_to_send(self, target_host, date, action, file1='', file2=''):
-        cr = self.db.cursor()
-        cr.execute("INSERT INTO messages_to_send (host,date,action,file1,file2) VALUES ('%s','%s','%s','%s','%s')" % (target_host, date, action, file1, file2))
-        self.db.commit()
-    
-    def add_msg_received(self, id, src_host, date, action, file1, file2):
-        cr = self.db.cursor()
-        cr.execute("SELECT id,host FROM messages_received WHERE id=%s AND host='%s'" % (id, src_host))
-        res = cr.fetchone()
-        if res:
-            return
-        cr.execute("INSERT INTO messages_received (id,host,date,action,file1,file2,treated) VALUES (%s,'%s','%s','%s','%s','%s',0)" % (id, src_host, date, action, file1, file2))
-        self.db.commit()
-    
-    def confirm_received(self, id):
-        cr = self.db.cursor()
-        cr.execute('DELETE FROM messages_to_send WHERE id=%s' % id)
-        self.db.commit()
-    
-    def confirm_treated(self, id, host):
-        cr = self.db.cursor()
-        cr.execute("DELETE FROM messages_received WHERE treated=1 AND host='%s'" % (host,))
-        cr.execute("UPDATE messages_received SET treated=1 WHERE id=%s AND host='%s'" % (id, host))
-        self.db.commit()
-    
-    def get_next2treat(self):
-        cr = self.db.cursor()
-        cr.execute("SELECT id,host,date,action,file1,file2 FROM messages_received ORDER BY date,id LIMIT 1")
-        res = cr.fetchone()
-        self.db.commit()
-        return res
-    
-    def get_next2send(self):
-        cr = self.db.cursor()
-        cr.execute("SELECT id,host,date,action,file1,file2 FROM messages_to_send ORDER BY id LIMIT 1")
-        res = cr.fetchone()
-        self.db.commit()
-        return res
-
+    def prune_treated(self):
+        with self.get_cursor() as cr:
+            cr.execute("DELETE FROM %s WHERE treated=1" % (self.name, ))
