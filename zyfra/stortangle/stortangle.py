@@ -12,6 +12,7 @@ import sqlite3
 
 import ssh_rpc
 import inotify
+import message_queue
 """
 TODO:
 Client:
@@ -99,11 +100,19 @@ def start_ssh_client(host, username, password, port, queue, name):
 
 inotify_threaded = True
 
-class InotifyWatcher(inotify.PathWatcher):
-    def _on_events(self, queue, events):
-        queue.put(('inotify', events))
+class ActionMessageQueue(message_queue.MessageQueue):
+    action = message_queue.FieldText()
+    file1 = message_queue.FieldText()
+    file2 = message_queue.FieldText()
 
-class MessageQueue(object):
+class MessageQueueMsg2sendSrv(ActionMessageQueue):
+    host = message_queue.FieldText()
+
+class InotifyWatcher(inotify.PathWatcher):
+    def _on_events(self, events):
+        self.__queue.put(('inotify', events))
+
+class MessageQueueT(object):
     def __init__(self, dbname='stortangle.db'):
         self.db = sqlite3.connect(dbname)
         self.create_table()
