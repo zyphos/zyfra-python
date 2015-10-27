@@ -57,7 +57,10 @@ class Cursor(object):
         return self.__db.cursor()
 
     def __exit__(self, type, value, traceback):
-        self.__db.commit()
+        if type is None:
+            self.__db.commit()
+        else:
+            self.__db.rollback()
         self.__lock.release()
     
     #def execute(self, sql):
@@ -76,6 +79,7 @@ class MessageQueue(object):
     
     def __init__(self):
         self._lock = threading.Lock()
+        self.__msg_available = threading.Event()
         self.__columns = {}
         self.__columns_order = []
         for col in dir(self):
@@ -86,6 +90,7 @@ class MessageQueue(object):
                 self.__columns_order.append(col_name)
         self.__db = sqlite3.connect(self._db_name)
         self.create_table()
+        self.__update_msg_available()
     
     def create_table(self):
         with self.get_cursor() as cr:
@@ -99,9 +104,14 @@ class MessageQueue(object):
     
     def get_count(self):
         with self.get_cursor() as cr:
-            cr.execute("SELECT count(*) AS nb FROM messages_to_send")
+            cr.execute("SELECT count(*) AS nb FROM %s" % self._table_name)
             res = cr.fetchone()
-        return res['nb']
+            nb = res['nb']
+        if nb:
+            self.__msg_available.set()
+        else:
+            self.__msg_available.clear()
+        return nb
     
     def add(self, **kargs):
         #Ignore unknown fields
@@ -120,6 +130,7 @@ class MessageQueue(object):
             sql = "INSERT INTO %s (%s) VALUES (%s)" % (self._table_name, ','.join(columns), ','.join(values))
             #print sql
             cr.execute(sql)
+            self.__msg_available.set()
     
     def _where2sql(self, where):
         wheresql = []
@@ -133,6 +144,7 @@ class MessageQueue(object):
         wheresql = self._where2sql(where)
         with self.get_cursor() as cr:
             cr.execute("DELETE FROM %s WHERE %s" % (self._table_name, wheresql))
+        self.__update_msg_available()
     
     def mark_as_treated(self, **where):
         wheresql = self._where2sql(where)
@@ -140,6 +152,7 @@ class MessageQueue(object):
             return
         with self.get_cursor() as cr:
             cr.execute("UPDATE %s SET treated=1 WHERE %s" % (self._table_name, wheresql))
+        self.__update_msg_available()
     
     def get_next(self, **where):
         wheresql = self._where2sql(where)        
@@ -155,6 +168,18 @@ class MessageQueue(object):
     def prune_treated(self):
         with self.get_cursor() as cr:
             cr.execute("DELETE FROM %s WHERE treated=1" % (self._table_name, ))
+        self.__update_msg_available()
     
+    def __update_msg_available(self):
+        with self.get_cursor() as cr:
+            cr.execute("SELECT id FROM %s WHERE treated=0 LIMIT 1" % self._table_name)
+            if cr.fetchone() is None:
+                self.__msg_available.clear()
+            else:
+                self.__msg_available.set()
+    
+    def is_msg_available(self):
+        return self.__msg_available.is_set()
+
     def delete_db(self):
         os.unlink(self._db_name)
