@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import os
 
 from message_queue import MessageQueue, FieldText
 
 class MyQueue(MessageQueue):
+    _db_name = 'message_queue.db'
     msg = FieldText()
 
-db_name = 'message_queue.db'
+mq = MyQueue()
 try:
-    mq = MyQueue('test', db_name=db_name)
     print 'Add test'
     mq.add(msg='test')
     data = mq.get_next()
@@ -25,4 +24,4 @@ try:
     print mq.get_next()
     
 finally:
-    os.unlink(db_name)
+    mq.delete_db()
