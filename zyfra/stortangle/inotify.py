@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import threading
-import Queue
 import time
 import pyinotify as pi
 
@@ -14,19 +13,16 @@ class PathWatcher(object):
     def __init__(self, path, timeout=5, queue=None, debug=False):
         self.__timeout = timeout
         self.__path = path
-        if queue is None:
-            self.__queue = Queue.Queue()
-        else:
-            self.__queue = queue
-        self.__event = threading.Event()
+        self.__queue = queue
+        self.__running_event = threading.Event()
         self.__starting_event = threading.Event()
-        self.__event.clear()
+        self.__running_event.clear()
         self.__thread = None
         self.__debug = debug
     
     def start(self, threaded=False):
         print 'Inotify start'
-        if self.__event.is_set(): # Only run the thread once
+        if self.__running_event.is_set(): # Only run the thread once
             return
         if threaded:
             self.__starting_event.clear()
@@ -40,18 +36,18 @@ class PathWatcher(object):
         return self
 
     def __start(self):
-        self.__event.set()
+        self.__running_event.set()
         self.__events = []
         self.__timer = 0
         self.__wm = pi.WatchManager()
         handler = pi.ProcessEvent(self._on_event)
         self.__notifier = pi.Notifier(self.__wm, handler)
-        while self.__event.is_set():
+        while self.__running_event.is_set():
             self.__wdd = self.__wm.add_watch(self.__path, mask, rec=True, auto_add=True)
             self.__starting_event.set()
             if len(self.__wdd) > 0:
                 try:
-                    while self.__event.is_set():
+                    while self.__running_event.is_set():
                         #print 'Process events'
                         self.__notifier.process_events()
                         #print 'Check events'
@@ -60,7 +56,7 @@ class PathWatcher(object):
                             self.__notifier.read_events()
                         #print time.time()
                         if self.__timer != 0 and time.time() > self.__timer:
-                            self._on_events(self.__queue, self.__events)
+                            self._on_events(self.__events)
                             self.__events = []
                             self.__timer = 0
                     
@@ -74,11 +70,11 @@ class PathWatcher(object):
         self.__events = []
         self.__notifier.stop()
         #self.__wm.stop()
-        self.__event.clear()
+        self.__running_event.clear()
         print 'Inotify stopped'
     
     def stop(self):
-        self.__event.clear()
+        self.__running_event.clear()
     
     def join(self):
         print 'Inotify joining'
@@ -93,7 +89,7 @@ class PathWatcher(object):
         return self.__queue
     
     def is_running(self):
-        return self.__event.is_set()
+        return self.__running_event.is_set()
     
     def _on_event(self, event):
         maskname = event.maskname
@@ -145,11 +141,12 @@ class PathWatcher(object):
         #    pass
         #pass
     
-    def _on_events(self, queue, events):
+    def _on_events(self, events):
         if self.__debug:
             print 'Events:'
             print events
-        queue.put(events)
+        if self.__queue is not None:
+            self.__queue.put(events)
         
 
 """class EventHandler(pi.ProcessEvent):
