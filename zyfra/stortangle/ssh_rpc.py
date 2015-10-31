@@ -15,6 +15,7 @@ from multiprocessing import Process, Pipe, Event, Queue
 import traceback
 import signal
 import time
+import json
 
 import paramiko
 #import zyfra.thread_process
@@ -86,7 +87,7 @@ class ChannelException(Exception):
 class ChannelHandler(object):
     def __init__(self, queue=None, threaded=False, processed=False, log_level=0):
         self.__log_level = log_level
-        self.__event = threading.Event()
+        self._event = threading.Event()
         self.__in_queue = Queue()
         if queue is None:
             self.__queue = Queue()
@@ -111,7 +112,7 @@ class ChannelHandler(object):
             print 'SSH', msg
     
     def _start(self):
-        self.__event.set()
+        self._event.set()
         self._init()
         self._loop()
         self._log('stopped', 2)
@@ -124,36 +125,40 @@ class ChannelHandler(object):
 
     def _loop(self):
         data = ''
-        while self.__event.is_set() and self._is_ssh_connection_active():
+        while self._event.is_set() and self._is_ssh_connection_active():
             if self._channel.recv_ready():
                 self._log('data ready', 3)
                 res = self._channel.recv(1024)
                 if len(res) == 0:
                     raise ChannelException('Channel closed')
                 data += res
-                cmds = data.split('\n')
-                for cmd in cmds[:-1]:
-                    self._log('_on_receive_cmd(%s)' % cmd, 2)
-                    self._on_receive_cmd(self.__queue, cmd)
-                data = cmds[-1]
+                recv_datas = data.split('\n')
+                for recv_data in recv_datas[:-1]:
+                    recv_data = base64.b64decode(recv_data)
+                    recv_data = json.loads(recv_data)
+                    self._log('_on_receive_data(%s)' % repr(recv_data), 2)
+                    self._on_receive_data(self.__queue, recv_data)
+                data = recv_datas[-1]
             if not self.__in_queue.empty():
                 while not self.__in_queue.empty():
                     msg = self.__in_queue.get()
                     self.send(msg)
             self._in_loop_call()
-            self._log('In _loop' + repr(self.__event.is_set()), 3)
+            self._log('In _loop' + repr(self._event.is_set()), 3)
             time.sleep(0.5)
-        self._log('Exiting loop: event(%s) ssh(%s)' % (repr(self.__event.is_set()), repr(self._is_ssh_connection_active())), 3)
+        self._log('Exiting loop: event(%s) ssh(%s)' % (repr(self._event.is_set()), repr(self._is_ssh_connection_active())), 3)
     
     def _is_ssh_connection_active(self):
         #transport = self._channel.get_transport() if self._channel else None
         return self._transport and self._transport.is_active()
     
-    def send(self, cmd):
-        self._log('send(%s)' % cmd, 2)
+    def send(self, data):
+        self._log('send(%s)' % repr(data), 2)
         if not self._is_ssh_connection_active():
             raise ChannelException('Channel not active')
-        self._channel.send(cmd + '\n')
+        data = json.dumps(data)
+        data = base64.b64encode(data)
+        self._channel.send(data + '\n')
     
     def send_from_ext(self, cmd):
         self.__in_queue.put(cmd)
@@ -164,18 +169,18 @@ class ChannelHandler(object):
         while(self.__pipe.poll()):
             self.on_pipe_msg(self.__pipe.recv())"""
     
-    def _on_receive_cmd(self, queue, cmd):
-        queue.put(cmd)
+    def _on_receive_data(self, queue, data):
+        queue.put(data)
     
     """def _on_pipe_msg(self, msg):
         pass"""
     
     def disconnect(self):
         self._log('disconnecting', 2)
-        self.__event.clear()
+        self._event.clear()
     
     def is_running(self):
-        return self.__event.is_set()
+        return self._event.is_set()
     
     def join(self):
         self._log('joining', 2)
@@ -196,8 +201,8 @@ class ChannelHandlerServer(ChannelHandler):
         self._transport = None
         ChannelHandler.__init__(self, queue=queue, processed=True, log_level=log_level)
     
-    def _on_receive_cmd(self, queue, cmd):
-        queue.put((self._id, cmd))
+    def _on_receive_data(self, queue, data):
+        queue.put((self._id, data))
     
     def _get_id(self):
         return self._id
@@ -339,8 +344,8 @@ class ChannelHandlerClient(ChannelHandler):
         ChannelHandler.__init__(self, queue, threaded=threaded, log_level=log_level)
     
     def _start(self):
-        self.__event.set()
-        while self.__event.is_set():
+        self._event.set()
+        while self._event.is_set():
             self._log('Trying to connect', 3)
             try:
                 self._connect()
@@ -373,13 +378,13 @@ class ChannelHandlerClientTest(ChannelHandlerClient):
         print 'ping'
         self.send('ping')
     
-    def _on_receive_cmd(self, queue, cmd):
-        print cmd
+    def _on_receive_data(self, queue, data):
+        print data
         self.disconnect()
 
 class ChannelHandlerServerTest(ChannelHandlerServer):
-    def _on_receive_cmd(self, queue, cmd):
-        print '%s from %s' % (cmd, self._get_id())
+    def _on_receive_data(self, queue, data):
+        print '%s from %s' % (data, self._get_id())
         self.send('pong')
 
 if __name__ == "__main__":
