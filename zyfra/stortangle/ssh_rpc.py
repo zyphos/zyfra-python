@@ -193,7 +193,7 @@ class ChannelHandler(object):
         return self.__queue
 
 class ChannelHandlerServer(ChannelHandler):
-    def __init__(self, client_socket, id, allowed_users, client_addr, queue=None, log_level=2):
+    def __init__(self, client_socket, id, allowed_users, client_addr, queue=None, log_level=2, **kargs):
         self._id = id
         self.__client_socket = client_socket
         self.__client_addr = client_addr
@@ -249,7 +249,7 @@ class ChannelHandlerServer(ChannelHandler):
             raise
 
 class Server(object):
-    def __init__(self, channel_handler, port=2200, allowed_users=None, queue=None, threaded=False):
+    def __init__(self, channel_handler, port=2200, allowed_users=None, queue=None, threaded=False, **kargs):
         self.__event = threading.Event()
         self.__lock = threading.Lock()
         self.__event.set()
@@ -257,6 +257,7 @@ class Server(object):
         self.__queue = queue
         self.__in_queue = Queue()
         self.__port = port
+        self.__kargs = kargs
         if allowed_users is None:
             self.__allowed_users = {}
         else:
@@ -288,7 +289,8 @@ class Server(object):
             try:
                 client_socket, addr = sock.accept()
                 print '\nSSH Got a connection from %s:%s' % (addr[0], addr[1])
-                p = self.__channel_handler(client_socket, id, self.__allowed_users, addr, self.__queue)
+                loglevel = 2
+                p = self.__channel_handler(client_socket, id, self.__allowed_users, addr, self.__queue, loglevel, self.__kargs)
                 self.__lock.acquire()
                 self.__handlers[id] = p
                 self.__lock.release()
