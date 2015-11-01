@@ -45,6 +45,16 @@ class FieldInt(Field):
     def sqlify(self, value):
         return str(int(value))
 
+class Lock(object):
+    def __init__(self, lock):
+        self.__lock = lock
+    
+    def __enter__(self):
+        self.__lock.acquire()
+    
+    def __exit__(self, type, value, traceback):
+        self.__lock.release()
+
 class Cursor(object):
     def __init__(self, db, lock):
         self.__db = db
@@ -76,8 +86,10 @@ class MessageQueue(object):
     id = FieldInt(primary_key=True)
     date = FieldText()
     treated = FieldInt()
+    __key = None
     
     def __init__(self):
+        self.__wait_treated = {}
         self._lock = threading.Lock()
         self.__msg_available = threading.Event()
         self.__columns = {}
@@ -86,6 +98,8 @@ class MessageQueue(object):
             attr = getattr(self, col)
             if isinstance(attr, Field):
                 col_name = col.lower()
+                if attr.primary_key:
+                    self.__key = col_name
                 self.__columns[col_name] = attr
                 self.__columns_order.append(col_name)
         self.__db = sqlite3.connect(self._db_name)
@@ -116,7 +130,7 @@ class MessageQueue(object):
     def add(self, **kargs):
         #Ignore unknown fields
         for key in kargs.keys():
-            if key not in self.__columns or key in ['id']:
+            if key not in self.__columns: # or key in ['id']
                 del kargs[key]
         if 'date' not in kargs:
             kargs['date'] = str(datetime.now())
@@ -130,7 +144,9 @@ class MessageQueue(object):
             sql = "INSERT INTO %s (%s) VALUES (%s)" % (self._table_name, ','.join(columns), ','.join(values))
             #print sql
             cr.execute(sql)
+            new_id = cr.lastrowid
             self.__msg_available.set()
+        return new_id
     
     def _where2sql(self, where):
         wheresql = []
@@ -152,7 +168,32 @@ class MessageQueue(object):
             return
         with self.get_cursor() as cr:
             cr.execute("UPDATE %s SET treated=1 WHERE %s" % (self._table_name, wheresql))
+        array_key = str(where)
+        with Lock(self._lock):
+            if array_key in self.__wait_treated:
+                self.__wait_treated[array_key].set()
         self.__update_msg_available()
+    
+    def wait_treated(self, _timeout=None, **where):
+        event = threading.Event()
+        array_key = str(where)
+        with Lock(self._lock):
+            if array_key in self.__wait_treated:
+                raise Exception('[%s] is already in wait_treated' % array_key)
+            self.__wait_treated[array_key] = event
+        has_timedout = event.wait(_timeout)
+        with Lock(self._lock):
+            del self.__wait_treated[array_key]
+        return has_timedout
+    
+    def exists(self, **where):
+        wheresql = self._where2sql(where)
+        with self.get_cursor() as cr:
+            cr.execute("SELECT id FROM %s WHERE %s LIMIT 1" % (self._table_name, wheresql))
+            res = cr.fetchone()
+        if res is None:
+            return False
+        return True
     
     def get_next(self, **where):
         wheresql = self._where2sql(where)        
