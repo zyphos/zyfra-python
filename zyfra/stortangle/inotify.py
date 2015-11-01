@@ -13,7 +13,7 @@ class PathWatcher(object):
     def __init__(self, path, timeout=5, queue=None, debug=False):
         self.__timeout = timeout
         self.__path = path
-        self.__queue = queue
+        self._queue = queue
         self.__running_event = threading.Event()
         self.__starting_event = threading.Event()
         self.__running_event.clear()
@@ -145,8 +145,8 @@ class PathWatcher(object):
         if self.__debug:
             print 'Events:'
             print events
-        if self.__queue is not None:
-            self.__queue.put(events)
+        if self._queue is not None:
+            self._queue.put(events)
         
 
 """class EventHandler(pi.ProcessEvent):
