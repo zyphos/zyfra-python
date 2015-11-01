@@ -6,5 +6,6 @@ from oo_json_rpc import OoJsonRPC
 from pool import Pool
 from sms import Sms
 from zemail import Email
+import tools
 # import monitor
 # import ssh_session

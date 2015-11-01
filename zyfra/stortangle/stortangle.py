@@ -13,6 +13,7 @@ import sqlite3
 import ssh_rpc
 import inotify
 import message_queue
+import threaded_loop
 """
 TODO:
 Client:
@@ -50,43 +51,58 @@ def rsync(cmds):
     return subprocess.check_output(['rsync', '-azuH'] + cmds)
 
 class ChannelHandlerClientStortangle(ssh_rpc.ChannelHandlerClient):
-    def __init__(self, host, username, password, port=2200, queue=None, name=None):
+    def __init__(self, host, username, password, port=2200, treat_queue=None, send_queue=None, name=None):
         self.name = name
+        self.__send_queue = send_queue
         ssh_rpc.ChannelHandlerClient.__init__(self, host, username, password, port, queue, threaded=True)
     
     def _init(self):
-        self.send(('name', self.name))
-        
-    def send(self, msg):
-        cmd, params = msg
-        #print 'SSH send %s(%s)' % (cmd, params)
-        super(ChannelHandlerClientStortangle, self).send('%s,%s' % (cmd, params))
+        self.send({'action': 'name', 'name': self.name})
     
     def _on_receive_cmd(self, queue, cmd):
         #print 'SSH on_received %s' % cmd
-        cmd, param = cmd.split(',', 1)
-        if cmd == 'who':
-            self.send('name', self.name)
-        queue.put((cmd, param))
+        action = cmd['action']
+        if action == 'who':
+            self.send({'action': 'name', 'name': self.name})
+            return
+        id = cmd['id']
+        if action == 'ack':
+            self.__send_queue.mark_as_treated(id=id)
+            return
+        if queue.exists(id=id):
+            return
+        queue.add(**cmd)
+        self.send({'action': 'ack', 'id': id})
 
 class ChannelHandlerServerStortangle(ssh_rpc.ChannelHandlerServer):
     name = None
     
+    def __init__(self, client_socket, id, allowed_users, client_addr, treat_queue=None, log_level=2, send_queue=None, **kargs):
+        self.__send_queue = send_queue
+        ssh_rpc.ChannelHandlerServer.__init__(self, client_socket, id, allowed_users, client_addr, queue=treat_queue, log_level=2, **kargs)
+    
     def _on_receive_cmd(self, queue, cmd):
         #print 'SSH on_received %s' % cmd
-        cmd, params = cmd.split(',', 1)
-        if cmd == 'name':
-            self.name = params
+        action = cmd['action']
+        if action == 'name':
+            self.name = cmd['name']
             params = self._id
         if self.name is None:
-            self.send('who', '')
+            self.send({'action':'who'})
             return
-        queue.put((self.name, cmd, params))
+        id = cmd['id']
+        if action == 'ack':
+            self.__send_queue.mark_as_treated(id=id, host=self.name)
+            return
+        if queue.exists(id=id):
+            return
+        queue.add(host=self.name, **cmd)
+        self.send({'action': 'ack', 'id': id})
     
-    def send(self, msg):
-        cmd, params = msg
+    #def send(self, msg):
+    #    cmd, params = msg
         #print 'SSH send %s(%s)' % (cmd, params)
-        super(ChannelHandlerServerStortangle, self).send('%s,%s' % (cmd, params))
+    #    super(ChannelHandlerServerStortangle, self).send('%s,%s' % (cmd, params))
     
     def _in_loop_call(self):
         pass
@@ -106,13 +122,27 @@ class ActionMessageQueue(message_queue.MessageQueue):
     file2 = message_queue.FieldText()
 
 class MessageQueueMsg2sendSrv(ActionMessageQueue):
+    _db_name = 'msg_queue2send_srv.db'
+    id = FieldInt() # No primary key
     host = message_queue.FieldText()
+
+class MessageQueueMsg2sendClt(ActionMessageQueue):
+    _db_name = 'msg_queue2send_clt.db'
 
 class InotifyWatcher(inotify.PathWatcher):
     def _on_events(self, events):
-        self.__queue.put(('inotify', events))
+        for event in events:
+            action, params = event
+            if action in ['move', 'move_dir']:
+                file1, file2 = params
+                self._queue.add(action=action, file1=file1, file2=file2)
+            else:
+                self._queue.add(action=action, file1=params)
 
-class MessageQueueT(object):
+class MessageQueue2treat(ActionMessageQueue):
+    _db_name = 'msg_queue2treat.db'
+
+"""class MessageQueueT(object):
     def __init__(self, dbname='stortangle.db'):
         self.db = sqlite3.connect(dbname)
         self.create_table()
@@ -178,7 +208,7 @@ class MessageQueueT(object):
         cr.execute("SELECT id,host,date,action,file1,file2 FROM messages_to_send ORDER BY id LIMIT 1")
         res = cr.fetchone()
         self.db.commit()
-        return res
+        return res"""
 
 #Decorator
 def disable_inotify(fx):
@@ -248,65 +278,46 @@ class DiskAction(object):
         to_path = self.get_local_path(path)
         self.rsync([from_path, to_path])
 
-class Worker(object):
-    queue_def_name = ''
-    queue_nb_def_name = ''
 
+class Worker(threaded_loop.ThreadedLoop):
     def __init__(self, message_queue):
-        self.__running_event = threading.Event()
-        self.__data_ready_event = threading.Event()
-        self.__data_ready_event.set()
+        self.__message_queue = message_queue
+        super(Worker, self).__init__()
     
-    def thread(self, running_event, data_ready_event, message_queue):
-        while not running_event.is_set():
-            data_ready_event.wait()
-            data_ready_event.clear()
-            if not running_event.is_set():
-                while getattr(message_queue, queue_nb_def_name):
-                    msg = getattr(message_queue, queue_def_name)
-                    self.treat(msg)
+    def loop(self):
+        while self.__message_queue.is_msg_available():
+            message = self.__message_queue.get_next()
+            if self.treat(message):
+                self.__message_queue.mark_as_treated(id=message.id)
     
     def treat(self, msg):
         pass
 
-    def data_are_ready(self):
-        self.__data_ready_event.set()
-    
-    def stop(self):
-        self.__running_event.set()
-        self.__data_ready_event.set()
-
-class TreatmentWorker(Worker):
-    queue_def_name = 'get_next2treat'
-    queue_nb_def_name = 'get_nb2treat'
-    
+class DiskTreatmentWorker(Worker):
     def __init__(self, message_queue, disk_action):
-        self.disk_action = disk_action
-        super(TreatmentWorker, self).__init__(message_queue)
-
+        self.__disk_action = disk_action
+        super(DiskTreatmentWorker, self).__init__(message_queue)
+        
     def treat(self, msg):
-        cmd = msg['action']
-        file1 = msg['file1']
+        cmd = msg.action
         if cmd in ['delete', 'delete_dir']:
-            disk_action.rm(file1)
+            self.__disk_action.rm(msg.file1)
         elif cmd in ['move','move_dir']:
-            disk_action.mv(file1, msg['file2'])
+            self.__disk_action.mv(msg.file1, msg.file2)
         elif cmd == 'rsync_push':
-            disk_action.rsync_push(file1)
+            self.__disk_action.rsync_push(msg.file1)
         elif cmd == 'rsync_pull':
-            disk_action.rsync_pull(file1)
-        message_queue.confirm_treated(msg['id'], msg['host'])
+            self.__disk_action.rsync_pull(msg.file1)
+        return True
 
 class SendWorker(Worker):
-    queue_def_name = 'get_next2send'
-    queue_nb_def_name = 'get_nb2send'
-    
     def __init__(self, message_queue, channel_handler):
-        self.channel_handler = channel_handler
-        super(TreatmentWorker, self).__init__(message_queue)
+        self.__channel_handler = channel_handler
+        super(SendWorker, self).__init__(message_queue)
 
-    def treat(self, msg):
-        self.channel_handler.send()
+    def treat(self, data):
+        self.channel_handler.send(data)
+        self.message_queue.wait_treated(5, **data) #5 seconds timeout
 
 class StortangleCommon(object):
     def __init__(self, storage_path='~/stortangle'):
@@ -409,7 +420,9 @@ class StortangleClient(StortangleCommon):
         if rsync_username is None:
             rsync_username = username
         self.rsync_target = '%s@%s' % (rsync_username, server_host)
-        self.inotify = InotifyWatcher(self.storage_path,queue=self.queue)
+        self.message2send = MessageQueueMsg2sendClt()
+        self.message2treat = MessageQueue2treat()
+        self.inotify = InotifyWatcher(self.storage_path,queue=self.message2send)
         self.inotify_threaded = True
         self.inotify.start(threaded=self.inotify_threaded)
         self.server_path = None
