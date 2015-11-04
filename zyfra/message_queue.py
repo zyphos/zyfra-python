@@ -206,6 +206,20 @@ class MessageQueue(object):
             return None
         return DictObject(dict(zip(self.__columns_order, res)))
     
+    def get_next_group_by(self, *columns, **where):
+        wheresql = self._where2sql(where)        
+        if wheresql:
+            wheresql = 'AND %s' % wheresql
+        result = []
+        with self.get_cursor() as cr:
+            cr.execute("SELECT %s FROM %s WHERE treated=0 %s GROUP BY %s" % (','.join(columns), self._table_name, wheresql, ','.join(columns)))
+            while True:
+                res = cr.fetchone()
+                if res is None:
+                    break
+                result.append(DictObject(dict(zip(columns, res))))
+        return result
+    
     def prune_treated(self):
         with self.get_cursor() as cr:
             cr.execute("DELETE FROM %s WHERE treated=1" % (self._table_name, ))
