@@ -160,8 +160,8 @@ class ChannelHandler(object):
         data = base64.b64encode(data)
         self._channel.send(data + '\n')
     
-    def send_from_ext(self, cmd):
-        self.__in_queue.put(cmd)
+    def send_from_ext(self, data):
+        self.__in_queue.put(data)
     
     """def check_pipe_msg(self):
         if self.__pipe is None:
