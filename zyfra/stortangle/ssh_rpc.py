@@ -11,7 +11,8 @@ import os
 import socket
 import sys
 import threading
-from multiprocessing import Process, Pipe, Event, Queue
+from Queue import Queue
+#from multiprocessing import Process, Pipe, Event, Queue
 import traceback
 import signal
 import time
@@ -24,15 +25,15 @@ private_key = os.path.expanduser("~/.ssh/id_rsa")
 public_key = os.path.expanduser("~/.ssh/id_rsa.pub")
 
 
-def threaded(fn):
-    def wrapper(*args, **kwargs):
-        threading.Thread(target=fn, args=args, kwargs=kwargs).start()
-    return wrapper
+#def threaded(fn):
+#    def wrapper(*args, **kwargs):
+#        threading.Thread(target=fn, args=args, kwargs=kwargs).start()
+#    return wrapper
 
-def processed(fn):
-    def wrapper(*args, **kwargs):
-        Process(target=fn, args=args, kwargs=kwargs).start()
-    return wrapper
+#def processed(fn):
+#    def wrapper(*args, **kwargs):
+#        Process(target=fn, args=args, kwargs=kwargs).start()
+#    return wrapper
 # setup logging
 #paramiko.util.log_to_file('demo_server.log')
 
@@ -85,7 +86,8 @@ class ChannelException(Exception):
     pass
 
 class ChannelHandler(object):
-    def __init__(self, queue=None, threaded=False, processed=False, log_level=0):
+    def __init__(self, queue=None, threaded=False, log_level=0):
+        self.__threaded = threaded
         self.__log_level = log_level
         self._event = threading.Event()
         self.__in_queue = Queue()
@@ -98,10 +100,7 @@ class ChannelHandler(object):
     def connect(self):
         self._log('connecting', 2)
         self.__thread = None
-        if processed:
-            self.__thread = Process(target=self._start)
-            self.__thread.start()
-        elif threaded:
+        if self.__threaded:
             self.__thread = threading.Thread(target=self._start)
             self.__thread.start()
         else:
@@ -199,7 +198,7 @@ class ChannelHandlerServer(ChannelHandler):
         self.__client_addr = client_addr
         self.__allowed_users = allowed_users
         self._transport = None
-        ChannelHandler.__init__(self, queue=queue, processed=True, log_level=log_level)
+        ChannelHandler.__init__(self, queue=queue, threaded=True, log_level=log_level)
     
     def _on_receive_data(self, queue, data):
         queue.put((self._id, data))
@@ -208,7 +207,7 @@ class ChannelHandlerServer(ChannelHandler):
         return self._id
 
     def _start(self):
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        #signal.signal(signal.SIGINT, signal.SIG_IGN)
         try:
             self._transport = paramiko.Transport(self.__client_socket)
             try:
