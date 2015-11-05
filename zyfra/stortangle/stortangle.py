@@ -3,16 +3,18 @@
 import os
 import shutil
 import subprocess
+import traceback
 
 import time
 import threading
-import multiprocessing
+from Queue import Queue
+#import multiprocessing
 
 import sqlite3
 
 import ssh_rpc
 import inotify
-import message_queue
+from .. import message_queue
 import threaded_loop
 """
 TODO:
@@ -44,7 +46,7 @@ On event:
 'addchg,timestamp,filenames'
 'del,timestamp,filenames'
 
-dry_run = False
+dry_run = True
 
 def rsync(cmds):
     return subprocess.check_output(['rsync', '-azuH'] + cmds)
@@ -53,13 +55,13 @@ class ChannelHandlerClientStortangle(ssh_rpc.ChannelHandlerClient):
     def __init__(self, host, username, password, port=2200, treat_queue=None, send_queue=None, name=None):
         self.name = name
         self.__send_queue = send_queue
-        ssh_rpc.ChannelHandlerClient.__init__(self, host, username, password, port, queue, threaded=True)
+        ssh_rpc.ChannelHandlerClient.__init__(self, host, username, password, port, treat_queue, threaded=True)
     
     def _init(self):
         self.send({'action': 'name', 'name': self.name})
     
-    def _on_receive_cmd(self, queue, cmd):
-        #print 'SSH on_received %s' % cmd
+    def _on_receive_data(self, queue, cmd):
+        print 'SSH on_received %s' % cmd
         action = cmd['action']
         if action == 'who':
             self.send({'action': 'name', 'name': self.name})
@@ -78,8 +80,8 @@ class ChannelHandlerServerStortangle(ssh_rpc.ChannelHandlerServer):
         self.__send_queue = send_queue
         ssh_rpc.ChannelHandlerServer.__init__(self, client_socket, id, allowed_users, client_addr, queue=treat_queue, log_level=2, **kargs)
     
-    def _on_receive_cmd(self, queue, cmd):
-        #print 'SSH on_received %s' % cmd
+    def _on_receive_data(self, queue, cmd):
+        print 'SSH on_received %s' % cmd
         action = cmd['action']
         if action == 'name':
             self.name = cmd['name']
@@ -87,15 +89,16 @@ class ChannelHandlerServerStortangle(ssh_rpc.ChannelHandlerServer):
         if self.name is None:
             self.send({'action':'who'})
             return
-        id = cmd['id']
+        id = cmd.get('id')
         if action == 'ack':
             self.__send_queue.mark_as_treated(id=id, host=self.name)
             return
-        if queue.exists(id=id, host=self.name):
+        if id is not None and queue.exists(id=id, host=self.name):
             return
         cmd['host'] = self.name
         queue.put(cmd)
-        self.send({'action': 'ack', 'id': id})
+        if id is not None:
+            self.send({'action': 'ack', 'id': id})
     
     #def send(self, msg):
     #    cmd, params = msg
@@ -121,7 +124,7 @@ class ActionMessageQueue(message_queue.MessageQueue):
 
 class MessageQueueMsg2sendSrv(ActionMessageQueue):
     _db_name = 'msg_queue2send_srv.db'
-    id = FieldInt() # No primary key
+    id = message_queue.FieldInt() # No primary key
     host = message_queue.FieldText()
 
 class MessageQueueMsg2sendClt(ActionMessageQueue):
@@ -133,9 +136,9 @@ class InotifyWatcher(inotify.PathWatcher):
             action, params = event
             if action in ['move', 'move_dir']:
                 file1, file2 = params
-                self._queue.add(action=action, file1=file1, file2=file2)
+                self._queue.put({'action': action, 'file1': file1, 'file2': file2, 'inotify': True})
             else:
-                self._queue.add(action=action, file1=params)
+                self._queue.put({'action': action, 'file1': params, 'inotify': True})
 
 class MessageQueue2treat(ActionMessageQueue):
     _db_name = 'msg_queue2treat.db'
@@ -298,7 +301,8 @@ class Worker(threaded_loop.ThreadedLoop):
     def get_next(self):
         return self._message_queue.get_next()
     
-    def loop(self):
+    def _loop(self):
+        print 'worker msg available [%s]' % self._message_queue.is_msg_available()
         while self._message_queue.is_msg_available():
             message = self.get_next()
             if self.treat(message):
@@ -310,7 +314,7 @@ class Worker(threaded_loop.ThreadedLoop):
 class DiskTreatmentWorker(Worker):
     def __init__(self, message_queue, disk_action):
         self.__disk_action = disk_action
-        super(Worker, self).__init__(message_queue)
+        super(DiskTreatmentWorker, self).__init__(message_queue)
         
     def treat(self, msg):
         cmd = msg.action
@@ -327,9 +331,10 @@ class DiskTreatmentWorker(Worker):
 class SendWorkerClient(Worker):
     def __init__(self, message_queue, channel_handler):
         self.__channel_handler = channel_handler
-        super(Worker, self).__init__(message_queue)
+        super(SendWorkerClient, self).__init__(message_queue)
 
     def treat(self, data):
+        print 'sendworker client treat %s' % data
         self.__channel_handler.send(data)
         self.message_queue.wait_treated(5, **data) #5 seconds timeout
         return False
@@ -338,7 +343,7 @@ class SendWorkerServer(Worker):
     def __init__(self, message_queue, channel_handler):
         self.__channel_handler = channel_handler
         self.__last_host = None
-        super(Worker, self).__init__(message_queue)
+        super(SendWorkerServer, self).__init__(message_queue)
     
     def get_next(self):
         hosts = [r.host for r in self._message_queue.get_next_group_by('host')]
@@ -355,6 +360,8 @@ class SendWorkerServer(Worker):
         return self._message_queue.get_next(host=self.__last_host)
 
     def treat(self, data):
+        if data is None:
+            return False
         self.__channel_handler.send_now(data['host'], data)
         self.message_queue.wait_treated(5, **data) #5 seconds timeout
         return False
@@ -362,9 +369,9 @@ class SendWorkerServer(Worker):
 class StortangleCommon(object):
     def __init__(self, storage_path='~/stortangle'):
         self.storage_path = storage_path
-        self.__event = multiprocessing.Event()
+        self.__event = threading.Event()
         self.__event.set()
-        self.queue = multiprocessing.Queue()
+        self.queue = Queue()
         #ssh_from_pipe, ssh_to_pipe = multiprocessing.Pipe()
         #inotify_from_pipe, inotify_to_pipe = multiprocessing.Pipe()
         pass
@@ -400,7 +407,7 @@ class StortangleServer(StortangleCommon):
         self.sending_queue = MessageQueueMsg2sendSrv()
         worker = SendWorkerServer(self.sending_queue, self)
         self.disk_action = DiskAction(storage_path=storage_path)
-        self.ssh = ssh_rpc.Server(ChannelHandlerServerStortangle, port=port, allowed_users=allowed_users, queue=self.queue, threaded=True, send_queue=sending_queue)
+        self.ssh = ssh_rpc.Server(ChannelHandlerServerStortangle, port=port, allowed_users=allowed_users, queue=self.queue, threaded=True, send_queue=self.sending_queue)
         self.routing_table = {}
         self.last_received_id = {}
         e = None
@@ -408,6 +415,8 @@ class StortangleServer(StortangleCommon):
         try:
             self.main_loop()
         except Exception as e:
+            traceback.print_exc()
+            #traceback.print_stack()
             pass
         except KeyboardInterrupt as e:
             pass
@@ -426,11 +435,12 @@ class StortangleServer(StortangleCommon):
             raise e
     
     def parse_message(self, message):
+        print 'Message %s' % repr(message)
         src = message['host']
         cmd = message['action']
         self.log('parse_message from %s [%s]: %s' % (src, cmd, message))
-        id = message['id']
-        if self.last_received_id.get(src) == id:
+        id = message.get('id')
+        if id is not None and self.last_received_id.get(src) == id:
             return
         self.last_received_id[src] = id
         if cmd == 'name':
@@ -454,7 +464,7 @@ class StortangleServer(StortangleCommon):
     
     def send(self, target, data):
         self.log('send(%s,%s)' % (target, repr(data)))
-        self.sending_queue.add(data)
+        self.sending_queue.add(**data)
         #self.ssh.send_to_id(self.routing_table[target], (cmd, param))
         #self.routing_table[target].send(cmd, param)
     
@@ -493,6 +503,7 @@ class StortangleClient(StortangleCommon):
         try:
             self.main_loop()
         except Exception as e:
+            traceback.print_exc()
             pass
         except KeyboardInterrupt as e:
             pass
@@ -516,7 +527,7 @@ class StortangleClient(StortangleCommon):
     
     def parse_message(self, message):
         cmd = message['action']
-        self.log('parse_message [%s]: %s' % (cmd, param))
+        self.log('parse_message ik %s' % (repr(message), ))
         if cmd == 'srvpath':
             self.disk_action.set_server_path(message['path'])
             #self.rsync_pull()
@@ -533,8 +544,10 @@ class StortangleClient(StortangleCommon):
             print 'hello'
             self.ssh.connect()
             pass
+        elif message.get('inotify'):
+            self.message2send.add(**message)
         else:
-            self.message2treat.add(message)
+            self.message2treat.add(**message)
     
     def send(self, data):
         self.ssh.send_from_ext(data)
