@@ -5,6 +5,7 @@
 Threaded loop that can be interrupted externaly
 """
 import threading
+import time
 
 class ThreadedLoop(object):
     
