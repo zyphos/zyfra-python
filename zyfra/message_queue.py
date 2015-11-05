@@ -102,7 +102,7 @@ class MessageQueue(object):
                     self.__key = col_name
                 self.__columns[col_name] = attr
                 self.__columns_order.append(col_name)
-        self.__db = sqlite3.connect(self._db_name)
+        self.__db = sqlite3.connect(self._db_name, check_same_thread=False)
         self.create_table()
         self.__update_msg_available()
     
