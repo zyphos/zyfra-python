@@ -241,7 +241,7 @@ class Model(object):
 
     def read(self, cr, where='', fields=None, **kargs):
         if not fields:
-            fields = array_keys(self._columns)
+            fields = self._columns.keys()
         if where.strip() != '':
             where += ' WHERE' + where
         mql = ','.join(fields) + where + ' ORDER BY ' + self._order_by
