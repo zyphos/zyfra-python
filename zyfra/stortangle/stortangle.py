@@ -66,19 +66,20 @@ class ChannelHandlerClientStortangle(ssh_rpc.ChannelHandlerClient):
         if action == 'who':
             self.send({'action': 'name', 'name': self.name})
             return
-        id = cmd['id']
-        if action == 'ack':
+        id = cmd.get('id', None)
+        if action == 'ack' and id is not None:
             self.__send_queue.mark_as_treated(id=id)
             return
-        queue.put(cmd)
+        queue.add(**cmd)
         self.send({'action': 'ack', 'id': id})
 
 class ChannelHandlerServerStortangle(ssh_rpc.ChannelHandlerServer):
     name = None
     
-    def __init__(self, client_socket, id, allowed_users, client_addr, treat_queue=None, log_level=2, send_queue=None, **kargs):
+    def __init__(self, client_socket, id, allowed_users, client_addr, treat_queue=None, log_level=0, send_queue=None, **kargs):
+        print 'sen queue', send_queue
         self.__send_queue = send_queue
-        ssh_rpc.ChannelHandlerServer.__init__(self, client_socket, id, allowed_users, client_addr, queue=treat_queue, log_level=2, **kargs)
+        ssh_rpc.ChannelHandlerServer.__init__(self, client_socket, id, allowed_users, client_addr, queue=treat_queue, log_level=log_level, **kargs)
     
     def _on_receive_data(self, queue, cmd):
         print 'SSH on_received %s' % cmd
@@ -90,11 +91,12 @@ class ChannelHandlerServerStortangle(ssh_rpc.ChannelHandlerServer):
             self.send({'action':'who'})
             return
         id = cmd.get('id')
-        if action == 'ack':
+        if action == 'ack' and id is not None:
+            print self.__send_queue
             self.__send_queue.mark_as_treated(id=id, host=self.name)
             return
-        if id is not None and queue.exists(id=id, host=self.name):
-            return
+        #if id is not None and queue.exists(id=id, host=self.name):
+        #    return
         cmd['host'] = self.name
         queue.put(cmd)
         if id is not None:
@@ -230,6 +232,7 @@ class DiskAction(object):
         self.__server_path = None
     
     def set_server_path(self, server_path):
+        print 'Server path set to: %s' % server_path
         self.__server_path = server_path
     
     @disable_inotify
@@ -294,16 +297,16 @@ class DiskAction(object):
 
 
 class Worker(threaded_loop.ThreadedLoop):
-    def __init__(self, message_queue):
+    def __init__(self, message_queue, log_level=0):
         self._message_queue = message_queue
-        super(Worker, self).__init__()
+        self._log_level = log_level
+        super(Worker, self).__init__(log_level=log_level)
     
     def get_next(self):
         return self._message_queue.get_next()
     
     def _loop(self):
-        print 'worker msg available [%s]' % self._message_queue.is_msg_available()
-        while self._message_queue.is_msg_available():
+        while self._message_queue.is_msg_available() and self.is_running():
             message = self.get_next()
             if self.treat(message):
                 self._message_queue.mark_as_treated(id=message.id)
@@ -312,9 +315,10 @@ class Worker(threaded_loop.ThreadedLoop):
         pass
 
 class DiskTreatmentWorker(Worker):
-    def __init__(self, message_queue, disk_action):
+    def __init__(self, message_queue, disk_action, sending_queue=None, log_level=0):
         self.__disk_action = disk_action
-        super(DiskTreatmentWorker, self).__init__(message_queue)
+        self.__sending_queue = sending_queue
+        super(DiskTreatmentWorker, self).__init__(message_queue, log_level)
         
     def treat(self, msg):
         cmd = msg.action
@@ -323,27 +327,37 @@ class DiskTreatmentWorker(Worker):
         elif cmd in ['move','move_dir']:
             self.__disk_action.mv(msg.file1, msg.file2)
         elif cmd == 'rsync_push':
-            self.__disk_action.rsync_push(msg.file1)
+            if self.__disk_action.rsync_push(msg.file1):
+                if self.__sending_queue is not None:
+                    msg['action'] = 'rsync_pull'
+                    #del msg['id']
+                    self.__sending_queue.add(**msg)
+                return False
         elif cmd == 'rsync_pull':
             self.__disk_action.rsync_pull(msg.file1)
+        elif cmd == 'srvpath':
+            print msg
+            self.__disk_action.set_server_path(msg.file1)
         return True
 
 class SendWorkerClient(Worker):
-    def __init__(self, message_queue, channel_handler):
+    def __init__(self, message_queue, channel_handler, log_level=0):
         self.__channel_handler = channel_handler
-        super(SendWorkerClient, self).__init__(message_queue)
+        super(SendWorkerClient, self).__init__(message_queue, log_level=log_level)
 
     def treat(self, data):
+        if data is None:
+            return False
         print 'sendworker client treat %s' % data
         self.__channel_handler.send(data)
-        self.message_queue.wait_treated(5, **data) #5 seconds timeout
+        self._message_queue.wait_treated(5, **data) #5 seconds timeout
         return False
 
 class SendWorkerServer(Worker):
-    def __init__(self, message_queue, channel_handler):
+    def __init__(self, message_queue, channel_handler, log_level=0):
         self.__channel_handler = channel_handler
         self.__last_host = None
-        super(SendWorkerServer, self).__init__(message_queue)
+        super(SendWorkerServer, self).__init__(message_queue, log_level=log_level)
     
     def get_next(self):
         hosts = [r.host for r in self._message_queue.get_next_group_by('host')]
@@ -362,6 +376,7 @@ class SendWorkerServer(Worker):
     def treat(self, data):
         if data is None:
             return False
+        print 'sendworker srv treat %s' % data
         self.__channel_handler.send_now(data['host'], data)
         self.message_queue.wait_treated(5, **data) #5 seconds timeout
         return False
@@ -407,12 +422,12 @@ class StortangleServer(StortangleCommon):
         self.sending_queue = MessageQueueMsg2sendSrv()
         worker = SendWorkerServer(self.sending_queue, self)
         self.disk_action = DiskAction(storage_path=storage_path)
-        self.ssh = ssh_rpc.Server(ChannelHandlerServerStortangle, port=port, allowed_users=allowed_users, queue=self.queue, threaded=True, send_queue=self.sending_queue)
-        self.routing_table = {}
-        self.last_received_id = {}
-        e = None
-        worker.start()
         try:
+            self.ssh = ssh_rpc.Server(ChannelHandlerServerStortangle, port=port, allowed_users=allowed_users, queue=self.queue, threaded=True, send_queue=self.sending_queue)
+            self.routing_table = {}
+            self.last_received_id = {}
+            e = None
+            worker.start()
             self.main_loop()
         except Exception as e:
             traceback.print_exc()
@@ -424,7 +439,7 @@ class StortangleServer(StortangleCommon):
             pass
         print 'Stortangle Exception in server loop'
         try:
-            self.send_all({'action':'quit'})
+            self.send_all({'action':'quit'}, now=True)
         except:
             pass
         #for client in self.routing_table:
@@ -446,8 +461,8 @@ class StortangleServer(StortangleCommon):
         if cmd == 'name':
             #self.routing_table[src] = param
             self.routing_table[src] = self.ssh.get_handler_by_id(message['myid'])
-            self.send(src, {'action': 'srvpath', 'path':self.storage_path})
-        elif cmd == 'rsync':
+            self.send_now(src, {'action': 'srvpath', 'file1':self.storage_path})
+        elif cmd == 'rsync_pull':
             self.send_all_but_target(src, message)
         elif cmd in ['delete', 'delete_dir']:
             self.disk_action.rm(message['file1'])
@@ -474,9 +489,12 @@ class StortangleServer(StortangleCommon):
                 continue
             self.send(target, data)
     
-    def send_all(self, data):
+    def send_all(self, data, now=False):
         for target in self.routing_table:
-            self.send(target, data)
+            if now:
+                self.send_now(target, data)
+            else:
+                self.send(target, data)
     # no inotify
     
     pass
@@ -495,7 +513,7 @@ class StortangleClient(StortangleCommon):
         self.inotify.start(threaded=self.inotify_threaded)
         self.server_path = None
         self.ssh = ChannelHandlerClientStortangle(server_host, username, password, port, self.message2treat, send_queue=self.message2send, name=name)
-        disk_worker = DiskTreatmentWorker(self.message2treat, self.disk_action)
+        disk_worker = DiskTreatmentWorker(self.message2treat, self.disk_action, self.message2send, log_level=0)
         sending_worker = SendWorkerClient(self.message2send, self)
         sending_worker.start()
         disk_worker.start()
@@ -545,7 +563,11 @@ class StortangleClient(StortangleCommon):
             self.ssh.connect()
             pass
         elif message.get('inotify'):
-            self.message2send.add(**message)
+            if cmd == 'add':
+                message['action'] = 'rsync_push'
+                self.message2treat.add(**message)
+            else:
+                self.message2send.add(**message)
         else:
             self.message2treat.add(**message)
     

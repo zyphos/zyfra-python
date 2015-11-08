@@ -143,7 +143,7 @@ class ChannelHandler(object):
                     msg = self.__in_queue.get()
                     self.send(msg)
             self._in_loop_call()
-            self._log('In _loop' + repr(self._event.is_set()), 3)
+            self._log('In _loop: ' + repr(self._event.is_set()), 3)
             time.sleep(0.5)
         self._log('Exiting loop: event(%s) ssh(%s)' % (repr(self._event.is_set()), repr(self._is_ssh_connection_active())), 3)
     
@@ -192,7 +192,7 @@ class ChannelHandler(object):
         return self.__queue
 
 class ChannelHandlerServer(ChannelHandler):
-    def __init__(self, client_socket, id, allowed_users, client_addr, queue=None, log_level=2, **kargs):
+    def __init__(self, client_socket, id, allowed_users, client_addr, queue=None, log_level=0, **kargs):
         self._id = id
         self.__client_socket = client_socket
         self.__client_addr = client_addr
@@ -289,7 +289,7 @@ class Server(object):
                 client_socket, addr = sock.accept()
                 print '\nSSH Got a connection from %s:%s' % (addr[0], addr[1])
                 loglevel = 2
-                p = self.__channel_handler(client_socket, id, self.__allowed_users, addr, self.__queue, loglevel, self.__kargs)
+                p = self.__channel_handler(client_socket, id, self.__allowed_users, addr, self.__queue, loglevel, **self.__kargs)
                 self.__lock.acquire()
                 self.__handlers[id] = p
                 self.__lock.release()
@@ -332,7 +332,7 @@ class Server(object):
         self.__thread.join()
 
 class ChannelHandlerClient(ChannelHandler):
-    def __init__(self, host, username, password, port=2200, queue=None, threaded=False, log_level=3):
+    def __init__(self, host, username, password, port=2200, queue=None, threaded=False, log_level=0):
         hosts_filename = os.path.expanduser("~/.ssh/paramiko_known_hosts")
         #print hosts_filename
         self.__host = host

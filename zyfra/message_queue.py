@@ -104,7 +104,7 @@ class MessageQueue(object):
                 self.__columns_order.append(col_name)
         self.__db = sqlite3.connect(self._db_name, check_same_thread=False)
         self.create_table()
-        self.__update_msg_available()
+        self._update_msg_available()
     
     def create_table(self):
         with self.get_cursor() as cr:
@@ -160,7 +160,7 @@ class MessageQueue(object):
         wheresql = self._where2sql(where)
         with self.get_cursor() as cr:
             cr.execute("DELETE FROM %s WHERE %s" % (self._table_name, wheresql))
-        self.__update_msg_available()
+        self._update_msg_available()
     
     def mark_as_treated(self, **where):
         wheresql = self._where2sql(where)
@@ -168,11 +168,12 @@ class MessageQueue(object):
             return
         with self.get_cursor() as cr:
             cr.execute("UPDATE %s SET treated=1 WHERE %s" % (self._table_name, wheresql))
+            self.prune_treated(cr, **where)
         array_key = str(where)
         with Lock(self._lock):
             if array_key in self.__wait_treated:
                 self.__wait_treated[array_key].set()
-        self.__update_msg_available()
+        self._update_msg_available()
     
     def wait_treated(self, _timeout=None, **where):
         event = threading.Event()
@@ -220,12 +221,33 @@ class MessageQueue(object):
                 result.append(DictObject(dict(zip(columns, res))))
         return result
     
-    def prune_treated(self):
-        with self.get_cursor() as cr:
-            cr.execute("DELETE FROM %s WHERE treated=1" % (self._table_name, ))
-        self.__update_msg_available()
+    def prune_treated(self, cr, **where):
+        where_sql = ''
+        if where:
+            where_sql = ' AND ' + ' AND '.join(["%s='%s'" % (c, where[c]) for c in where])
+        cr.execute('DELETE FROM %s WHERE treated=1 AND id != (SELECT MAX(id) FROM %s WHERE treated=1%s)%s' % (self._table_name, self._table_name, where_sql, where_sql))
     
-    def __update_msg_available(self):
+    """def prune_treated(self, group_fields=None):
+        with self.get_cursor() as cr:
+            def del_all_but_last(columns=None):
+                where_sql = ''
+                if columns:
+                    where_sql = ' AND ' + ' AND '.join(["%s='%s'" % (c, columns[c]) for c in columns])
+                    cr.execute('DELETE FROM %s WHERE treated=1 AND id != (SELECT MAX(id) FROM %s WHERE treated=1%s)%s' % (self._table_name, self._table_name, where_sql, where_sql))
+            if group_fields is not None:
+                cr.execute("SELECT %s FROM %s GROUP BY %s" % (','.join(group_fields), ','.join(group_fields)))
+                while True:
+                    res = cr.fetchone()
+                    if res is None:
+                        break
+                    del_all_but_last(res)
+            else:
+                del_all_but_last()      
+            with self.get_cursor() as cr:
+                cr.execute("DELETE FROM %s WHERE treated=1" % (self._table_name, ))
+        self._update_msg_available()"""
+    
+    def _update_msg_available(self):
         with self.get_cursor() as cr:
             cr.execute("SELECT id FROM %s WHERE treated=0 LIMIT 1" % self._table_name)
             if cr.fetchone() is None:
