@@ -6,6 +6,7 @@ import subprocess
 import traceback
 
 import time
+from datetime import datetime
 import threading
 from Queue import Queue
 #import multiprocessing
@@ -18,9 +19,8 @@ from .. import message_queue
 import threaded_loop
 """
 TODO:
-- Server: remove ghost ssh client instance
-- Only delete if file timestamp < cmd time
-- Ask server before rsync (push or pull) only one at time
+- Server: remove ghost ssh client instance: partialy done
+- Ask server before rsync (push) only one at time
 - Add inotify on server too
 """
 
@@ -30,6 +30,9 @@ TODO:
 'del,timestamp,filenames'
 
 dry_run = False
+
+def str2timestamp(txt):
+    return time.mktime(datetime.strptime(txt, "%Y-%m-%d %H:%M:%S.%f").timetuple())
 
 def rsync(cmds):
     return subprocess.check_output(['rsync', '-azuH'] + cmds)
@@ -49,7 +52,12 @@ class ChannelHandlerClientStortangle(ssh_rpc.ChannelHandlerClient):
         if action == 'who':
             self.send({'action': 'name', 'name': self.name})
             return
-        id = cmd.get('id', None)
+        if 'id' in cmd:
+            id = cmd['id']
+            del cmd['id']
+        else:
+            id = None
+        
         if action == 'ack' and id is not None:
             self.__send_queue.mark_as_treated(id=id)
             return
@@ -208,6 +216,15 @@ def disable_inotify(fx):
         return res
     return new_fx
 
+def tryfalse(fx):
+    def new_fx(self, *args, **kargs):
+        try:
+            return fx(self, *args)
+        except:
+            traceback.print_exc()
+            return False
+    return new_fx
+
 class DiskAction(object):
     def __init__(self, storage_path, inotify=None, rsync_target=None):
         self._inotify = inotify
@@ -220,25 +237,30 @@ class DiskAction(object):
         self.__server_path = server_path
     
     @disable_inotify
-    def rm(self, filename):
+    @tryfalse
+    def rm(self, filename, timestamp=None):
         full_path = os.path.join(self.__storage_path, filename)
+        
+        if timestamp is not None and timestamp <= os.stat(full_path).st_mtime:
+            return True # the file on disk is more recent, do not delete
         if os.path.isdir(full_path):
-            self.rm_dir(full_path)
+            self._rm_dir(full_path)
         else:
-            self.rm_file(full_path)
+            self._rm_file(full_path)
         return True
     
-    def rm_file(self, filename):
+    def _rm_file(self, filename):
         print 'rm file %s' % filename
         if not dry_run:
             os.remove(filename)
     
-    def rm_dir(self, filename):
+    def _rm_dir(self, filename):
         print 'rm dir %s' % filename
         if not dry_run:
             shutil.rmtree(filename)
     
     @disable_inotify
+    @tryfalse
     def mv(self, old, new):
         old = os.path.join(self.__storage_path, old)
         new = os.path.join(self.__storage_path, new)
@@ -261,6 +283,7 @@ class DiskAction(object):
     def get_local_path(self, path):
         return os.path.join(self.__storage_path, path)
     
+    @tryfalse
     def rsync_push(self, path=''):
         if self.__server_path is None:
             return False
@@ -273,6 +296,7 @@ class DiskAction(object):
         #self.ssh.send('enable_inotify')
     
     @disable_inotify
+    @tryfalse
     def rsync_pull(self, path=''):
         if self.__server_path is None:
             return False
@@ -308,8 +332,9 @@ class DiskTreatmentWorker(Worker):
         
     def treat(self, msg):
         cmd = msg.action
+        timestamp = str2timestamp(msg.date)
         if cmd in ['delete', 'delete_dir']:
-            self.__disk_action.rm(msg.file1)
+            self.__disk_action.rm(msg.file1, timestamp=timestamp)
         elif cmd in ['move','move_dir']:
             self.__disk_action.mv(msg.file1, msg.file2)
         elif cmd == 'rsync_push':
@@ -416,11 +441,14 @@ class StortangleCommon(object):
         return new_path
 
 class StortangleServer(StortangleCommon):
-    def __init__(self, storage_path='~/stortangle', port=2200, allowed_users=None):
+    def __init__(self, storage_path='~/stortangle', port=2200, allowed_users=None, node_names=None):
+        # allowed_users (dict of string): {'username': 'password'}
+        # node_names (list of string): used for send to all
         StortangleCommon.__init__(self, storage_path)
         self.sending_queue = MessageQueueMsg2sendSrv()
         worker = SendWorkerServer(self.sending_queue, self)
         self.disk_action = DiskAction(storage_path=storage_path)
+        self._node_names = node_names
         try:
             self.ssh = ssh_rpc.Server(ChannelHandlerServerStortangle, port=port, allowed_users=allowed_users, queue=self.queue, threaded=True, send_queue=self.sending_queue)
             self.routing_table = {}
@@ -468,7 +496,8 @@ class StortangleServer(StortangleCommon):
             self.send_all_but_target(src, message)
         elif cmd in ['delete', 'delete_dir']:
             try:
-                self.disk_action.rm(message['file1'])
+                timestamp = str2timestamp(message['date'])
+                self.disk_action.rm(message['file1'], timestamp=timestamp)
                 self.send_all_but_target(src, message)
             except:
                 traceback.print_exc()
@@ -493,15 +522,20 @@ class StortangleServer(StortangleCommon):
         #self.ssh.send_to_id(self.routing_table[target], (cmd, param))
         #self.routing_table[target].send(cmd, param)
     
+    def get_all_node_names(self):
+        if self._node_names:
+            return self._node_names
+        return self.routing_table.keys()
+    
     def send_all_but_target(self, the_target, data):
         self.log('send_all_but_target(%s,%s)' % (the_target, repr(data))) 
-        for target in self.routing_table:
+        for target in self.get_all_node_names():
             if target == the_target:
                 continue
             self.send(target, data)
     
     def send_all(self, data, now=False):
-        for target in self.routing_table:
+        for target in self.get_all_node_names():
             if now:
                 self.send_now(target, data)
             else:
@@ -600,7 +634,7 @@ if __name__ == "__main__":
     elif len(args) == 2:
         storage_path = args[1]
         allowed_users = {'bucky': 'foo'}
-        StortangleServer(storage_path=storage_path, port=2200, allowed_users=allowed_users)
+        StortangleServer(storage_path=storage_path, port=2200, allowed_users=allowed_users, node_names=['a','b'])
     else:
         serverhost = 'localhost'
         username = 'bucky'
