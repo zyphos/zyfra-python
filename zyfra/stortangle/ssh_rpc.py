@@ -192,12 +192,13 @@ class ChannelHandler(object):
         return self.__queue
 
 class ChannelHandlerServer(ChannelHandler):
-    def __init__(self, client_socket, id, allowed_users, client_addr, queue=None, log_level=0, **kargs):
+    def __init__(self, client_socket, id, allowed_users, client_addr, queue=None, log_level=0, closed_queue=None, **kargs):
         self._id = id
         self.__client_socket = client_socket
         self.__client_addr = client_addr
         self.__allowed_users = allowed_users
         self._transport = None
+        self.__closed_queue = closed_queue
         ChannelHandler.__init__(self, queue=queue, threaded=True, log_level=log_level)
     
     def _on_receive_data(self, queue, data):
@@ -245,6 +246,8 @@ class ChannelHandlerServer(ChannelHandler):
                 self._transport.close()
             except:
                 pass
+            if self.__closed_queue is not None:
+                self.__closed_queue.put(self._id)
             raise
 
 class Server(object):
@@ -255,6 +258,7 @@ class Server(object):
         self.__channel_handler = channel_handler
         self.__queue = queue
         self.__in_queue = Queue()
+        self.__closed_channels = Queue()
         self.__port = port
         self.__kargs = kargs
         if allowed_users is None:
@@ -289,7 +293,7 @@ class Server(object):
                 client_socket, addr = sock.accept()
                 print '\nSSH Got a connection from %s:%s' % (addr[0], addr[1])
                 loglevel = 2
-                p = self.__channel_handler(client_socket, id, self.__allowed_users, addr, self.__queue, loglevel, **self.__kargs)
+                p = self.__channel_handler(client_socket, id, self.__allowed_users, addr, self.__queue, loglevel, closed_queue=self.__closed_channels,**self.__kargs)
                 self.__lock.acquire()
                 self.__handlers[id] = p
                 self.__lock.release()
@@ -303,7 +307,15 @@ class Server(object):
             if not self.__in_queue.empty():
                 while not self.__in_queue.empty():
                     id, msg = self.__in_queue.get()
+                    if id not in self.__handlers:
+                        print 'Client id not found [%s]' % id
                     self.__handlers[id].send_from_ext(msg)
+            if not self.__closed_channels.empty():
+                while not self.__closed_channels.empty():
+                    id = self.__closed_channels.get()
+                    self.__lock.acquire()
+                    del self.__handlers[id]
+                    self.__lock.release()
             self._loop_action()
         print 'Stoping server, waiting children'
         for id in self.__handlers:

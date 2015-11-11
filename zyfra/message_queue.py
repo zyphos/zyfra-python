@@ -17,6 +17,7 @@ class MyQueue(MessageQueue):
 
 import sqlite3
 import threading
+import traceback
 import os
 from datetime import datetime
 
@@ -133,19 +134,23 @@ class MessageQueue(object):
             if key not in self.__columns: # or key in ['id']
                 del kargs[key]
         if 'date' not in kargs:
-            kargs['date'] = str(datetime.now())
+            kargs['date'] = str(datetime.utcnow())
         kargs['treated'] = 0
         columns = []
         values = []
         for column, value in kargs.iteritems():
             columns.append(column)
             values.append(self.__columns[column].sqlify(value))
-        with self.get_cursor() as cr:
-            sql = "INSERT INTO %s (%s) VALUES (%s)" % (self._table_name, ','.join(columns), ','.join(values))
-            #print sql
-            cr.execute(sql)
-            new_id = cr.lastrowid
-            self.__msg_available.set()
+        try:
+            with self.get_cursor() as cr:
+                sql = "INSERT INTO %s (%s) VALUES (%s)" % (self._table_name, ','.join(columns), ','.join(values))
+                #print sql
+                cr.execute(sql)
+                new_id = cr.lastrowid
+                self.__msg_available.set()
+        except:
+            traceback.print_exc()
+            return None
         return new_id
     
     def _where2sql(self, where):

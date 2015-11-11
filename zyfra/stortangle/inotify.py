@@ -10,7 +10,7 @@ mask = pi.ALL_EVENTS
 #mask = pi.IN_CLOSE_WRITE | pi.IN_MOVED_TO | pi.IN_DELETE | pi.IN_MOVED_FROM
 
 class PathWatcher(object):
-    def __init__(self, path, timeout=5, queue=None, debug=False):
+    def __init__(self, path, timeout=5, queue=None, debug=False, relative_path=None):
         self.__timeout = timeout
         self.__path = path
         self._queue = queue
@@ -19,6 +19,7 @@ class PathWatcher(object):
         self.__running_event.clear()
         self.__thread = None
         self.__debug = debug
+        self.__relative_path = relative_path
     
     def start(self, threaded=False):
         print 'Inotify start'
@@ -92,6 +93,14 @@ class PathWatcher(object):
         return self.__running_event.is_set()
     
     def _on_event(self, event):
+        def _strip_path(path):
+            if self.__relative_path is None:
+                return path
+            length = len(self.__relative_path)
+            if path[:length] == self.__relative_path:
+                return path[length:]
+            return path
+        
         maskname = event.maskname
         src = ''
         the_event = None
@@ -130,6 +139,12 @@ class PathWatcher(object):
                 # w = wm.get_watch(wm.get_wd(path))
                 #wm.del_watch(wd)
                 self.__wm.rm_watch(wd)
+            cmd, data = the_event
+            if isinstance(data, tuple):
+                data = (_strip_path(data[0]), _strip_path(data[1]))
+            else:
+                data = _strip_path(data)
+            the_event = (cmd, data)
             self.__events.append(the_event)
             self.__timer = time.time() + self.__timeout
         #if maskname == 'IN_DELETE' or maskname == '':
