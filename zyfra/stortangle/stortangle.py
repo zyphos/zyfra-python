@@ -402,6 +402,14 @@ class StortangleCommon(object):
         
     def main_loop(self):
         while self.__event.is_set():
+            try:
+                msg = self.queue.get(timeout=0.5)
+            except KeyboardInterrupt:
+                print 'StortangleCommon Quitting'
+                break
+            except:
+                continue
+            self.parse_message(msg)
             if not self.queue.empty():
                 while not self.queue.empty():
                     self.parse_message(self.queue.get())
