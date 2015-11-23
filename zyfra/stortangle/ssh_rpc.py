@@ -142,6 +142,7 @@ class ChannelHandler(object):
                 while not self.__in_queue.empty():
                     msg = self.__in_queue.get()
                     self.send(msg)
+                    self.__in_queue.task_done()
             self._in_loop_call()
             self._log('In _loop: ' + repr(self._event.is_set()), 3)
             time.sleep(0.5)
@@ -310,6 +311,7 @@ class Server(object):
                     if id not in self.__handlers:
                         print 'Client id not found [%s]' % id
                     self.__handlers[id].send_from_ext(msg)
+                    self.__in_queue.task_done()
             if not self.__closed_channels.empty():
                 while not self.__closed_channels.empty():
                     id = self.__closed_channels.get()
