@@ -34,6 +34,7 @@ class PathWatcher(object):
             
         else:
             self.__start()
+        print 'Inotify started'
         return self
 
     def __start(self):
