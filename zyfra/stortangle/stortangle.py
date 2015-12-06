@@ -416,7 +416,7 @@ class DiskTreatmentWorker(Worker):
             return []
         batch_enable_cmds = ['delete', 'delete_dir','move','move_dir']
         batch_messages = []
-        for msg in messsages:
+        for msg in messages:
             if msg.action in batch_enable_cmds:
                 batch_messages.append(msg)
             else:
