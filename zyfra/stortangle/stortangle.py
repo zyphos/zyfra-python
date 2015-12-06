@@ -216,11 +216,11 @@ class MessageQueue2treat(ActionMessageQueue):
 
 #Decorator
 def disable_inotify(fx):
-    def new_fx(self, *args):
+    def new_fx(self, *args, **kargs):
         if self._inotify is None:
-            return fx(self, *args)
+            return fx(self, *args, **kargs)
         self._inotify.join()
-        res = fx(self, *args)
+        res = fx(self, *args, **kargs)
         self._inotify.start(threaded=inotify_threaded)
         return res
     return new_fx
@@ -228,7 +228,7 @@ def disable_inotify(fx):
 def tryfalse(fx):
     def new_fx(self, *args, **kargs):
         try:
-            return fx(self, *args)
+            return fx(self, *args, **kargs)
         except:
             traceback.print_exc()
             return False
