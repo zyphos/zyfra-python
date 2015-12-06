@@ -99,9 +99,9 @@ class PathWatcher(object):
                 return path
             length = len(self.__relative_path)
             if path[:length] == self.__relative_path:
-                return path[length:]
-            while path[0] == '/':
-                path = path[1:]
+                path = path[length:]
+                while path[0] == '/':
+                    path = path[1:]
             return path
         
         maskname = event.maskname
