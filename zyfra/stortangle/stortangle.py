@@ -134,7 +134,7 @@ class InotifyWatcher(inotify.PathWatcher):
         last_action = None
         for event in events:
             action, params = event
-            if last_action == 'add' and action == 'add':
+            if last_action in ['add','add_dir'] and action in ['add','add_dir']:
                 continue
             if action in ['move', 'move_dir']:
                 file1, file2 = params
@@ -217,7 +217,7 @@ class MessageQueue2treat(ActionMessageQueue):
 #Decorator
 def disable_inotify(fx):
     def new_fx(self, *args, **kargs):
-        if self._inotify is None:
+        if self._inotify is None or kargs.get('skip_inotify', False):
             return fx(self, *args, **kargs)
         self._inotify.join()
         res = fx(self, *args, **kargs)
@@ -241,13 +241,21 @@ class DiskAction(object):
         self.__storage_path = storage_path
         self.__server_path = None
     
+    def inotify_stop(self):
+        if self._inotify:
+            self._inotify.join()
+    
+    def inotify_start(self):
+        if self._inotify:
+            self._inotify.start(threaded=inotify_threaded)
+    
     def set_server_path(self, server_path):
         print 'Server path set to: %s' % server_path
         self.__server_path = server_path
     
     @disable_inotify
     @tryfalse
-    def rm(self, filename, timestamp=None):
+    def rm(self, filename, timestamp=None, skip_inotify=False):
         full_path = os.path.join(self.__storage_path, filename)
         
         if timestamp is not None:
@@ -277,7 +285,7 @@ class DiskAction(object):
     
     @disable_inotify
     @tryfalse
-    def mv(self, old, new):
+    def mv(self, old, new, skip_inotify=False):
         old = os.path.join(self.__storage_path, old)
         new = os.path.join(self.__storage_path, new)
         print 'rename %s -> %s' % (old, new)
@@ -325,22 +333,36 @@ class DiskAction(object):
 
 
 class Worker(threaded_loop.ThreadedLoop):
-    def __init__(self, message_queue, log_level=0):
+    def __init__(self, message_queue, log_level=0, batch=False):
         self._message_queue = message_queue
         self._log_level = log_level
+        self._batch = batch
         super(Worker, self).__init__(log_level=log_level)
     
     def get_next(self):
         return self._message_queue.get_next()
     
+    def get_all_next(self):
+        return self._message_queue.get_all_next()
+    
     def _loop(self):
         while self._message_queue.is_msg_available() and self.is_running():
-            message = self.get_next()
-            if self.treat(message):
-                self._message_queue.mark_as_treated(id=message.id)
+            if self._batch:
+                messages = self.get_all_next()
+                treated_ids = self.treat_batch(messages)
+                if treated_ids:
+                    self._message_queue.mark_as_treated(id=treated_ids)
+            else:
+                message = self.get_next()
+                if self.treat(message):
+                    self._message_queue.mark_as_treated(id=message.id)
     
     def treat(self, msg):
-        pass
+        return False
+    
+    def treat_batch(self, messages):
+        # Must return treated message ids
+        return []
 
 class DiskTreatmentWorker(Worker):
     def __init__(self, message_queue, disk_action, sending_queue=None, main_queue=None, log_level=0):
@@ -348,7 +370,7 @@ class DiskTreatmentWorker(Worker):
         self.__sending_queue = sending_queue
         self.__main_queue = main_queue
         self.__remote_ready = threading.Event()
-        super(DiskTreatmentWorker, self).__init__(message_queue, log_level)
+        super(DiskTreatmentWorker, self).__init__(message_queue, log_level, batch=True)
     
     def add2main_queue(self, data):
         if self.__main_queue is not None:
@@ -357,13 +379,13 @@ class DiskTreatmentWorker(Worker):
     def set_remote_ready(self):
         self.__remote_ready.set()
     
-    def treat(self, msg):
+    def treat(self, msg, skip_inotify=False):
         cmd = msg.action
         timestamp = str2timestamp(msg.date)
         if cmd in ['delete', 'delete_dir']:
-            self.__disk_action.rm(msg.file1, timestamp=timestamp)
+            self.__disk_action.rm(msg.file1, timestamp=timestamp, skip_inotify=skip_inotify)
         elif cmd in ['move','move_dir']:
-            self.__disk_action.mv(msg.file1, msg.file2)
+            self.__disk_action.mv(msg.file1, msg.file2, skip_inotify=skip_inotify)
         elif cmd == 'rsync_push':
             self.__remote_ready.clear()
             while True:
@@ -388,6 +410,34 @@ class DiskTreatmentWorker(Worker):
             print msg
             self.__disk_action.set_server_path(msg.file1)
         return True
+    
+    def treat_batch(self, messages):
+        if len(messages) == 0:
+            return []
+        batch_enable_cmds = ['delete', 'delete_dir','move','move_dir']
+        batch_messages = []
+        for msg in messsages:
+            if msg.action in batch_enable_cmds:
+                batch_messages.append(msg)
+            else:
+                break
+        if batch_messages:
+            self.__disk_action.inotify_stop()
+            ids = []
+            try:
+                for msg in batch_messages:
+                    if self.treat(msg, skip_inotify=True):
+                        ids.append(msg.id)
+                    else:
+                        break
+            finally:
+                self.__disk_action.inotify_start()
+            return ids
+        else:
+            msg = messages[0]
+            if self.treat(msg):
+                return [msg.id]
+        return []
 
 class SendWorkerClient(Worker):
     def __init__(self, message_queue, channel_handler, log_level=0):
