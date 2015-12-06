@@ -216,6 +216,20 @@ class MessageQueue(object):
             return None
         return DictObject(dict(zip(self.__columns_order, res)))
     
+    def get_all_next(self, **where):
+        wheresql = self._where2sql(where)        
+        if wheresql:
+            wheresql = 'AND %s' % wheresql
+        result = []
+        with self.get_cursor() as cr:
+            cr.execute("SELECT %s FROM %s WHERE treated=0 %s ORDER BY date,id" % (','.join(self.__columns_order), self._table_name, wheresql))
+            while True:
+                res = cr.fetchone()
+                if res is None:
+                    break
+                result.append(DictObject(dict(zip(self.__columns_order, res))))
+        return result
+    
     def get_next_group_by(self, *columns, **where):
         wheresql = self._where2sql(where)        
         if wheresql:
