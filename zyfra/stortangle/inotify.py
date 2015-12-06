@@ -110,7 +110,8 @@ class PathWatcher(object):
         if maskname == 'IN_MOVED_TO':
             if hasattr(event, 'src_pathname'):
                 previous_event = self.__events[-1]
-                if previous_event[0] == 'delete' and previous_event[1] == event.src_pathname:
+                src_pathname = _strip_path(event.src_pathname)
+                if previous_event[0] == 'delete' and previous_event[1] == src_pathname:
                     self.__events.pop()
                 the_event = ('move', (event.src_pathname, event.pathname))
             else:
@@ -118,7 +119,8 @@ class PathWatcher(object):
         elif maskname == 'IN_MOVED_TO|IN_ISDIR':
             if hasattr(event, 'src_pathname'):
                 previous_event = self.__events[-1]
-                if previous_event[0] == 'delete_dir' and previous_event[1] == event.src_pathname:
+                src_pathname = _strip_path(event.src_pathname)
+                if previous_event[0] == 'delete_dir' and previous_event[1] == src_pathname:
                     self.__events.pop()
                 the_event = ('move_dir', (event.src_pathname, event.pathname))
             else:
