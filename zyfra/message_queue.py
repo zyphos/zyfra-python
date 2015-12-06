@@ -158,7 +158,7 @@ class MessageQueue(object):
         for key, value in where.iteritems():
             if key not in self.__columns:
                 continue
-            if isinstance(value, [tuple, list]):
+            if isinstance(value, (tuple, list)):
                 value = [str(self.__columns[key].sqlify(v)) for v in value]
                 wheresql.append('%s in (%s)' % (key, ','.join(value)))
             else:
