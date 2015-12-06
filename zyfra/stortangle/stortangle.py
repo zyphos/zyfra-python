@@ -421,7 +421,9 @@ class DiskTreatmentWorker(Worker):
                 batch_messages.append(msg)
             else:
                 break
-        if batch_messages:
+        if len(batch_messages) > 1:
+            print 'Doing batch disk updates'
+            print batch_messages
             self.__disk_action.inotify_stop()
             ids = []
             try:
