@@ -653,7 +653,7 @@ class StortangleClient(StortangleCommon):
         elif cmd == 'got_server_lock':
             self.disk_worker.set_remote_ready()
         elif message.get('inotify'):
-            if cmd == 'add':
+            if cmd in ['add', 'add_dir']:
                 message['action'] = 'rsync_push'
                 self.message2treat.add(**message)
             else:
