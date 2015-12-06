@@ -158,7 +158,11 @@ class MessageQueue(object):
         for key, value in where.iteritems():
             if key not in self.__columns:
                 continue
-            wheresql.append('%s=%s' % (key, self.__columns[key].sqlify(value)))
+            if isinstance(value, [tuple, list]):
+                value = [str(self.__columns[key].sqlify(v)) for v in value]
+                wheresql.append('%s in (%s)' % (key, ','.join(value)))
+            else:
+                wheresql.append('%s=%s' % (key, self.__columns[key].sqlify(value)))
         return ' AND '.join(wheresql)
     
     def delete(self, **where):
