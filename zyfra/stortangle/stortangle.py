@@ -250,9 +250,15 @@ class DiskAction(object):
     def rm(self, filename, timestamp=None):
         full_path = os.path.join(self.__storage_path, filename)
         
-        if timestamp is not None and timestamp <= os.stat(full_path).st_mtime:
-            print 'The file "%s" is more recent, can not delete it.'
-            return True # the file on disk is more recent, do not delete
+        if timestamp is not None:
+            try:
+                local_timestamp = os.stat(full_path).st_mtime
+            except OSError:
+                print 'The file "%s" does not exist, can not delete it.'
+                return True
+            if timestamp <= local_timestamp:
+                print 'The file "%s" is more recent, can not delete it.'
+                return True # the file on disk is more recent, do not delete
         if os.path.isdir(full_path):
             self._rm_dir(full_path)
         else:
