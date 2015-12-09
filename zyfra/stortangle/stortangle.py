@@ -218,6 +218,7 @@ class MessageQueue2treat(ActionMessageQueue):
 def disable_inotify(fx):
     def new_fx(self, *args, **kargs):
         if self._inotify is None or kargs.get('skip_inotify', False):
+            print 'Skip inotify'
             return fx(self, *args, **kargs)
         self._inotify.join()
         res = fx(self, *args, **kargs)
@@ -451,7 +452,7 @@ class SendWorkerClient(Worker):
             return False
         print 'sendworker client treat %s' % data
         self.__channel_handler.send(data)
-        self._message_queue.wait_treated(5, **data) #5 seconds timeout
+        self._message_queue.wait_treated(5, id=data.id) #5 seconds timeout
         return False
 
 class SendWorkerServer(Worker):
@@ -479,7 +480,7 @@ class SendWorkerServer(Worker):
             return False
         print 'sendworker srv treat %s' % data
         self.__channel_handler.send_now(data['host'], data)
-        self._message_queue.wait_treated(5, **data) #5 seconds timeout
+        self._message_queue.wait_treated(5, id=data.id, host=data.host) #5 seconds timeout
         return False
 
 class StortangleCommon(object):
