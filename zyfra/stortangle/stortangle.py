@@ -445,7 +445,7 @@ class DiskTreatmentWorker(Worker):
 class SendWorkerClient(Worker):
     def __init__(self, message_queue, channel_handler, log_level=0):
         self.__channel_handler = channel_handler
-        super(SendWorkerClient, self).__init__(message_queue, log_level=log_level)
+        super(SendWorkerClient, self).__init__(message_queue, log_level=log_level, batch=False)
 
     def treat(self, data):
         if data is None:
@@ -454,6 +454,17 @@ class SendWorkerClient(Worker):
         self.__channel_handler.send(data)
         self._message_queue.wait_treated(5, id=data.id) #5 seconds timeout
         return False
+
+    def treat_batch(self, messages):
+        # Premice, not tested
+        print 'sendworker client treat_batch %s' % repr(messages)
+        if len(messages) == 0:
+            return []
+        data = {'id': [m.id for m in messages], 'action':'multi', 'data': 'messages'}
+        self.__channel_handler.send(data)
+        self._message_queue.wait_treated(5, id=data['id']) #5 seconds timeout
+        return []
+        
 
 class SendWorkerServer(Worker):
     def __init__(self, message_queue, channel_handler, log_level=0):
