@@ -6,6 +6,7 @@ import os
 from multiprocessing import Process, Queue 
 import tornado.ioloop
 import tornado.web
+import simplejson
 
 SCRIPT_PATH=os.path.dirname(os.path.realpath(__file__))
 
@@ -21,6 +22,10 @@ class MainHandler(tornado.web.RequestHandler):
         if path == '':
             self.render('templates/base.html')
             return
+        elif path == 'json':
+            self.queue2middle.put(('get_status',''))
+            status = self.queue2web.get()
+            return self.write(simplejson.dumps(status))
         #print '[HTTP] Sending put'
         self.queue2middle.put(('get_status',''))
         #print '[HTTP] receiving get'
