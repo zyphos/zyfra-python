@@ -236,11 +236,13 @@ def tryfalse(fx):
     return new_fx
 
 class DiskAction(object):
-    def __init__(self, storage_path, inotify=None, rsync_target=None):
+    def __init__(self, storage_path, inotify=None, rsync_target=None, push_compression=False, pull_compression=False):
         self._inotify = inotify
         self.__rsync_target = rsync_target
         self.__storage_path = storage_path
         self.__server_path = None
+        self.__push_compression = push_compression
+        self.__pull_compression = pull_compression
     
     def inotify_stop(self):
         if self._inotify:
@@ -294,8 +296,11 @@ class DiskAction(object):
             os.rename(old, new)
         return True
     
-    def rsync(self, cmds):
-        cmds = ['rsync', '-auH'] + cmds
+    def rsync(self, cmds, compression=False):
+        params = 'auH'
+        if compression:
+            params += 'z'
+        cmds = ['rsync', '-' + params] + cmds
         print cmds
         if not dry_run:
             print 'Doing rsync'
@@ -316,7 +321,7 @@ class DiskAction(object):
         path='' # Alway sync all
         from_path = self.get_local_path(path)
         to_path = self.get_server_path(path)
-        self.rsync([from_path, to_path])
+        self.rsync([from_path, to_path], compression=self.__push_compression)
         return True
         """self.send('rsync','')"""
         #self.ssh.send('enable_inotify')
@@ -329,7 +334,7 @@ class DiskAction(object):
         path='' # Alway sync all
         from_path = self.get_server_path(path)
         to_path = self.get_local_path(path)
-        self.rsync([from_path, to_path])
+        self.rsync([from_path, to_path], compression=self.__pull_compression)
         return True
 
 
@@ -657,20 +662,36 @@ class StortangleServer(StortangleCommon):
     pass
 
 class StortangleClient(StortangleCommon):
-    def __init__(self, server_host, username, password, storage_path='~/stortangle', port=2200, name=None, rsync_username=None):
+    def __init__(self, server_host, username, password,
+                 storage_path='~/stortangle', port=2200, name=None,
+                 rsync_username=None, push_compression=False,
+                 pull_compression=False):
         StortangleCommon.__init__(self, storage_path)
         if rsync_username is None:
             rsync_username = username
         self.rsync_target = '%s@%s' % (rsync_username, server_host)
         self.message2send = MessageQueueMsg2sendClt()
         self.message2treat = MessageQueue2treat()
-        self.inotify = InotifyWatcher(self.storage_path,queue=self.queue, relative_path=self.storage_path)
-        self.disk_action = DiskAction(storage_path=storage_path, inotify=self.inotify, rsync_target=self.rsync_target)
+        self.inotify = InotifyWatcher(self.storage_path,queue=self.queue,
+                                      relative_path=self.storage_path)
+        self.disk_action = DiskAction(storage_path=storage_path,
+                                      inotify=self.inotify,
+                                      rsync_target=self.rsync_target,
+                                      push_compression=push_compression,
+                                      pull_compression=pull_compression)
         self.inotify_threaded = True
         self.inotify.start(threaded=self.inotify_threaded)
         self.server_path = None
-        self.ssh = ChannelHandlerClientStortangle(server_host, username, password, port, queue=self.queue, send_queue=self.message2send, name=name)
-        self.disk_worker = DiskTreatmentWorker(self.message2treat, self.disk_action, self.message2send, main_queue=self.queue, log_level=0)
+        self.ssh = ChannelHandlerClientStortangle(server_host, username,
+                                                  password, port,
+                                                  queue=self.queue,
+                                                  send_queue=self.message2send,
+                                                  name=name)
+        self.disk_worker = DiskTreatmentWorker(self.message2treat,
+                                               self.disk_action,
+                                               self.message2send,
+                                               main_queue=self.queue,
+                                               log_level=0)
         sending_worker = SendWorkerClient(self.message2send, self)
         sending_worker.start()
         self.disk_worker.start()
