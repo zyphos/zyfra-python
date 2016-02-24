@@ -129,13 +129,17 @@ class Scraper(object):
         return Data(self.web_browser(*args, **kargs))
 
 class Field(object):
-    xpath = None
+    _xpath = None
+    _attr = None
+    _tag = None
     
-    def __init__(self, xpath = None, full_xpath = None):
+    def __init__(self, xpath=None, full_xpath=None, attr=None, tag=False):
         if full_xpath is not None:
             self._xpath = xpath
         elif xpath is not None:
             self._auto_xpath(xpath)
+        self._attr = attr
+        self._tag = tag
     
     def _auto_xpath(self, xpath):
             self._xpath = xpath
@@ -143,6 +147,11 @@ class Field(object):
     def __call__(self, data, ctx=None):
         if self._xpath is not None:
             return self.parse_value(ctx, data.xpath(self._xpath))
+        elif self._attr is not None:
+            return self.parse_value(ctx, data.get(self._attr))
+        elif self._tag:
+            return self.parse_value(ctx, data.tag)
+        return data
 
     def parse_value(self, ctx, value):
         if isinstance(value, basestring):
@@ -161,7 +170,7 @@ class Text(Field):
 class Int(Field):
     def parse_value(self, ctx, value):
         if isinstance(value, list):
-            if len(value) > 0:
+            if len(value):
                 value = value[0]
             else:
                 return None
@@ -169,14 +178,14 @@ class Int(Field):
             return int(value)
         except:
             value = re_float.findall(value)
-            if len(value) > 0:
+            if len(value):
                 return int(value[0])
             return None
 
 class Float(Field):
     def parse_value(self, ctx, value):
         if isinstance(value, list):
-            if len(value) > 0:
+            if len(value):
                 value = value[0]
             else:
                 return None
@@ -185,13 +194,15 @@ class Float(Field):
             return float(value)
         except:
             value = re_float.findall(value)
-            if len(value) > 0:
+            if len(value):
                 return float(value[0])
             return None
 
 class Object(Field):
-    def __init__(self, xpath = None):
-        Field.__init__(self, xpath)
+    _columns = None
+    
+    def __init__(self, *args, **kargs):
+        Field.__init__(self, *args, **kargs)
         self._columns = {}
         for col in dir(self):
             attr = getattr(self, col)
