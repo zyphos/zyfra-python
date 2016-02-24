@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
- Scrapper
+ Scraper
  --------
  
  Class to parse HTML website
@@ -76,7 +76,10 @@ def toData(obj):
 
 class Data(MetaObject):
     def __new__(cls, value):
+        if value.__class__.__name__ == '_ElementUnicodeResult':
+            value = unicode(value)
         obj = MetaObject.__new__(cls, value)
+            
         if (hasattr(value, 'xpath')):
             obj.__xpath = value.xpath
             obj.__value = value
@@ -114,6 +117,8 @@ class Data(MetaObject):
             raise Exception('Invalid xpath expression: %s' % xpath)
         if isinstance(res, lxml.etree._ElementStringResult):
             res = str(res)
+        elif isinstance(res, lxml.etree._ElementUnicodeResult):
+            res = unicode(res)
         return toData(res)
 
 class Scraper(object):
