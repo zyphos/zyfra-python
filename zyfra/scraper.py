@@ -238,12 +238,10 @@ class Objects(Object):
 
 class Page(Object):
     _url = None
+    _web_browser = None
 
     def __init__(self, web_browser = None, **kargs):
-        if web_browser is None:
-            self._web_browser = WebBrowser()
-        else:
-            self._web_browser = web_browser
+        self._web_browser = web_browser
         Object.__init__(self, **kargs)
     
     def __call__(self, url=None, ctx=None, debug=False, *args, **kargs):
@@ -254,8 +252,18 @@ class Page(Object):
                 raise Exception('No url provided')
         if ctx is None:
             ctx = {}
-        #print 'url:', url
-        url = Field.parse_value(self, ctx, url)
+        
+        if 'web_browser' in ctx:
+            web_browser = ctx['web_browser']
+        elif self._web_browser is not None:
+            web_browser = self._web_browser
+            ctx['web_browser'] = web_browser
+        else:
+            web_browser = WebBrowser()
+            ctx['web_browser'] = web_browser
+        #print 'xpath:', self._xpath
+        #print 'url:', repr(url)
+        url = Field.__call__(self, url, ctx)
         #print 'urlparsed:', url
         if 'url' in ctx and url.find('//') == -1:
             parent_url = ctx['url']
@@ -264,8 +272,12 @@ class Page(Object):
             else:
                 url = get_url_dir(parent_url) + url
         #print 'url2:', url
-        data = Data(self._web_browser(url, *args, **kargs))
+        data = Data(web_browser(url, *args, **kargs))
         if debug:
+            print 'data:'
             print data
         ctx['url'] = url
         return Object.parse_value(self, ctx, data)
+    
+    def parse_value(self, ctx, value):
+        return Field.parse_value(self, ctx, value)
