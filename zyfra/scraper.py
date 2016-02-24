@@ -210,6 +210,15 @@ class Object(Field):
                 name = col.lower()
                 self._columns[name] = attr
     
+    def __setattr__(self, name, value):
+        if isinstance(value, Field):
+            name = name.lower()
+            self._columns[name] = value
+        elif hasattr(self, name):
+            self.__dict__[name] = value
+        else:
+            raise Exception('Can not add other attribute than Field instance: [%s] %s, %s' % (name, repr(value), type(value),))
+    
     def parse_value(self, ctx, value):
         res = {}
         for field_name in self._columns:
