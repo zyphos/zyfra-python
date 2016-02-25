@@ -25,19 +25,27 @@ Usage:
 from zyfra import scraper
 
 class Product(scraper.Page):
-    name = scraper.Text(xpath="h1/text()")
-    code = scraper.Text(xpath="td[@class='code']/text()")
+    name = scraper.Text(xpath="//h1/text()")
+    code = scraper.Text(xpath="//td[@class='code']/text()")
 
 class Categories(scraper.Objects):
-    name = scraper.Text(xpath="h3/text()")
-    img = scraper.Text(xpath="img/@src")
+    name = scraper.Text(xpath="//h3/text()")
+    img = scraper.Text(xpath="//img/@src")
 
 class CategoryPage(scraper.Page):
-    name = scraper.Text(xpath="h1/text()")
-    category_ids = Categories(xpath="div[@class='subcategory']/a")
+    name = scraper.Text(xpath="//h1/text()")
+    category_ids = Categories(xpath="//div[@class='subcategory']/a")
 
 cats = CategoryPage()('http://www.website.com/category/x.html')
 print cats
+
+Supported data types:
+  Text
+  Int
+  Float
+  Object
+  Objects
+  Page
 """
 
 import re
@@ -50,6 +58,9 @@ from meta_object import MetaObject
 re_float = re.compile('\d+(?:\.\d+)?')
 re_int = re.compile('\d+')
 
+class ScraperException(Exception):
+    pass
+
 def get_url_root(url):
     protocol, url = url.split('://', 1)
     return protocol + '://' + url.split('/', 1)[0]
@@ -59,6 +70,7 @@ def get_url_dir(url):
     return protocol + '://' + url.split('?', 1)[0].rsplit('/', 1)[0]
 
 def toData(obj):
+    """Make a metaobject Data from obj"""
     if isinstance(obj, tuple):
         r = []
         for i in xrange(len(obj)):
@@ -91,30 +103,33 @@ class Data(MetaObject):
     #    return str(self.__value)
         
     def re(self, regex):
+        """Find all regex occurence on data content"""
         if(not isinstance(self, basestring)): 
             if(isinstance(self, lxml.etree._ElementTree) or isinstance(self, lxml.etree._Element)):
                 res = re.findall(regex, str(self))
-                return toData(res)
-            raise Exception('Can not do regex on non string object')
-        res = re.findall(regex, self)
+            else:
+                raise ScraperException('Can not do regex on non string object')
+        else:
+            res = re.findall(regex, self)
         return toData(res)
-    
+
     def xpath(self, xpath):
         """if (hasattr(self, '__xpath')):
             print 'HAs xpath'
             return toData(self.__xpath(xpath))"""
+        """Do a xpath on data content"""
         if(not isinstance(self, basestring)): 
             if(isinstance(self, lxml.etree._ElementTree) or isinstance(self, lxml.etree._Element)):
                 tree = fromstring(lxml.etree.tostring(self))
             else:
-                raise Exception('Can not do xpath on this kind of object [' + str(self) + ']')
+                raise ScraperException('Can not do xpath on this kind of object [' + str(self) + ']')
         else:
             tree = fromstring(self)
-        #self.__class__(
+
         try:
             res = tree.xpath(xpath)
         except lxml.etree.XPathEvalError:
-            raise Exception('Invalid xpath expression: %s' % xpath)
+            raise ScraperException('Invalid xpath expression: %s' % xpath)
         if isinstance(res, lxml.etree._ElementStringResult):
             res = str(res)
         elif isinstance(res, lxml.etree._ElementUnicodeResult):
@@ -132,14 +147,18 @@ class Field(object):
     _xpath = None
     _attr = None
     _tag = None
+    _default_value = None
     
-    def __init__(self, xpath=None, full_xpath=None, attr=None, tag=False):
+    def __init__(self, xpath=None, full_xpath=None, attr=None, tag=False,
+                 default_value=None):
         if full_xpath is not None:
             self._xpath = xpath
         elif xpath is not None:
             self._auto_xpath(xpath)
         self._attr = attr
         self._tag = tag
+        if default_value is not None:
+            self._default_value = default_value
     
     def _auto_xpath(self, xpath):
             self._xpath = xpath
@@ -171,16 +190,21 @@ class Int(Field):
     def parse_value(self, ctx, value):
         if isinstance(value, list):
             if len(value):
-                value = value[0]
+                return value[0]
+            elif self._default_value is not None:
+                return self._default_value
             else:
-                return None
+                raise ScraperException("Can not parse integer from empty list.")
         try:
             return int(value)
         except:
             value = re_float.findall(value)
             if len(value):
                 return int(value[0])
-            return None
+            elif self._default_value is not None:
+                return self._default_value
+            else:
+                raise ScraperException("Can not parse integer from this: %s." % repr(value))
 
 class Float(Field):
     def parse_value(self, ctx, value):
@@ -188,7 +212,7 @@ class Float(Field):
             if len(value):
                 value = value[0]
             else:
-                return None
+                return self._default_value
         value = value.replace(',', '.')
         try:
             return float(value)
@@ -196,7 +220,7 @@ class Float(Field):
             value = re_float.findall(value)
             if len(value):
                 return float(value[0])
-            return None
+            return self._default_value
 
 class Object(Field):
     _columns = None
@@ -217,7 +241,7 @@ class Object(Field):
         elif hasattr(self, name):
             self.__dict__[name] = value
         else:
-            raise Exception('Can not add other attribute than Field instance: [%s] %s, %s' % (name, repr(value), type(value),))
+            raise ScraperException('Can not add other attribute than Field instance: [%s] %s, %s' % (name, repr(value), type(value),))
     
     def parse_value(self, ctx, value):
         res = {}
@@ -231,7 +255,7 @@ class Objects(Object):
         if self._xpath is not None:
             records = data.xpath(self._xpath)
             if not isinstance(records, list):
-                raise Exception('Objects no list result')
+                raise ScraperException('Objects no list result')
             for rec in data.xpath(self._xpath):
                 res.append(self.parse_value(ctx, rec))
         return res
@@ -249,7 +273,7 @@ class Page(Object):
             if self._url is not None:
                 url = self._url
             else:
-                raise Exception('No url provided')
+                raise ScraperException('No url provided')
         if ctx is None:
             ctx = {}
         
