@@ -94,7 +94,7 @@ class Many2Many(One2Many):
         new_ctx = context.copy()
         if nb_fields:
             if nb_fields == 1 and fields[0] == self.m2m_relation_object._key:
-                new_fields = array(self.rt_foreign_field)
+                new_fields = [self.rt_foreign_field]
                 #print 'new_fields1', new_fields
             else:
                 #print 'rt_foreign_field', self.rt_foreign_field
