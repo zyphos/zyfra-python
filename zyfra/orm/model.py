@@ -30,6 +30,12 @@ class Model(object):
     _key_sql_name = ''
     _columns_order = None
     _auto_columns_order = False
+    _before_create_fields = None
+    _after_create_fields = None
+    _before_write_fields = None
+    _after_write_fields = None
+    _before_unlink_fields = None
+    _after_unlink_fields = None
 
     def __init__(self, **kargs):
         if self._columns_order is None:
@@ -53,12 +59,11 @@ class Model(object):
         self._field_prefix = self._field_prefix.lower()
         methods = ['before_create', 'after_create', 'before_write',
                 'after_write', 'before_unlink', 'after_unlink']
-        """for method in methods:
-            
-            self.:'__' + method + '_fields'} = array()
-        }
+        for method in methods:
+            #super(Model, self).__setattr__('__' + method + '_fields', [])
+            setattr(self, '_' + method + '_fields', {})
 
-        if (!strlen(self._order_by)) self._order_by = self._key
+        """if (!strlen(self._order_by)) self._order_by = self._key
 
         if (!array_key_exists(self._key, self._columns)):
             key_col = new IntField('Id', array('primary_key'=>True, 'auto_increment'=>True))
@@ -117,7 +122,7 @@ class Model(object):
         if self._pool.get_auto_create():
             self.update_sql()
 
-    def ___setattr__(self, name, value):
+    def __setattr__(self, name, value):
         if isinstance(value, Field):
             self._columns[name] = value
             if self._auto_columns_order:
@@ -220,10 +225,10 @@ class Model(object):
             where = self._key_sql_name + '=' + where
         elif tools.is_array(where):
             where = self._key_sql_name + ' in (' + implode(',', where) + ')'
-        columns_before = array_keys(self.__before_unlink_fields)
-        columns_after = array_keys(self.__after_unlink_fields)
-        columns = array_merge(columns_before, columns_after)
-        if (count(columns) > 0):
+        columns_before = self._before_unlink_fields.keys()
+        columns_after = self._after_unlink_fields.keys()
+        columns = columns_before + columns_after
+        if len(columns) > 0:
             sql = 'SELECT ' + self._key + ', ' + ','.join(columns) + ' FROM ' + self._table + ' WHERE ' + where
             rows = self._pool._db.get_array_object(sql, data=datas, key='')
         for column in columns_before:
@@ -232,7 +237,8 @@ class Model(object):
                 old_values[getattr(row, self._key)] = getattr(row, column)
             self._columns[column].before_unlink_trigger(old_values)
         sql = 'DELETE FROM ' + self._table + ' WHERE ' + where
-        self._pool._db.safe_query(sql, datas)
+        #print sql, datas
+        cr(self).execute(sql, datas)
         for column in columns_after:
             old_values = {}
             for row in rows:
