@@ -272,7 +272,7 @@ class SQLQuery(object):
                             row.field_alias = []
                     ids = ids.keys()
                     for key, id in enumerate(ids):
-                        if str(id).strip() == '':
+                        if str(id).strip() == '' or id is None:
                             del ids[key]
                     field_alias_ids[field_alias] = ids
                     row_field_alias_ids[field_alias] = row_alias_ids
