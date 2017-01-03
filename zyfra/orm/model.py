@@ -111,16 +111,20 @@ class Model(object):
         self._instanciated = True
         if not self._name:
             self._name = self.__class__.__name__
+        if not self._table:
+            self._table = pool._table_prefix + self._name
+        self.__set_columns_instance()
+        if self._pool.get_auto_create():
+            self.update_sql()
+    
+    def __set_columns_instance(self):
+        #print "[%s] Instanciate columns" % self._name
         if self._key in self._columns:
             self.set_column_instance(self._key, self._columns[self._key])
         for name, col in self._columns.iteritems():
             if name == self._key:
                 continue
             self.set_column_instance(name, col)
-        if not self._table:
-            self._table = pool._table_prefix + self._name
-        if self._pool.get_auto_create():
-            self.update_sql()
 
     def __setattr__(self, name, value):
         if isinstance(value, Field):

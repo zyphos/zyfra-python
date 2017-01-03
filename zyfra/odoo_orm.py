@@ -73,12 +73,11 @@ def generate_object(oo, db, obj_name, debug=False):
     #print 'Generating object(%s)' % obj_name
     fields = oo[obj_name].fields_get()
     #print fields
-    obj = OdooModel()
-    obj._name = obj_name
+    
     table_name = obj_name.replace('.', '_')
+    obj = OdooModel(_name=obj_name, _table=table_name)
     cr = db.cursor(autocommit=True)
     real_table_columns = [r['column_name'] for r in cr.get_array_object("select column_name from information_schema.columns where table_name='%s'" % table_name)]
-    obj._table = table_name
     for field_name in fields:
         field = fields[field_name]
         type = field['type']
