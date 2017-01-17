@@ -113,7 +113,7 @@ class Data(MetaObject):
             res = re.findall(regex, self)
         return toData(res)
 
-    def xpath(self, xpath):
+    def xpath(self, xpath, html=False):
         """if (hasattr(self, '__xpath')):
             print 'HAs xpath'
             return toData(self.__xpath(xpath))"""
@@ -130,10 +130,20 @@ class Data(MetaObject):
             res = tree.xpath(xpath)
         except lxml.etree.XPathEvalError:
             raise ScraperException('Invalid xpath expression: %s' % xpath)
-        if isinstance(res, lxml.etree._ElementStringResult):
-            res = str(res)
-        elif isinstance(res, lxml.etree._ElementUnicodeResult):
-            res = unicode(res)
+        
+        def parse_data(data):
+            if isinstance(data, lxml.etree._ElementStringResult):
+                return str(data)
+            elif isinstance(data, lxml.etree._ElementUnicodeResult):
+                return unicode(data)
+            elif html and isinstance(data, (lxml.etree._ElementTree, lxml.etree._Element, lxml.html.HtmlElement)):
+                return lxml.etree.tostring(data)
+            return data
+        
+        if isinstance(res, list):
+            res = [parse_data(r) for r in res]
+        else:
+            res = parse_data(res)
         return toData(res)
 
 class Scraper(object):
