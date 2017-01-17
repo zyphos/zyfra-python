@@ -8,6 +8,8 @@ import datetime
 import time
 from functools import wraps 
 import threading
+import traceback
+from . import Email
 
 class DictObject(dict):
     def __new__(cls, *args, **kargs):
@@ -415,6 +417,29 @@ def fn_lock(lock=None):
             result = fn(*args, **kargs)
             lock.release()
             return result
+        return _fn
+    return decorator
+
+def mail_on_exception(subject, from_email=None, to_email=None, catch=False, show=False, smtp_server='localhost', email_object=None):
+    if email_object is None:
+        email_object = Email(smtp_server=smtp_server)
+    def decorator(fn):
+        def _fn(*args, **kargs):
+            try:
+                result = fn(*args, **kargs)
+                return result
+            except:
+                import getpass
+                import platform
+                node_name = platform.node()
+                exception_details = traceback.format_exc()
+                if show:
+                    print exception_details
+                username = getpass.getuser()
+                email_object(subject, 'Host: %s\nUsername:%s\n\n%s' % (node_name, username, exception_details), from_email, to_email)
+                if not catch:
+                    raise
+            return None
         return _fn
     return decorator
 
