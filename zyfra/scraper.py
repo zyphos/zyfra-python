@@ -51,6 +51,7 @@ Supported data types:
 import re
 from lxml.html import fromstring
 import lxml.etree
+import json
 
 from web_browser import WebBrowser
 from meta_object import MetaObject
@@ -145,6 +146,10 @@ class Data(MetaObject):
         else:
             res = parse_data(res)
         return toData(res)
+    
+    def json(self):
+        res = json.loads(str(self))
+        return Data(res)
 
 class Scraper(object):
     def __init__(self):
@@ -152,6 +157,10 @@ class Scraper(object):
  
     def get_url(self, *args, **kargs):
         return Data(self.web_browser(*args, **kargs))
+    
+    def get_json_app(self, url, data):
+        headers = {'Content-Type': 'application/json'}
+        return Data(self.web_browser(url, raw_data=json.dumps(data), header=headers))
 
 class Field(object):
     _xpath = None
