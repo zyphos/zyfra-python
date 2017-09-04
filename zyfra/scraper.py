@@ -150,6 +150,11 @@ class Data(MetaObject):
     def json(self):
         res = json.loads(str(self))
         return Data(res)
+    
+    def html(self):
+        if html and isinstance(data, (lxml.etree._ElementTree, lxml.etree._Element, lxml.html.HtmlElement)):
+            return lxml.etree.tostring(self)
+        raise ScraperException('This is not an element')
 
 class Scraper(object):
     def __init__(self):
