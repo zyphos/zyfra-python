@@ -172,6 +172,8 @@ class Field(object):
     _attr = None
     _tag = None
     _default_value = None
+    _name = None
+    _parent_type = None
     
     def __init__(self, xpath=None, full_xpath=None, attr=None, tag=False,
                  default_value=None):
@@ -206,6 +208,10 @@ class Field(object):
         #return value.tostring()
         #return dir(value)
         return str(value)
+    
+    def set_instance_data(self, name, parent_type):
+        self._name = name
+        self._parent_type = parent_type
 
 class Text(Field):
     pass
@@ -218,7 +224,7 @@ class Int(Field):
             elif self._default_value is not None:
                 return self._default_value
             else:
-                raise ScraperException("Can not parse integer from empty list.")
+                raise ScraperException("%s.%s: Can not parse integer from empty list." % (self._parent_type, self._name))
         try:
             return int(value)
         except:
@@ -228,7 +234,7 @@ class Int(Field):
             elif self._default_value is not None:
                 return self._default_value
             else:
-                raise ScraperException("Can not parse integer from this: %s." % repr(value))
+                raise ScraperException("%s.%s: Can not parse integer from this: %s." % (self._parent_type, self._name, repr(value)))
 
 class Float(Field):
     def parse_value(self, ctx, value):
@@ -255,17 +261,20 @@ class Object(Field):
         for col in dir(self):
             attr = getattr(self, col)
             if isinstance(attr, Field):
-                name = col.lower()
-                self._columns[name] = attr
+                self.__add_columns(name=col, field=attr)
+    
+    def __add_columns(self, name, field):
+        name = name.lower()
+        self._columns[name] = field
+        field.set_instance_data(name, self.__class__.__name__)
     
     def __setattr__(self, name, value):
         if isinstance(value, Field):
-            name = name.lower()
-            self._columns[name] = value
+            self.__add_columns(name=name, field=value)
         elif hasattr(self, name):
             self.__dict__[name] = value
         else:
-            raise ScraperException('Can not add other attribute than Field instance: [%s] %s, %s' % (name, repr(value), type(value),))
+            raise ScraperException('%s: Can not add other attribute than Field instance: [%s] %s, %s' % (self.__class__.__name__, name, repr(value), type(value),))
     
     def parse_value(self, ctx, value):
         res = {}
@@ -279,7 +288,7 @@ class Objects(Object):
         if self._xpath is not None:
             records = data.xpath(self._xpath)
             if not isinstance(records, list):
-                raise ScraperException('Objects no list result')
+                raise ScraperException('%s: Objects no list result' % self.__class__.__name__)
             for rec in data.xpath(self._xpath):
                 res.append(self.parse_value(ctx, rec))
         return res
@@ -297,7 +306,7 @@ class Page(Object):
             if self._url is not None:
                 url = self._url
             else:
-                raise ScraperException('No url provided')
+                raise ScraperException('%s: No url provided' % self.__class__.__name__)
         if ctx is None:
             ctx = {}
         
