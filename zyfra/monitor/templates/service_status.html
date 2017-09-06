@@ -3,7 +3,11 @@
 			<li class='{{ host['state'] }}'><h2>{{ escape(host['name']) }} ({{ escape(host['hostname']) }})</h2><div class='state'>{{ escape(host['state']) }}</div>
 				<ul>
 				{% for service in host['services'] %}
-					<li class='{{ service['state'] }}'>{{ escape(service['name']) }}<div class='state'>{{ escape(service['state']) }}</div></li>
+					<li class='{{ service['state'] }}'>{{ escape(service['name']) }}
+					   {% if service['message'] %}
+					       <pre class='message'>{{ escape(service['message']) }}</pre>
+					   {% end %}
+					</li>
 				{% end %}
 				</ul>
 			</li>

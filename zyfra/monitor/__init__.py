@@ -49,7 +49,7 @@ import signal
 
 import yaml
 
-from probe_common import UNKNOWN, OK, WARNING, CRITICAL
+from probe_common import UNKNOWN, OK, WARNING, CRITICAL, State as cState
 import network_services
 import host_service
 
@@ -265,7 +265,7 @@ class Monitor(object):
 
     def probe_hosts(self, first_check=False, thread_limit=None):
         if self.internet_needed:
-            internet_state = self.get_internet_state()
+            internet_state = self.get_internet_state().state
             print 'Internet access is %s' % render_status(internet_state)
         else:
             internet_state = False
@@ -387,12 +387,19 @@ class Monitor(object):
             for service_name in host['services']:
                 if service_name not in host_states:
                     continue
-                service_state = host_states[service_name].value
+                value = host_states[service_name].value
+                if value is None:
+                    service_state = None
+                    message = ''
+                else:
+                    service_state = value.state
+                    message = value.message
                 if service_state > state:
                     state = service_state
                 service_data = {}
                 service_data['name'] = service_name
-                service_data['state'] = render_status(service_state)
+                service_data['state'] = render_status(state)
+                service_data['message'] = message
                 services.append(service_data)
             hostdata['services'] = services
             hostdata['state'] = render_status(state)

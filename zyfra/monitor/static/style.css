@@ -1,3 +1,7 @@
+body{
+	font-family: arial;
+}
+
 h1 {
 	color:red;
 }
@@ -36,6 +40,14 @@ li{
 	display: inline;
 }
 
+li > ul > li .message {
+	font-size: 8pt;
+	font-family: monospace;
+	overflow-x: auto;
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
 div.state{
 	display: none;
 }
@@ -43,12 +55,29 @@ div.state{
 li.OK > h2, li > ul > li.OK{
 	background-color:#7F7;
 }
+
+li > ul > li.OK .message{
+	background-color:#CFC;
+}
+
 li.WARNING > h2, li > ul > li.WARNING{
 	background-color:#FF7;
 }
+
+li > ul > li.WARNING .message{
+    background-color:#FFC;
+}
+
 li.CRITICAL > h2, li > ul > li.CRITICAL{
 	background-color:#F77;
 }
+li > ul > li.CRITICAL .message{
+    background-color:#FCC;
+}
+
 li.UNKNOWN > h2, li > ul > li.UNKNOWN{
 	background-color:#9CF;
+}
+li > ul > li.UNKNOWN .message{
+    background-color:#CEF;
 }

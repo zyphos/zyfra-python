@@ -4,7 +4,7 @@
 import socket
 import os
 
-from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service
+from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, State
 
 hostnames = {}
 tcp = socket.SOCK_STREAM
@@ -35,8 +35,8 @@ class NetworkTcpService(NetworkService):
         sock.settimeout(0.2)
         result = sock.connect_ex((remote_ip, self.port))
         if result == 0:
-            return OK
-        return CRITICAL
+            return State(OK)
+        return State(CRITICAL)
 
 class NetworkUdpService(NetworkService):
     port = 0
@@ -61,16 +61,16 @@ class NetworkUdpService(NetworkService):
             is_open = False
         sock.close()
         if is_open:
-            return OK
-        return CRITICAL
+            return State(OK)
+        return State(CRITICAL)
 
 class ping(NetworkService):
     def __call__(self, hostname):
         remote_ip = get_hostname_ip(hostname)
         response = os.system("ping -c 1 " + remote_ip + " > /dev/null")
         if response == 0:
-            return OK
-        return CRITICAL
+            return State(OK)
+        return State(CRITICAL)
 
 class InternetCheck(ping):
     def __init__(self, hostnames):
@@ -79,8 +79,8 @@ class InternetCheck(ping):
     def __call__(self):
         for hostname in self.hostnames:
             if ping.__call__(self, hostname) == OK:
-                return OK
-        return CRITICAL
+                return State(OK)
+        return State(CRITICAL)
 
 class ftp(NetworkTcpService):
     port = 21

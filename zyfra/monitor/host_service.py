@@ -1,7 +1,7 @@
 import subprocess
 
 from zyfra import ssh_session, tools
-from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, ProbeException
+from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, ProbeException, State
 
 """TODO:
 - Add a probe for memory usage
@@ -64,7 +64,7 @@ class mount_usage(HostService):
             size = int(size)
             used_space = int(used_space)
             free_space = int(free_space)
-            if device in ('none', 'cgroup'):
+            if device in ('none', 'cgroup','udev','tmpfs','cgmfs','varrun','varlock','devshm','lrm'):
                 continue
             mounts[mount_point] = {'device': device,
                                    'size': size,
@@ -72,6 +72,11 @@ class mount_usage(HostService):
                                    'free_space': free_space,
                                    'pc': pc}
         return mounts
+    
+    def _str_data(self, data):
+        mountpoints = data.keys()
+        mountpoints.sort()
+        return '\n'.join(['% 4s %s' % (data[mp]['pc'], mp) for mp in mountpoints])
     
     @tools.delay_cache(60) # 1 min cached
     def get_state(self, cmd_exec):
@@ -83,7 +88,7 @@ class mount_usage(HostService):
                 return CRITICAL
             elif free_ratio <= 0.2:
                 state = WARNING 
-        return state
+        return State(state, self._str_data(mount_usages))
 
 class loadavg(HostService):
     def _get_loads(self, cmd_exec):
@@ -94,10 +99,12 @@ class loadavg(HostService):
     
     @tools.delay_cache(60) # 1 min cached
     def get_state(self, cmd_exec):
-        state_5m = self._get_loads(cmd_exec)[1]
+        loads = self._get_loads(cmd_exec)
+        state_5m = loads[1]
+        state = WARNING
         if state_5m < 1:
-            return OK
-        return WARNING
+            state = OK
+        return State(state, ' - '.join(['%.2f' % l for l in loads]))
 
 class process(HostService):
     process_name = None
@@ -116,8 +123,8 @@ class process(HostService):
 
     def _parse_result(self, result):
         if len(result.split('\n')) > 3:
-            return OK
-        return CRITICAL
+            return State(OK)
+        return State(CRITICAL)
 
 class raid(HostService):
     def _get_raid_status(self, cmd_exec):
@@ -153,7 +160,7 @@ class raid(HostService):
                 if disk_state != 'U':
                     state = CRITICAL
                     break
-        return state
+        return State(state)
 
 class smart(HostService):
     'Retrieve device S.M.A.R.T. status, for Hard Drive failure, ...'
@@ -209,7 +216,7 @@ class smart(HostService):
             nb_error = self._get_device_nb_errors(cmd_exec, devicename)
             if nb_error:
                 state = WARNING
-        return state
+        return State(state)
 
 class linux_updates(HostService):
     def _get_update_availables(self, cmd_exec):
@@ -230,19 +237,24 @@ class linux_updates(HostService):
     @tools.delay_cache(300) # 5 min cached
     def get_state(self, cmd_exec):
         updates = self._get_update_availables(cmd_exec)
+        messages = []
+        if updates['normal']:
+            messages.append('Normal: %s' % updates['normal'])
         if updates['security'] > 0:
-            return CRITICAL
+            messages.append('Security: %s' % updates['security'])
+        state = OK
+        if updates['security'] > 0:
+            state = CRITICAL    
         elif updates['normal'] > 0:
-            return WARNING
-        return OK
+            state = WARNING
+        return State(state, '\n'.join(messages))
 
 class reboot_needed(HostService):
     @tools.delay_cache(300) # 5 min cached
     def get_state(self, cmd_exec):
         if cmd_exec.file_exists('/var/run/reboot-required'):
-            return WARNING
-        else:
-            return OK
+            return State(WARNING)
+        return State(OK)
 
 class clamav(process):
     process_name = 'clamd'
