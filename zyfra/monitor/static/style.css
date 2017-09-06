@@ -15,11 +15,15 @@ ul{
     padding: 0px;
 }
 
+div > ul {
+	display: flex;
+	flex-wrap: wrap;
+}
+
 div > ul > li {
-	width:200px;
+	flex:0 0 200px;
 	margin: 5px;
 	background-color:#EEE;
-	border 
 }
 
 li > ul > li{
