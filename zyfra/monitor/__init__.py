@@ -391,6 +391,9 @@ class Monitor(object):
                 if value is None:
                     service_state = None
                     message = ''
+                elif isinstance(value, int):
+                    service_state = int
+                    message = ''
                 else:
                     service_state = value.state
                     message = value.message

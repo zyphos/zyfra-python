@@ -7,6 +7,7 @@ from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, ProbeException
 - Add a probe for memory usage
 - Add a probe for Free inode  ['df','-i']
 - Add module failure messages to result for critical, warning, ...
+- Add lsb_release -a to get linux version
 """
 
 class Cmd(object):
