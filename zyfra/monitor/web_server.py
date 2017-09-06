@@ -57,7 +57,7 @@ def middleware(queue2middle, queue2web):
         else:
             print '[MIDDLE] Command [%s] not found' % cmd
 
-def start_server(port=8888, debug=False):
+def start_server(port=8888, ssl=False, certfile=None, keyfile=None, debug=False):
     queue2middle = Queue()
     queue2web = Queue()
     favicon_path = os.path.join(SCRIPT_PATH, 'favicon.ico')
@@ -67,7 +67,14 @@ def start_server(port=8888, debug=False):
                                            (r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path}),
                                            (r"/(.*)", MainHandler, {'queue2middle': queue2middle, 'queue2web': queue2web, 'debug': debug}),
                                            ], compiled_template_cache=False)
-    application.listen(port)
+    if ssl and certfile and keyfile:
+        ssl_options={
+                        'certfile': certfile,
+                        'keyfile': keyfile,
+                    }
+    else:
+        ssl_options = None
+    application.listen(port, ssl_options=ssl_options)
     ioloop = tornado.ioloop.IOLoop.instance()
     def dummy_callback(iol):
         print 'test'

@@ -45,10 +45,6 @@ import signal
 
 import yaml
 
-dt1 = datetime.datetime.fromtimestamp(123456789) # 1973-11-29 22:33:09
-dt2 = datetime.datetime.fromtimestamp(234567890) # 1977-06-07 23:44:50
-rd = dateutil.relativedelta.relativedelta (dt2, dt1)
-
 from probe_common import UNKNOWN, OK, WARNING, CRITICAL
 import network_services
 import host_service
@@ -183,6 +179,10 @@ class Monitor(object):
     default_remote_password = None
     debug = False
     webserver_port = None
+    
+    webserver_ssl = False
+    webserver_certfile = None
+    webserver_keyfile = None
     running = True
     thread_limit = None
 
@@ -198,7 +198,7 @@ class Monitor(object):
         self.service_states = {}
         if self.webserver_port is not None:
             import web_server
-            self.queue2middle = web_server.start_server(self.webserver_port)
+            self.queue2middle = web_server.start_server(self.webserver_port, self.webserver_ssl, self.webserver_certfile, self.webserver_keyfile)
         self.init()
     
     def stop(self, *args):
