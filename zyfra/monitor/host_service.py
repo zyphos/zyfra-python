@@ -164,6 +164,8 @@ class raid(HostService):
 
 class smart(HostService):
     'Retrieve device S.M.A.R.T. status, for Hard Drive failure, ...'
+    cmd_line = '/usr/sbin/smartctl'
+    
     def _get_smart_data(self, result):
         rows = result.split('\n')
         for id, row in enumerate(rows):
@@ -172,7 +174,7 @@ class smart(HostService):
         return rows
 
     def _get_devices(self, cmd_exec):
-        result = cmd_exec(['sudo', 'smartctl', '--scan'])
+        result = cmd_exec(['sudo', self.cmd_line, '--scan'])
         devices = {}
         for row in result.split('\n'):
             if row == '':
@@ -183,7 +185,7 @@ class smart(HostService):
         return devices
     
     def _get_device_nb_errors(self, cmd_exec, devicename):
-        result = cmd_exec(['sudo', 'smartctl', '-l', 'error', devicename])
+        result = cmd_exec(['sudo', self.cmd_line, '-l', 'error', devicename])
         smart_data = self._get_smart_data(result)
         res = smart_data[1].split(': ')
         if len(res) > 1:
@@ -191,7 +193,7 @@ class smart(HostService):
         return 0
     
     def _get_device_attributes(self, cmd_exec, devicename):
-        result = cmd_exec(['sudo', 'smartctl', '-A', devicename])
+        result = cmd_exec(['sudo', self.cmd_line, '-A', devicename])
         smart_data = self._get_smart_data(result)
         attributes = {}
         for row in smart_data[3:]:
@@ -211,6 +213,9 @@ class smart(HostService):
     @tools.delay_cache(300) # 5 min cached    
     def get_state(self, cmd_exec):
         state = OK
+        if not cmd_exec.file_exists(self.cmd_line):
+            print '%s not found ! Can not check for update !' % self.cmd_line
+            return State(UNKNOWN, 'smartctl not found !') 
         devices = self._get_devices(cmd_exec)
         for devicename in devices:
             nb_error = self._get_device_nb_errors(cmd_exec, devicename)
@@ -228,7 +233,11 @@ class linux_updates(HostService):
         else:
             updates['normal'] = int(result[1].split()[0])
             updates['security'] = int(result[2].split()[0])"""
-        result = cmd_exec(['/usr/lib/update-notifier/apt-check']).split(';')
+        cmd_line = '/usr/lib/update-notifier/apt-check'
+        if not cmd_exec.file_exists(cmd_line):
+            print '%s not found ! Can not check for update !' % cmd_line
+            return None 
+        result = cmd_exec([cmd_line]).split(';')
         updates = {}
         updates['normal'] = int(result[0])
         updates['security'] = int(result[1])
@@ -237,6 +246,8 @@ class linux_updates(HostService):
     @tools.delay_cache(300) # 5 min cached
     def get_state(self, cmd_exec):
         updates = self._get_update_availables(cmd_exec)
+        if updates is None:
+            return State(UNKNOWN, 'apt-check not found!')
         messages = []
         if updates['normal']:
             messages.append('Normal: %s' % updates['normal'])
