@@ -392,7 +392,7 @@ class Monitor(object):
                     service_state = None
                     message = ''
                 elif isinstance(value, int):
-                    service_state = int
+                    service_state = value
                     message = ''
                 else:
                     service_state = value.state
@@ -401,7 +401,7 @@ class Monitor(object):
                     state = service_state
                 service_data = {}
                 service_data['name'] = service_name
-                service_data['state'] = render_status(state)
+                service_data['state'] = render_status(service_state)
                 service_data['message'] = message
                 services.append(service_data)
             hostdata['services'] = services
