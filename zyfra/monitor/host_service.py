@@ -5,7 +5,6 @@ from zyfra import ssh_session, tools
 from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, ProbeException, State
 
 """TODO:
-- Add a probe for memory usage
 """
 
 class Cmd(object):
@@ -397,6 +396,54 @@ class linux_version(HostService):
         if validity != 'expired' and validity > today:
             return State(OK, message)
         return State(CRITICAL, message)
+
+class mem_usage(HostService):
+    def _get_memory_details(self, cmd_exec):
+        data = cmd_exec(['cat','/proc/meminfo'])
+        result = {}
+        for row in data.split('\n')[:-1]:
+            parameter, value = row.split(':',1)
+            value = value.strip()
+            result[parameter] = value
+        return result
+        
+    def get_state(self, cmd_exec):
+        details = self._get_memory_details(cmd_exec)
+        
+        def get_amount(txt):
+            return int(txt.split(' ', 1)[0])
+        
+        def human_readable(amount):
+            i = 0
+            while float(amount) / (1000**i) > 1:
+                i += 1
+            units = ['kB', 'MB', 'GB', 'TB', 'EB']
+            if i > 0:
+                i -= 1
+                float(amount) / (1000**i)
+            return '%i%s' % (int(float(amount) / (1000**i)), units[i]) 
+        
+        mem_total = get_amount(details['MemTotal'])
+        mem_free = get_amount(details['MemFree'])
+        mem_cached = get_amount(details['Cached'])
+        mem_used = mem_total - mem_free - mem_cached 
+        pc_used = mem_used / float(mem_total)
+        
+        swap_total = get_amount(details['SwapTotal'])
+        swap_free = get_amount(details['SwapFree'])
+        swap_used = swap_total - swap_free
+        if swap_total > 0:
+            pc_swap_used = swap_used / float(swap_total)
+        
+        state = OK
+        if pc_used > 0.5:
+            state = WARNING
+        elif pc_used > 0.9:
+            state = CRITICAL
+        message = 'Mem: % 3i%% %s' % (round(pc_used*100), human_readable(mem_total))
+        if swap_total > 0:
+            message += '\nSwap: % 3i%% %s' % (round(pc_swap_used*100), human_readable(swap_total))
+        return State(state, message)
 
 class reboot_needed(HostService):
     @tools.delay_cache(300) # 5 min cached
