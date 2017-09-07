@@ -6,7 +6,6 @@ from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, ProbeException
 
 """TODO:
 - Add a probe for memory usage
-- Add a probe for Free inode  ['df','-i']
 """
 
 class Cmd(object):
@@ -57,8 +56,10 @@ class HostService(Service):
 
 class mount_usage(HostService):
     def _get_mount_usages(self, cmd_exec):
-        result = cmd_exec(['df','-P']) 
         mounts = {}
+        
+        # Check space
+        result = cmd_exec(['df','-P']) 
         for row in result.split('\n')[1:-1]:
             device, size, used_space, free_space, pc, mount_point = row.split(None, 5)
             size = int(size)
@@ -70,13 +71,29 @@ class mount_usage(HostService):
                                    'size': size,
                                    'used_space': used_space,
                                    'free_space': free_space,
-                                   'pc': pc}
+                                   'pc_space': pc}
+        
+        # Check inodes
+        result = cmd_exec(['df','-i'])
+        for row in result.split('\n')[1:-1]:
+            device, total_inode, used_inode, free_inode, pc, mount_point = row.split(None, 5)
+            total_inode = int(total_inode)
+            used_inode = int(used_inode)
+            free_inode = int(free_inode)
+            if mount_point not in mounts:
+                continue
+            data = {'total_inode': total_inode,
+                    'used_inode': used_inode,
+                    'free_inode': free_inode,
+                    'pc_inode': pc
+                    }
+            mounts[mount_point].update(data)
         return mounts
     
     def _str_data(self, data):
         mountpoints = data.keys()
         mountpoints.sort()
-        return '\n'.join(['% 4s %s' % (data[mp]['pc'], mp) for mp in mountpoints])
+        return '\n'.join(['% 4s % 4s %s' % (data[mp]['pc_space'],data[mp]['pc_inode'], mp) for mp in mountpoints])
     
     @tools.delay_cache(60) # 1 min cached
     def get_state(self, cmd_exec):
