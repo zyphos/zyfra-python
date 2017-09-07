@@ -1,3 +1,4 @@
+import datetime
 import subprocess
 
 from zyfra import ssh_session, tools
@@ -6,8 +7,6 @@ from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, ProbeException
 """TODO:
 - Add a probe for memory usage
 - Add a probe for Free inode  ['df','-i']
-- Add module failure messages to result for critical, warning, ...
-- Add lsb_release -a to get linux version
 """
 
 class Cmd(object):
@@ -261,6 +260,126 @@ class linux_updates(HostService):
         elif updates['normal'] > 0:
             state = WARNING
         return State(state, '\n'.join(messages))
+
+class linux_version(HostService):
+    version_validity = {'Ubuntu': [
+                            {'version':'8.04',
+                             'validity':'expired'},
+                            {'version':'8.10',
+                             'validity':'expired'},
+                            {'version':'9.04',
+                             'validity':'expired'},
+                            {'version':'9.10',
+                             'validity':'expired'},
+                            {'version':'10.04',
+                             'validity':'expired'},
+                            {'version':'10.10',
+                             'validity':'expired'},
+                            {'version':'11.04',
+                             'validity':'expired'},
+                            {'version':'11.10',
+                             'validity':'expired'},
+                            {'version':'12.04',
+                             'validity':'expired'},
+                            {'version':'12.10',
+                             'validity':'expired'},
+                            {'version':'13.04',
+                             'validity':'expired'},
+                            {'version':'13.10',
+                             'validity':'expired'},
+                            {'version':'14.04',
+                             'validity':'2019-04'},
+                            {'version':'14.10',
+                             'validity':'2015-07-23'},
+                            {'version':'15.04',
+                             'validity':'2016-07'},
+                            {'version':'15.10',
+                             'validity':'2016-07-28'},
+                            {'version':'16.04',
+                             'validity':'2021-04'},
+                            {'version':'16.10',
+                             'validity':'2017-07-20'},
+                            {'version':'17.04',
+                             'validity':'2018-01'},
+                            {'version':'17.10',
+                             'validity':'2018-07'},
+                            {'version':'18.04',
+                             'validity':'2023-04'},
+                                   ],
+                        'Debian': [
+                            {'codename':'slink',
+                             'validity':'2000-10-30'},
+                            {'codename':'potato',
+                             'validity':'2003-06-30'},
+                            {'codename':'woody',
+                             'validity':'2006-06-30'},
+                            {'codename':'sarge',
+                             'validity':'2008-03-31'},
+                            {'codename':'etch',
+                             'validity':'2010-02-15'},
+                            {'codename':'lenny',
+                             'validity':'2012-02-06'},
+                            {'codename':'squeeze',
+                             'validity':'2016-02-29'},
+                            {'codename':'wheezy',
+                             'validity':'2016-04-26'},
+                            {'codename':'jessie',
+                             'validity':'2018-05'},
+                            {'codename':'stretch',
+                             'validity':'2022-06'},
+                            ]
+                        }
+    
+    def _get_version_details(self, cmd_exec):
+        cmd_line = '/usr/bin/lsb_release'
+        if not cmd_exec.file_exists(cmd_line):
+            print '%s not found ! Can not check for version !' % cmd_line
+            return None 
+        result = cmd_exec([cmd_line, '-a'])
+        data = {}
+        for row in result.split('\n'):
+            row_sp = row.split(':', 1)
+            if len(row_sp) != 2:
+                continue
+            property, value = row_sp
+            value = value.strip()
+            data[property] = value
+        return data
+        
+    def get_state(self, cmd_exec):
+        data = self._get_version_details(cmd_exec)
+        if data is None:
+            return State(UNKNOWN, 'lsb_release not found !')
+        if 'Description' not in data:
+            return State(UNKNOWN, 'Version not found !')
+        message = data['Description']
+        if 'Distributor ID' not in data or 'Release' not in data or 'Codename' not in data:
+            return State(UNKNOWN, message)
+        distribution = data['Distributor ID']
+        release = data['Release']
+        codename = data['Codename']
+        if distribution not in self.version_validity:
+            return State(UNKNOWN, message)
+        version_validities = self.version_validity[distribution]
+        validity = None
+        for version_validity in version_validities:
+            if 'version' in version_validity:
+                if version_validity['version'] != release:
+                    continue
+                validity = version_validity['validity']
+                break
+            if 'codename' in version_validities:
+                if version_validity['codename'] != codename:
+                    continue
+                validity = version_validity['validity']
+                break
+                    
+        today = str(datetime.date.today())
+        if validity is None:
+            return State(UNKNOWN, message)
+        if validity != 'expired' and validity > today:
+            return State(OK, message)
+        return State(CRITICAL, message)
 
 class reboot_needed(HostService):
     @tools.delay_cache(300) # 5 min cached
