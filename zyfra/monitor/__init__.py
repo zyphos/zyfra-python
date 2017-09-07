@@ -81,6 +81,9 @@ class State(object):
     
     def get_since_txt(self):
         return time_delta2str(self.timestamp, time.time())
+    
+    def __repr__(self):
+        return 'State [%s]->[%s]' % (self.old_value, self.value)
 
 def render_status(status, target='txt'):
     color = 'clear'
@@ -176,7 +179,7 @@ class ProbeAllResult():
             if len(bad_states):
                 self.bad_states[hostname] = bad_states
         finally:
-            self.lock.release()  
+            self.lock.release()
 
 class Monitor(object):
     default_remote_username = 'monitor'
@@ -263,7 +266,23 @@ class Monitor(object):
             for service in services:
                 host['service_objs'].append(get_service_instance(service))
 
+    def temp_probe_first_result(self):
+        temp_results = {}
+        for host in self.hosts:
+            if host.get('disabled'):
+                continue
+            service_results = {}
+            for service_obj in host['service_objs']:
+                s = State()
+                s.value = cState(UNKNOWN, 'Probing...')
+                service_results[service_obj.name] = s
+            temp_results[host['hostname']] = service_results
+        data = self.convert_state2report(temp_results)
+        self.queue2middle.put(['set_status', self.convert_state2report(temp_results)])
+
     def probe_hosts(self, first_check=False, thread_limit=None):
+        if first_check and self.webserver_port is not None:
+            self.temp_probe_first_result()
         if self.internet_needed:
             internet_state = self.get_internet_state().state
             print 'Internet access is %s' % render_status(internet_state)

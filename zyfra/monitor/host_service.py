@@ -234,6 +234,7 @@ class linux_updates(HostService):
         else:
             updates['normal'] = int(result[1].split()[0])
             updates['security'] = int(result[2].split()[0])"""
+        # apt-get install update-notifier-common
         cmd_line = '/usr/lib/update-notifier/apt-check'
         if not cmd_exec.file_exists(cmd_line):
             print '%s not found ! Can not check for update !' % cmd_line

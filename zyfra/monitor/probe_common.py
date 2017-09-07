@@ -35,6 +35,12 @@ class State(dict):
     
     def __delitem__(self, key):
         raise Exception('Can not delete state parameter')
+    
+    def __str__(self):
+        return 'State[%s]:%s' % (self.state, self.message)
+    
+    def __repr__(self):
+        return str(self)
 
 class Service(object):
     def __init__(self):
