@@ -278,6 +278,7 @@ class Monitor(object):
                 service_results[service_obj.name] = s
             temp_results[host['hostname']] = service_results
         data = self.convert_state2report(temp_results)
+        self.service_states = temp_results
         self.queue2middle.put(['set_status', self.convert_state2report(temp_results)])
 
     def probe_hosts(self, first_check=False, thread_limit=None):
@@ -303,6 +304,10 @@ class Monitor(object):
                 old_service_state = {}
             if thread_limit == 0: # No thread at all
                 probe_host(host, hostname, old_service_state, all_results, self.debug)
+                if self.webserver_port is not None:
+                    tmp_service_state = self.service_states.copy()
+                    tmp_service_state.update(all_results.service_states)
+                    self.queue2middle.put(['set_status', self.convert_state2report(tmp_service_state)])
             else:
                 while thread_limit is not None and len(active_threads) >= thread_limit:
                     for i, thread in enumerate(reversed(active_threads)):
