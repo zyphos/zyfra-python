@@ -434,7 +434,8 @@ class mem_usage(HostService):
         mem_total = get_amount(details['MemTotal'])
         mem_free = get_amount(details['MemFree'])
         mem_cached = get_amount(details['Cached'])
-        mem_used = mem_total - mem_free - mem_cached 
+        mem_buffer = get_amount(details['Buffers'])
+        mem_used = mem_total - mem_free - mem_cached - mem_buffer
         pc_used = mem_used / float(mem_total)
         
         swap_total = get_amount(details['SwapTotal'])
