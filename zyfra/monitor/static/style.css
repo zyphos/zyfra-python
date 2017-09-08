@@ -56,6 +56,14 @@ li.OK > h2, li > ul > li.OK{
 	background-color:#7F7;
 }
 
+div > ul > li > ul > li.OK{
+    display: None;
+}
+
+div > ul > li:hover > ul > li.OK{
+    display: inline;
+}
+
 li > ul > li.OK .message{
 	background-color:#CFC;
 	display: none;
