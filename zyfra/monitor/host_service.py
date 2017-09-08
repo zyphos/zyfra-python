@@ -397,8 +397,6 @@ class linux_version(HostService):
             return State(CRITICAL, message)
         validity_date = datetime.datetime.strptime(validity[:7],'%Y-%m').date()
         today = datetime.date.today()
-        print validity_date
-        print 'days:', (validity_date-today).days
         if validity_date <= today:
             return State(CRITICAL, message)
         if (validity_date - today).days < self.warning_below_days:
