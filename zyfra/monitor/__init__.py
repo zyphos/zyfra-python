@@ -35,7 +35,7 @@ YAML file: myconfig.yaml
 
 
 To add user on linux system:
-adduser --system --home / --no-create-home monitor
+adduser --system --home / --no-create-home monitor --shell /bin/bash
 """
 
 #from zyfra.tools import duration

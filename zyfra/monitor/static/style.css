@@ -58,6 +58,10 @@ li.OK > h2, li > ul > li.OK{
 
 li > ul > li.OK .message{
 	background-color:#CFC;
+	display: none;
+}
+li:hover > ul > li.OK .message{
+	display: block;
 }
 
 li.WARNING > h2, li > ul > li.WARNING{
