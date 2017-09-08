@@ -35,7 +35,7 @@ YAML file: myconfig.yaml
 
 
 To add user on linux system:
-adduser --home / --no-create-home monitor
+adduser --system --home / --no-create-home monitor
 """
 
 #from zyfra.tools import duration
@@ -258,7 +258,7 @@ class Monitor(object):
             if not host.get('disabled') and host.get('internet_needed'):
                 self.internet_needed = True
             if 'services' not in host:
-                print 'Error services not defined in host[%s]' % host['name'] 
+                raise Exception('Error services not defined in host[%s]' % host['name']) 
             services = host['services']
             if isinstance(services, basestring):
                 services = services.split(',')
