@@ -183,7 +183,7 @@ class ProbeAllResult():
 
 class Monitor(object):
     host_filename = 'hosts.yml'
-    host_group_filename = 'host_groups.yml'
+    host_group_filename = 'groups.yml'
     default_remote_username = 'monitor'
     default_remote_password = None
     interval = 10 # in seconds
