@@ -45,7 +45,7 @@ import dateutil.relativedelta
 import datetime
 import signal
 
-
+import os.path
 
 import yaml
 
@@ -182,8 +182,11 @@ class ProbeAllResult():
             self.lock.release()
 
 class Monitor(object):
+    host_filename = 'hosts.yml'
+    host_group_filename = 'host_groups.yml'
     default_remote_username = 'monitor'
     default_remote_password = None
+    interval = 10 # in seconds
     debug = False
     webserver_port = None
     
@@ -193,12 +196,18 @@ class Monitor(object):
     running = True
     thread_limit = None
 
-    def __init__(self, hostfilename, interval=10, internet_hosts=None):
-        self.interval = interval
+    def __init__(self, host_filename=None, interval=None, internet_hosts=None):
+        if host_filename is not None:
+            self.host_filename = host_filename
+        
+        if interval is not None:
+            self.interval = interval
+        
         if internet_hosts is None:
             internet_hosts = ['www.yahoo.fr','www.yahoo.com']
         self.get_internet_state = network_services.InternetCheck(internet_hosts)
-        self.hosts = self.read_hosts(hostfilename)
+        self.hosts = self.read_hosts(self.host_filename)
+        self.host_groups = self.read_host_groups(self.host_group_filename)
         self.host_by_hostname = dict([(host['hostname'],host) for host in self.hosts])
         self.internet_needed = False
         self.__instanciate_services()
@@ -232,6 +241,21 @@ class Monitor(object):
         f.close()
         return hosts
     
+    def read_host_groups(self, filename):
+        if filename is None or not os.path.isfile(filename):
+            return {}
+        f = open(filename)
+        data = yaml.safe_load(f)
+        f.close()
+        host_groups = {}
+        for i, group in enumerate(data):
+            if 'name' not in group:
+                print 'Name not found in group nr %s' % i
+                continue
+            name = group['name']
+            host_groups[name] = group
+        return host_groups
+    
     def __instanciate_services(self):
         def get_service_instance(service, host):
             split = service.split(':', 1)
@@ -246,6 +270,7 @@ class Monitor(object):
             if hasattr(host_service, service):
                 return getattr(host_service, service)(*params)
             raise Exception('Service not found [%s] in host [%s]' % (service, host['name']))
+        
         for host in self.hosts:
             if host['hostname'] == 'localhost':
                 host['cmd_exec'] = host_service.CmdLocalhost()
@@ -263,6 +288,24 @@ class Monitor(object):
             if isinstance(services, basestring):
                 services = services.split(',')
             host['services'] = services
+            groups = []
+            if 'groups' in host:
+                groups = host['groups']
+                if isinstance(groups, basestring):
+                    groups = groups.split(',')
+            
+            if groups:
+                for group_name in groups:
+                    if group_name not in self.host_groups:
+                        raise Exception('Error group [%s] not found in host[%s]' % (group_name, host['name']))
+                    group = self.host_groups[group_name]
+                    print group
+                    if 'services' in group:
+                        gs = group['services']
+                        if isinstance(gs, basestring):
+                            gs = gs.split(',')
+                        host['services'] += gs
+                    
             for service in services:
                 host['service_objs'].append(get_service_instance(service, host))
 
