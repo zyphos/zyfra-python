@@ -278,6 +278,7 @@ class linux_updates(HostService):
         return State(state, '\n'.join(messages))
 
 class linux_version(HostService):
+    warning_below_days = 100
     version_validity = {'Ubuntu': [
                             {'version':'8.04',
                              'validity':'expired'},
@@ -390,12 +391,19 @@ class linux_version(HostService):
                 validity = version_validity['validity']
                 break
                     
-        today = str(datetime.date.today())
         if validity is None:
             return State(UNKNOWN, message)
-        if validity != 'expired' and validity > today:
-            return State(OK, message)
-        return State(CRITICAL, message)
+        if validity == 'expired':
+            return State(CRITICAL, message)
+        validity_date = datetime.datetime.strptime(validity[:7],'%Y-%m').date()
+        today = datetime.date.today()
+        print validity_date
+        print 'days:', (validity_date-today).days
+        if validity_date <= today:
+            return State(CRITICAL, message)
+        if (validity_date - today).days < self.warning_below_days:
+            return State(WARNING, message)
+        return State(OK, message)
 
 class mem_usage(HostService):
     def _get_memory_details(self, cmd_exec):
