@@ -440,13 +440,15 @@ class mem_usage(HostService):
         swap_total = get_amount(details['SwapTotal'])
         swap_free = get_amount(details['SwapFree'])
         swap_used = swap_total - swap_free
+        all_total = mem_total + swap_total
+        all_used = mem_used + swap_used
         if swap_total > 0:
             pc_swap_used = swap_used / float(swap_total)
         
         state = OK
-        if pc_used > 0.9 or ((pc_used+swap_used) > 1.6):
+        if pc_used > 0.9 or ((all_used/float(all_total)) > 0.8):
             state = CRITICAL
-        elif pc_used > 0.5:
+        elif pc_used > 0.7:
             state = WARNING
         message = 'Mem: % 3i%% %s' % (round(pc_used*100), human_readable(mem_total))
         if swap_total > 0:
