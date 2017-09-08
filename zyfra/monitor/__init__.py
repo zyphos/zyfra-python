@@ -299,7 +299,6 @@ class Monitor(object):
                     if group_name not in self.host_groups:
                         raise Exception('Error group [%s] not found in host[%s]' % (group_name, host['name']))
                     group = self.host_groups[group_name]
-                    print group
                     if 'services' in group:
                         gs = group['services']
                         if isinstance(gs, basestring):
