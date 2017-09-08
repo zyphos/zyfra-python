@@ -233,7 +233,7 @@ class Monitor(object):
         return hosts
     
     def __instanciate_services(self):
-        def get_service_instance(service):
+        def get_service_instance(service, host):
             split = service.split(':', 1)
             if len(split) == 1:
                 service_name = service
@@ -245,7 +245,7 @@ class Monitor(object):
                 return getattr(network_services, service)(*params)
             if hasattr(host_service, service):
                 return getattr(host_service, service)(*params)
-            raise Exception('Service not found: %s' % service)
+            raise Exception('Service not found [%s] in host [%s]' % (service, host['name']))
         for host in self.hosts:
             if host['hostname'] == 'localhost':
                 host['cmd_exec'] = host_service.CmdLocalhost()
@@ -264,7 +264,7 @@ class Monitor(object):
                 services = services.split(',')
             host['services'] = services
             for service in services:
-                host['service_objs'].append(get_service_instance(service))
+                host['service_objs'].append(get_service_instance(service, host))
 
     def temp_probe_first_result(self):
         temp_results = {}
