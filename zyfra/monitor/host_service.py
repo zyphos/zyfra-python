@@ -436,10 +436,10 @@ class mem_usage(HostService):
             pc_swap_used = swap_used / float(swap_total)
         
         state = OK
-        if pc_used > 0.5:
-            state = WARNING
-        elif pc_used > 0.9:
+        if pc_used > 0.9 or ((pc_used+swap_used) > 1.6):
             state = CRITICAL
+        elif pc_used > 0.5:
+            state = WARNING
         message = 'Mem: % 3i%% %s' % (round(pc_used*100), human_readable(mem_total))
         if swap_total > 0:
             message += '\nSwap: % 3i%% %s' % (round(pc_swap_used*100), human_readable(swap_total))
