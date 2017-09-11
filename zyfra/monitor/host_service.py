@@ -385,7 +385,7 @@ class linux_version(HostService):
                     continue
                 validity = version_validity['validity']
                 break
-            if 'codename' in version_validities:
+            if 'codename' in version_validity:
                 if version_validity['codename'] != codename:
                     continue
                 validity = version_validity['validity']
