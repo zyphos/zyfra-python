@@ -101,7 +101,7 @@ class mount_usage(HostService):
         for mount_name, mount_usage in mount_usages.iteritems():
             free_ratio = mount_usage['free_space'] / float(mount_usage['size'])
             if free_ratio <= 0.1:
-                return CRITICAL
+                state = CRITICAL
             elif free_ratio <= 0.2:
                 state = WARNING 
         return State(state, self._str_data(mount_usages))
