@@ -34,13 +34,13 @@ class Many2Many(One2Many):
         if self.relation_object_key == '':
             self.relation_object_key = robj._key
         if self.rt_local_field is None:
-            self.rt_local_field = object._name + '_id'
+            self.rt_local_field = '%s_id' % object._name
         if self.rt_foreign_field is None:
-            self.rt_foreign_field = robj._name + '_id'
+            self.rt_foreign_field = '%s_id' % robj._name
         if self.rt_foreign_field == self.rt_local_field:
             if self.back_ref_field is not None:
-                self.rt_local_field = br_field + '_' + self.rt_local_field
-            self.rt_foreign_field = name + '_' + self.rt_foreign_field
+                self.rt_local_field = '%s_%s' % (br_field, self.rt_local_field)
+            self.rt_foreign_field = '%s_%s' % (name, self.rt_foreign_field)
         if self.back_ref_field is not None:
             # Bug: !! The remote column won't be created if this class isn't intanciated !!
             if br_field not in robj._columns:
@@ -48,8 +48,8 @@ class Many2Many(One2Many):
                         Many2ManyField(br_label,
                                 object._name,
                                 {'relation_table': self.relation_table,
-                                        'rt_foreign_field': self.rt_local_field,
-                                        'rt_local_field': self.rt_foreign_field}))
+                                 'rt_foreign_field': self.rt_local_field,
+                                 'rt_local_field': self.rt_foreign_field}))
         #print 'relation table', self.relation_table
         pool = object._pool
         if self.relation_table not in pool:
@@ -68,23 +68,23 @@ class Many2Many(One2Many):
         #Auto find relation table name maximum 64 chars according to MySQL
         if self.back_ref_field is not None:
             if self.equal2equal:
-                self.relation_table = 'e2e_' + object._name + '_' + name
+                self.relation_table = 'e2e_%s_%s' % (object._name, name)
             else:
                 if object._name == robj._name:
-                    self.relation_table = 'm2m_' + object._name + '_'
+                    self.relation_table = 'm2m_%s_' % object._name
                     if name < br_field:
-                        self.relation_table  += name + '_' + br_field
+                        self.relation_table  += '%s_%s' % (name, br_field)
                     else:
-                        self.relation_table  += br_field + '_' + name
+                        self.relation_table  += '%s_%s' % (br_field, name)
                 elif object._name < robj._name:
-                    self.relation_table = 'm2m_' + object._name[0:10] + '_' + name[0:10] + '_' + robj._name[0:10] + '_' + br_field[0:10]
+                    self.relation_table = 'm2m_%s_%s_%s_%s' % (object._name[0:10], name[0:10], robj._name[0:10], br_field[0:10])
                 else:
-                    self.relation_table = 'm2m_' + robj._name[0:10] + '_' + br_field[0:10] + '_' + object._name[0:10] + '_' + name[0:10]
+                    self.relation_table = 'm2m_%s_%s_%s_%s' % (robj._name[0:10], br_field[0:10], object._name[0:10], name[0:10])
         else:
             if object._name <= robj._name:
-                self.relation_table = 'm2m_' + object._name + '_' + robj._name
+                self.relation_table = 'm2m_%s_%s' % (object._name, robj._name)
             else:
-                self.relation_table = 'm2m_' + robj._name + '_' + object._name
+                self.relation_table = 'm2m_%s_%s' % (robj._name, object._name)
 
     def get_sql(self, parent_alias, fields, sql_query, context=None):
         if context is None:
@@ -98,7 +98,7 @@ class Many2Many(One2Many):
                 #print 'new_fields1', new_fields
             else:
                 #print 'rt_foreign_field', self.rt_foreign_field
-                new_fields = ['(' + self.rt_foreign_field + '.' + '.'.join(fields) + ' as  ' + context['parameter'] + ')']
+                new_fields = ['(%s.%s AS %s)' % (self.rt_foreign_field, '.'.join(fields), context['parameter'])]
                 del new_ctx['parameter']
                 #print 'new_fields2', new_fields
         return super(Many2Many, self).get_sql(parent_alias, new_fields, sql_query, new_ctx)
@@ -123,24 +123,24 @@ class Many2Many(One2Many):
                 for id in local_ids:
                     self.relation_object.create({self.rt_local_field: id, self.rt_foreign_field: new_id})
             elif act == 1: #modification
-                robj.write(val[2], robj._key + '=%s', [val[1]], context)
+                robj.write(val[2], '%s=%%s' % robj._key, [val[1]], context)
             elif act == 2: #remove remote object
                 robj.unlink(val[1])
                 #Do also unlink
             elif act == 3: #unlink
-                self.relation_object.unlink(self.rt_local_field + ' in %s and ' + self.rt_foreign_field + '=%s', [local_ids, val[1]])
+                self.relation_object.unlink('%s IN %%s AND %s=%%s' % (self.rt_local_field, self.rt_foreign_field), [local_ids, val[1]])
             elif act == 4: #link
                 for id in local_ids:
                     self.relation_object.create({self.rt_local_field: id, self.rt_foreign_field: val[1]})
             elif act == 5: #unlink all
-                self.relation_object.unlink(self.rt_local_field + ' in %s', [local_ids])
+                self.relation_object.unlink('%s IN %%s' % self.rt_local_field, [local_ids])
             elif act == 6: #Set a list of links
                 new_rids = val[2]
                 if not len(new_rids):
-                    self.relation_object.unlink(self.rt_local_field + ' in %s', [local_ids])
+                    self.relation_object.unlink('%s IN %%s' % self.rt_local_field, [local_ids])
                     return
-                self.relation_object.unlink(self.rt_local_field + ' in %s and ' + self.rt_foreign_field + ' not in %s', [local_ids, new_rids])
-                result = self.relation_object.select(self.rt_local_field + ' as id,' + self.rt_foreign_field + ' as rid where ' + self.rt_local_field + ' in %s and ' + self.rt_foreign_field + ' in %s', [], [local_ids, new_rids])
+                self.relation_object.unlink('%s IN %%s AND %s NOT IN %%s' % (self.rt_local_field, self.rt_foreign_field), [local_ids, new_rids])
+                result = self.relation_object.select('%s AS id,%s AS rid WHERE %s IN %%s AND %s IN %%s' % (self.rt_local_field, self.rt_foreign_field, self.rt_local_field, self.rt_foreign_field), [], [local_ids, new_rids])
                 existing_ids = []
                 for row in result:
                     if row.id not in existing_ids:
