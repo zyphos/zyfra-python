@@ -222,13 +222,13 @@ class Model(object):
             where = self._key + ' in (' + ','.join(where) + ')'
         sql_write = SQLWrite(cr, self, values, where, where_datas)
 
-    def unlink(self, cr, where, datas=None, context=None):
+    def unlink(self, cr, where, datas=None):
         if self._read_only:
             return None
         if tools.is_numeric(where):
-            where = self._key_sql_name + '=' + where
+            where = '%s=%s' % (self._key_sql_name, where)
         elif tools.is_array(where):
-            where = self._key_sql_name + ' in (' + implode(',', where) + ')'
+            where = '%s in (%s)' % (self._key_sql_name, implode(',', where))
         columns_before = self._before_unlink_fields.keys()
         columns_after = self._after_unlink_fields.keys()
         columns = columns_before + columns_after
