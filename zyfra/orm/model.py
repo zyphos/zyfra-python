@@ -241,6 +241,8 @@ class Model(object):
                 old_values[getattr(row, self._key)] = getattr(row, column)
             self._columns[column].before_unlink_trigger(old_values)
         sql = 'DELETE FROM ' + self._table + ' WHERE ' + where
+        if cr.context.get('debug'):
+            print sql
         #print sql, datas
         cr(self).execute(sql, datas)
         for column in columns_after:
