@@ -92,7 +92,7 @@ class mount_usage(HostService):
     def _str_data(self, data):
         mountpoints = data.keys()
         mountpoints.sort()
-        return '\n'.join(['% 4s % 4s %s' % (data[mp]['pc_space'],data[mp]['pc_inode'], mp) for mp in mountpoints])
+        return '\n'.join(['space|inode'] + ['% 4s % 4s %s' % (data[mp]['pc_space'],data[mp]['pc_inode'], mp) for mp in mountpoints])
     
     @tools.delay_cache(60) # 1 min cached
     def get_state(self, cmd_exec):
