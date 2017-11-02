@@ -33,7 +33,11 @@ class Cursor(object):
                 break
             result.append(row[0])
         return result
-
+    
+    def get_object(self, sql, data=None):
+        self.execute(sql, data)
+        return self.cr.fetchone()
+    
     def get_array_object(self, sql, data=None, key='', limit=None, offset=0, after_query_fx=None):
         self.execute(sql, data)
         if after_query_fx is not None:
