@@ -18,14 +18,16 @@ class Int(Field):
     def python_format(self, value):
         return int(value)
 
-    def get_sql_def(self):
-        return 'INT(' + self.size + ')' + (self.unsigned and ' UNSIGNED ' or '')
+    def get_sql_def(self, db_type):
+        if db_type == 'sqlite3':
+            return 'INTEGER'
+        return 'INT(%s)%s' % (self.size, (self.unsigned and ' UNSIGNED ' or ''))
 
-    def get_sql_def_flags(self):
-        return (self.auto_increment and ' AUTO_INCREMENT' or '') + super(Int, self).get_sql_def_flags()
+    def get_sql_def_flags(self, db_type):
+        return (db_type != 'sqlite3' and self.auto_increment and ' AUTO_INCREMENT' or '') + super(Int, self).get_sql_def_flags(db_type)
 
-    def get_sql_extra(self):
-        return self.auto_increment and 'auto_increment' or ''
+    def get_sql_extra(self, db_type):
+        return db_type != 'sqlite3' and self.auto_increment and 'auto_increment' or ''
 
 class Float(Field):
     default_value = 0
@@ -34,7 +36,7 @@ class Float(Field):
     def sql_format(self, value):
         return float(value)
 
-    def get_sql_def(self):
+    def get_sql_def(self, db_type):
         return 'FLOAT'
 
 class Double(Field):
@@ -44,7 +46,7 @@ class Double(Field):
     def sql_format(self, value):
         return float(value)
 
-    def get_sql_def(self):
+    def get_sql_def(self, db_type):
         return 'DOUBLE'
 
 class Decimal(Field):
@@ -54,7 +56,9 @@ class Decimal(Field):
     def sql_format(self, value):
         return str(decimal.Decimal(str(value)))
 
-    def get_sql_def(self):
+    def get_sql_def(self, db_type):
+        if db_type == 'sqlite3':
+            return 'NUMERIC'
         return 'DOUBLE'
     
     def sql_create(self, sql_create, value, fields, context):
@@ -67,7 +71,7 @@ class Boolean(Field):
     def sql_format(self, value):
         return value and 1 or 0
 
-    def get_sql_def(self):
+    def get_sql_def(self, db_type):
         return 'INT(1)'
 
 class IntSelect(Field):

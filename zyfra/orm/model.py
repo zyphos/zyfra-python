@@ -148,7 +148,16 @@ class Model(object):
 
     def active_record(self, param=None, context=None):
         return ActiveRecord(self, param, context)
-
+    
+    def __get_columns_def(self):
+        db_type = self._db.type
+        if db_type == 'sqlite3':
+            sql = "PRAGMA table_info(%s)" % self._table
+        else:
+            sql = 'SHOW COLUMNS FROM %s' % self._table
+            fields = cr.get_array_object(sql, key='Field')
+        
+    
     def update_sql(self):
         if self._read_only:
             return None
@@ -156,26 +165,29 @@ class Model(object):
             return
         # 1 Check if table exists
         db = self._pool._db
-        if not db.get_object('SHOW TABLES like %s', [self._table]):
+        cr = db.cursor()
+        db_type = db.type
+        if self._table not in db.get_table_names():
             # Does not exists
             columns_def = []
             for name, column in self._columns.iteritems():
                 if not column.stored:
                     continue
-                columns_def.append(name + ' ' + column.get_sql_def() + column.get_sql_def_flags())
-            sql = 'CREATE TABLE ' + self._table + ' (' + ','.join(columns_def) + ')'
-            db.query(sql)
+                columns_def.append(name + ' ' + column.get_sql_def(db_type) + column.get_sql_def_flags(db_type))
+            sql = 'CREATE TABLE %s (%s)' % (self._table, ','.join(columns_def))
+            print sql 
+            cr.execute(sql)
         else:
-            sql = 'SHOW COLUMNS FROM ' + self._table
-            fields = db.get_array_object(sql, key='Field')
+            sql = 'SHOW COLUMNS FROM %s' % self._table
+            fields = cr.get_array_object(sql, key='Field')
             columns_def = []
             for field_name, field in self._columns.iteritems():
                 if not field.stored:
                     continue
-                sql_def = field.get_sql_def()
+                sql_def = field.get_sql_def(db_type)
                 if field_name in fields:
                     # Update ?
-                    if fields[field_name].Type.upper() != sql_def or fields[field_name].Extra != field.get_sql_extra():
+                    if fields[field_name].Type.upper() != sql_def or fields[field_name].Extra != field.get_sql_extra(db_type):
                         columns_def.append('MODIFY ' + field_name + ' ' + sql_def + field.get_sql_def_flags())
                 else:
                     # Create !
@@ -183,7 +195,7 @@ class Model(object):
                     columns_def.append('ADD ' + field_name + ' ' + sql_def + field.get_sql_def_flags())
             if len(columns_def):
                 sql = 'ALTER TABLE ' + self._table + ' ' + implode(',', columns_def)
-                db.query(sql)
+                cr.execute(sql)
         self.__update_sql_done = True
 
     def __add_default_values(self, values, default=False):

@@ -55,13 +55,13 @@ class Field(object):
         parent_alias.set_used()
         return parent_alias.alias + '.' + self.sql_name
 
-    def get_sql_def(self):
+    def get_sql_def(self, db_type):
         return ''
 
-    def get_sql_def_flags(self):
+    def get_sql_def_flags(self, db_type):
         return self.primary_key and ' PRIMARY KEY' or ''
 
-    def get_sql_extra(self):
+    def get_sql_extra(self, db_type):
         return ''
     
     def get(self, ids, context, datas):

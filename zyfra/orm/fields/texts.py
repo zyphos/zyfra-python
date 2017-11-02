@@ -103,7 +103,7 @@ class Text(Field):
         tr_sql = self.object._columns['_translation'].get_sql(parent_alias, fields, sql_query, context)
         return 'coalesce(' + tr_sql + ',' + self_sql + ')'
 
-    def get_sql_def(self):
+    def get_sql_def(self, db_type):
         return 'TEXT'
 
 class Char(Text):
@@ -114,8 +114,8 @@ class Char(Text):
         super(Char, self).__init__(label, **kargs)
         self.size = size
 
-    def get_sql_def(self):
-        return 'VARCHAR(' + self.size + ')'
+    def get_sql_def(self, db_type):
+        return 'VARCHAR(%s)' % self.size
     
     def validate(self, cr, data):
         if len(data) > self.size:
@@ -123,5 +123,5 @@ class Char(Text):
         return False
 
 class Tinytext(Text):
-    def get_sql_def(self):
+    def get_sql_def(self, db_type):
         return 'TINYTEXT'

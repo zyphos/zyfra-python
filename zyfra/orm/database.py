@@ -96,7 +96,9 @@ class Database(object):
         if autocommit:
             self.cnx.autocommit = True
         return self.cursor_class(self, self.cnx.cursor())
-
+    
+    def get_table_names(self):
+        return []
 
 " ODBC "
 class OdbcCursor(Cursor):
@@ -131,6 +133,7 @@ class OdbcCursor(Cursor):
         return [c[0].lower() for c in row.cursor_description]
 
 class Odbc(Database):
+    type = 'odbc'
     cursor_class = OdbcCursor
     def __init__(self, *args, **kargs):
         import pyodbc
@@ -143,7 +146,28 @@ class Odbc(Database):
 
 " PostgreSQL "
 class PostgreSQL(Database):
+    type = 'postgresql'
     def __init__(self, *args, **kargs):
         import psycopg2
         self.psycopg2 = psycopg2
         self.cnx = psycopg2.connect(*args, **kargs)
+
+" sqlite3 "
+
+class Sqlite3Cursor(Cursor):
+    def get_last_insert_id(self):
+        return self.cr.lastrowid
+
+class Sqlite3(Database):
+    type = 'sqlite3' 
+    
+    def __init__(self, filename):
+        import sqlite3
+        self.sqlite3 = sqlite3
+        self.cnx = sqlite3.connect(filename)
+    
+    def get_table_names(self):
+        return self.cursor().get_scalar("SELECT name FROM sqlite_master WHERE type='table'")
+
+    def cursor(self, encoding=None, autocommit=False):
+        return Sqlite3Cursor(self, self.cnx.cursor(), encoding)

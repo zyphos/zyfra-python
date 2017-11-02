@@ -57,8 +57,8 @@ class Many2One(Relational):
                 obj.add_column(field_name, Many2One(field_name, robj_name)) #Warning, those columns should not be used, it's only for table update + 
             self.relation_object_key = self.local_keys[0]
 
-    def get_sql_def(self):
-        return self.get_relation_object()._columns[self.relation_object_key].get_sql_def()
+    def get_sql_def(self, db_type):
+        return self.get_relation_object()._columns[self.relation_object_key].get_sql_def(db_type)
 
     def get_sql(self, parent_alias, fields, sql_query, context=None):
         if context is None:

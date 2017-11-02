@@ -12,5 +12,5 @@ class Datetime(Field):
             return "'" + time.strftime('Y-m-d H:i:s', time.gmtime(value)) + "'"
         return "'" + value + "'"
 
-    def get_sql_def(self):
+    def get_sql_def(self, db_type):
         return 'DATETIME'
