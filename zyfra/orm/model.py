@@ -109,7 +109,7 @@ class Model(object):
             self._db_encoding = pool._db_encoding
         self._instanciated = True
         if not self._name:
-            self._name = self.__class__.__name__
+            self._name = self.__class__.__name__.lower()
         if not self._table:
             self._table = pool._table_prefix + self._name
         self.__set_columns_instance()
