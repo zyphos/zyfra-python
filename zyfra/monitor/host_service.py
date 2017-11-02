@@ -433,6 +433,7 @@ class linux_version(HostService):
                     
         if validity is None:
             return State(UNKNOWN, message)
+        message = '%s [%s]' % (message, validity)
         if validity == 'expired':
             return State(CRITICAL, message)
         validity_date = datetime.datetime.strptime(validity[:7],'%Y-%m').date()
