@@ -211,7 +211,7 @@ class Model(object):
                 values2add.append(value)
             return sql_create.create(values2add)
         values = self.__add_default_values(values, True)
-        return sql_create.create(values2add)[0]
+        return sql_create.create([values])[0]
 
     def write(self, cr, values, where, where_datas=None):
         if self._read_only:
