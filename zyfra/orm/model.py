@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from zyfra import tools
-from fields import Field, Relational, One2Many
+import fields
 from active_record import ActiveRecord
 from sql_write import SQLWrite
 from sql_create import SQLCreate
@@ -50,7 +50,7 @@ class Model(object):
         self.init()
         for col in dir(self):
             attr = getattr(self, col)
-            if isinstance(attr, Field):
+            if isinstance(attr, fields.Field):
                 name = col.lower()
                 self._columns[name] = attr
                 if self._auto_columns_order:
@@ -127,7 +127,7 @@ class Model(object):
             self.set_column_instance(name, col)
 
     def __setattr__(self, name, value):
-        if isinstance(value, Field):
+        if isinstance(value, fields.Field):
             self._columns[name] = value
             if self._auto_columns_order:
                 self._columns_order.append(name)
@@ -337,9 +337,9 @@ class Model(object):
             if col_name in column2skip:
                 continue
             col = self._columns[col_name]
-            if isinstance(col, One2Many):
+            if isinstance(col, fields.One2Many):
                 params = '(%s, %s)' % (col.relation_object_name, col.relation_object_field)
-            elif isinstance(col, Relational):
+            elif isinstance(col, fields.Relational):
                 params = '(%s)' % (col.relation_object_name)
             else:
                 params = ''
@@ -402,9 +402,9 @@ class Model(object):
             label = col_obj.label
             if col_obj.select is not None:
                 label += ' ' + repr(col_obj.select)
-            if isinstance(col_obj, One2Many):
+            if isinstance(col_obj, fields.One2Many):
                 col_type += '[%s, %s]' % (col_obj.relation_object_name, col_obj.relation_object_field)
-            elif isinstance(col_obj, Relational):
+            elif isinstance(col_obj, fields.Relational):
                 col_type += '[%s]' % col_obj.relation_object_name
             table.append([col_name, col_type, label])
         tools.print_table(table, ['Name', 'Type', 'Description'])
