@@ -63,18 +63,17 @@ class Model(object):
             #super(Model, self).__setattr__('__' + method + '_fields', [])
             setattr(self, '_' + method + '_fields', {})
 
-        """if (!strlen(self._order_by)) self._order_by = self._key
+        if not len(self._order_by):
+            self._order_by = self._key
 
-        if (!array_key_exists(self._key, self._columns)):
-            key_col = new IntField('Id', array('primary_key'=>True, 'auto_increment'=>True))
-            self._columns = array(self._key=>key_col) + self._columns
-        }
-        if (!array_key_exists(self._create_date, self._columns)):
-            self._columns[self._create_date] = new DatetimeField('Created date')
-        }
-        if (!array_key_exists(self._write_date, self._columns)):
-            self._columns[self._write_date] = new DatetimeField('Writed date')
-        }"""
+        if self._key not in self._columns:
+            self._columns[self._key] = fields.Int('Id', primary_key=True, auto_increment=True)
+
+        if self._create_date and self._create_date not in self._columns:
+            self._columns[self._create_date] = fields.Datetime('Created date')
+        
+        if self._write_date and self._write_date not in self._columns:
+            self._columns[self._write_date] = fields.Datetime('Writed date')
 
     def add_column(self, name, col):
         name = name.lower()
