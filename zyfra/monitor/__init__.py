@@ -282,11 +282,13 @@ class Monitor(object):
             host['service_objs'] = []
             if not host.get('disabled') and host.get('internet_needed'):
                 self.internet_needed = True
-            if 'services' not in host:
-                raise Exception('Error services not defined in host[%s]' % host['name']) 
-            services = host['services']
-            if isinstance(services, basestring):
-                services = services.split(',')
+            if 'services' in host:
+                services = host['services']
+                if isinstance(services, basestring):
+                    services = services.split(',')
+            else:
+                services = []
+            
             host['services'] = services
             groups = []
             if 'groups' in host:
@@ -304,7 +306,9 @@ class Monitor(object):
                         if isinstance(gs, basestring):
                             gs = gs.split(',')
                         host['services'] += gs
-                    
+            
+            if not services:
+                raise Exception('Error services not defined in host[%s]' % host['name'])
             for service in services:
                 host['service_objs'].append(get_service_instance(service, host))
 
