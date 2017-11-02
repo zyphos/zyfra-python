@@ -58,20 +58,20 @@ class SQLCreate(SQLInterface):
                     row.append(date)
                 sql_values.append('(' + ','.join(row) + ')')
             del sql_values_array
-            sql = 'INSERT INTO ' + obj._table + ' (' + ','.join(sql_columns) + ') VALUES ' + ','.join(sql_values)
-            if debug:
-                print sql
-            cr = self.cr(self.object)
-            if not test_only: 
-                cr.execute(sql)
-            context = self.cr.context
-            ids.append(cr.get_last_insert_id())
-            for callback in self.callbacks:
-                callback(self, values[col_name], id, context)
-            #for column in obj.__after_create_fields.keys():
-            #    if column in values:
-            #        value = values[column]
-            #    else:
-            #        value = obj._columns[column].default_value
-            #    obj._columns[column].after_create_trigger(id, value, context)
+        sql = 'INSERT INTO ' + obj._table + ' (' + ','.join(sql_columns) + ') VALUES ' + ','.join(sql_values)
+        if debug:
+            print sql
+        cr = self.cr(self.object)
+        if not test_only: 
+            cr.execute(sql)
+        context = self.cr.context
+        ids.append(cr.get_last_insert_id())
+        for callback in self.callbacks:
+            callback(self, values[col_name], id, context)
+        #for column in obj.__after_create_fields.keys():
+        #    if column in values:
+        #        value = values[column]
+        #    else:
+        #        value = obj._columns[column].default_value
+        #    obj._columns[column].after_create_trigger(id, value, context)
         return ids
