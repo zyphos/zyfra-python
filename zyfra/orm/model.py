@@ -149,14 +149,14 @@ class Model(object):
     def active_record(self, param=None, context=None):
         return ActiveRecord(self, param, context)
     
-    def __get_columns_def(self):
-        db_type = self._db.type
-        if db_type == 'sqlite3':
-            sql = "PRAGMA table_info(%s)" % self._table
-        else:
-            sql = 'SHOW COLUMNS FROM %s' % self._table
-            fields = cr.get_array_object(sql, key='Field')
-        
+    def __get_columns_sql_def(self):
+        db = self._db
+        res = {}
+        for name, column in self._columns.iteritems():
+            if not column.stored:
+                continue
+            res[name] = column.get_sql_column_definition(db)
+        return res   
     
     def update_sql(self):
         if self._read_only:
@@ -165,37 +165,34 @@ class Model(object):
             return
         # 1 Check if table exists
         db = self._pool._db
+        if not db.table_auto_create:
+            raise Exception('This type of database[%s] do not support table autocreate' % db.type)
         cr = db.cursor()
         db_type = db.type
+        
+        orm_column_definitions = self.__get_columns_sql_def()
         if self._table not in db.get_table_names():
             # Does not exists
             columns_def = []
-            for name, column in self._columns.iteritems():
-                if not column.stored:
+            for name in self._columns.keys():
+                if name not in orm_column_definitions:
                     continue
-                columns_def.append(name + ' ' + column.get_sql_def(db_type) + column.get_sql_def_flags(db_type))
+                columns_def.append('%s %s' % (name, orm_column_definitions[name]))
             sql = 'CREATE TABLE %s (%s)' % (self._table, ','.join(columns_def))
-            print sql 
             cr.execute(sql)
-        else:
-            sql = 'SHOW COLUMNS FROM %s' % self._table
-            fields = cr.get_array_object(sql, key='Field')
-            columns_def = []
-            for field_name, field in self._columns.iteritems():
-                if not field.stored:
+        elif db.table_auto_alter:
+            db_column_definitions = db.get_table_column_definitions(self._table)
+            column_changes = []
+            for field_name in self._columns.keys():
+                if field_name not in orm_column_definitions:
                     continue
-                sql_def = field.get_sql_def(db_type)
-                if field_name in fields:
-                    # Update ?
-                    if fields[field_name].Type.upper() != sql_def or fields[field_name].Extra != field.get_sql_extra(db_type):
-                        columns_def.append('MODIFY ' + field_name + ' ' + sql_def + field.get_sql_def_flags())
-                else:
-                    # Create !
-                    # Todo check for name change, (similar column)
-                    columns_def.append('ADD ' + field_name + ' ' + sql_def + field.get_sql_def_flags())
-            if len(columns_def):
-                sql = 'ALTER TABLE ' + self._table + ' ' + implode(',', columns_def)
-                cr.execute(sql)
+                if field_name not in db_column_definitions:
+                    column_changes.append('ADD %s %s' % (field_name, orm_column_definitions[field_name]))
+                elif orm_column_definitions[field_name] != db_column_definitions[field_name]:
+                    column_changes.append('MODIFY %s %s' % (field_name, orm_column_definitions[field_name]))
+            if column_changes:
+                sql = 'ALTER TABLE %s %s' % (self._table, ','.join(column_changes))
+                cr.execute(sql)       
         self.__update_sql_done = True
 
     def __add_default_values(self, values, default=False):

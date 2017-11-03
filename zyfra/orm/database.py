@@ -90,6 +90,9 @@ class Database(object):
     cnx = None
     cursor_class = Cursor
     
+    table_auto_create = False
+    table_auto_alter = False
+    
     def cursor(self, autocommit=False):
         if self.cnx is None:
             raise DatabaseException('No connection available for this database.')
@@ -99,6 +102,15 @@ class Database(object):
     
     def get_table_names(self):
         return []
+    
+    def get_table_column_definitions(self, tablename):
+        return {}
+    
+    def make_sql_def(self, type, notnull, default, primary):
+        return '%s%s%s' % (type,
+                           notnull and ' NOT NULL' or '',
+                           default is not None and (' DEFAULT %s' % default) or '',
+                           primary and ' PRIMARY KEY' or '')
 
 " ODBC "
 class OdbcCursor(Cursor):
@@ -147,19 +159,23 @@ class Odbc(Database):
 " PostgreSQL "
 class PostgreSQL(Database):
     type = 'postgresql'
+    table_auto_create = False
+    table_auto_alter = False
+    
     def __init__(self, *args, **kargs):
         import psycopg2
         self.psycopg2 = psycopg2
         self.cnx = psycopg2.connect(*args, **kargs)
 
 " sqlite3 "
-
 class Sqlite3Cursor(Cursor):
     def get_last_insert_id(self):
         return self.cr.lastrowid
 
 class Sqlite3(Database):
-    type = 'sqlite3' 
+    type = 'sqlite3'
+    table_auto_create = True
+    table_auto_alter = False
     
     def __init__(self, filename):
         import sqlite3
@@ -168,6 +184,19 @@ class Sqlite3(Database):
     
     def get_table_names(self):
         return self.cursor().get_scalar("SELECT name FROM sqlite_master WHERE type='table'")
+    
+    def get_table_column_definitions(self, tablename):
+        res = {}
+        for field in self.cursor().get_array_object('PRAGMA table_info(%s)' % tablename):
+            res[field.name] = self.make_sql_def(field.type, field.notnull, field.dflt_value, field.pk)
+        return res
+    
+    def make_sql_def(self, type, notnull, default, primary):
+        return '%s%s%s%s' % (type,
+                           notnull and ' NOT NULL' or '',
+                           default is not None and (' DEFAULT %s' % default) or '',
+                           primary and ' PRIMARY KEY' or '')
 
     def cursor(self, encoding=None, autocommit=False):
         return Sqlite3Cursor(self, self.cnx.cursor(), encoding)
+
