@@ -193,3 +193,46 @@ class Sqlite3(Database):
                            default is not None and (' DEFAULT %s' % default) or '',
                            primary and ' PRIMARY KEY' or '')
 
+" MySQL "
+class MySQL(Database):
+    type = 'mysql'
+    table_auto_create = True
+    table_auto_alter = True
+    
+    def __init__(self, host, user, password, database):
+        import mysql.connector 
+        self.mysql = mysql.connector
+        self.cnx = mysql.connector.connect(host=host,user=user,password=password, database=database)
+    
+    def get_table_names(self):
+        return self.cursor().get_scalar("SHOW TABLES")
+    
+    def get_table_column_definitions(self, tablename):
+        res = {}
+        for field in self.cursor().get_array_object('SHOW COLUMNS FROM %s' % tablename):
+            res[field.Field] = self.make_sql_def(field.Type, field.Null == 'NO', field.Default, field.Key == 'PRI') 
+        return res
+    
+    def make_sql_def(self, type, notnull, default, primary):
+        return '%s%s%s%s' % (type,
+                           notnull and ' NOT NULL' or ' NULL',
+                           default is not None and (' DEFAULT %s' % default) or '',
+                           primary and ' PRIMARY KEY' or '')
+        """
+        %s%s
+                    if field.Key == 'PRI':
+                key = ' PRIMARY KEY'
+            elif field.Key == 'UNI':
+                key = ' UNIQUE KEY'
+            elif field.Key == 'MUL':
+                key = ' KEY'
+            else:
+                key = ''
+
+        data_type [NOT NULL | NULL] [DEFAULT default_value]
+      [AUTO_INCREMENT] [UNIQUE [KEY]] [[PRIMARY] KEY]
+      [COMMENT 'string']
+      [COLUMN_FORMAT {FIXED|DYNAMIC|DEFAULT}]
+      [STORAGE {DISK|MEMORY|DEFAULT}]
+      [reference_definition]
+        """
