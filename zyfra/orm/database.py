@@ -84,7 +84,7 @@ class Cursor(object):
         return sql
     
     def get_last_insert_id(self):
-        return 0
+        return self.cr.lastrowid
 
 class Database(object):
     cnx = None
@@ -146,7 +146,7 @@ class OdbcCursor(Cursor):
 
 class Odbc(Database):
     type = 'odbc'
-    cursor_class = OdbcCursor
+
     def __init__(self, *args, **kargs):
         import pyodbc
         self.pyodbc = pyodbc
@@ -168,10 +168,6 @@ class PostgreSQL(Database):
         self.cnx = psycopg2.connect(*args, **kargs)
 
 " sqlite3 "
-class Sqlite3Cursor(Cursor):
-    def get_last_insert_id(self):
-        return self.cr.lastrowid
-
 class Sqlite3(Database):
     type = 'sqlite3'
     table_auto_create = True
@@ -196,7 +192,4 @@ class Sqlite3(Database):
                            notnull and ' NOT NULL' or '',
                            default is not None and (' DEFAULT %s' % default) or '',
                            primary and ' PRIMARY KEY' or '')
-
-    def cursor(self, encoding=None, autocommit=False):
-        return Sqlite3Cursor(self, self.cnx.cursor(), encoding)
 
