@@ -158,6 +158,7 @@ class Odbc(Database):
 
 " PostgreSQL "
 class PostgreSQL(Database):
+    # TODO: Handle table auto create and alter
     type = 'postgresql'
     table_auto_create = False
     table_auto_alter = False
@@ -169,6 +170,7 @@ class PostgreSQL(Database):
 
 " sqlite3 "
 class Sqlite3(Database):
+    # TODO: Handle table auto alter 
     type = 'sqlite3'
     table_auto_create = True
     table_auto_alter = False

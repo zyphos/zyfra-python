@@ -159,6 +159,7 @@ class Model(object):
         return res   
     
     def update_sql(self):
+        # TODO: handle index creation, update and deletion
         if self._read_only:
             return None
         if hasattr(self, '__update_sql_done'):
