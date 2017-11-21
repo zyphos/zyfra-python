@@ -88,8 +88,6 @@ def generate_object(oo, db, obj_name, debug=False):
                 field_obj = FieldPropertyMany2One(txt, relation)
                 obj._columns[field_name] = field_obj
                 continue
-            else:
-                continue
         if 'store' in field and not field['store']:
             continue
         #print 'field', field
