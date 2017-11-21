@@ -63,10 +63,7 @@ class Model(object):
             #super(Model, self).__setattr__('__' + method + '_fields', [])
             setattr(self, '_' + method + '_fields', {})
 
-        if not len(self._order_by):
-            self._order_by = self._key
-
-        if self._key not in self._columns:
+        if self._key and self._key not in self._columns:
             self._columns[self._key] = fields.Int('Id', primary_key=True, auto_increment=True)
 
         if self._create_date and self._create_date not in self._columns:
@@ -74,6 +71,9 @@ class Model(object):
         
         if self._write_date and self._write_date not in self._columns:
             self._columns[self._write_date] = fields.Datetime('Writed date')
+        
+        if not len(self._order_by):
+            self._order_by = self._key if self._key in self._columns else ''
 
     def add_column(self, name, col):
         name = name.lower()
@@ -265,7 +265,7 @@ class Model(object):
             fields = self._columns.keys()
         if where.strip() != '':
             where += ' WHERE' + where
-        mql = ','.join(fields) + where + ' ORDER BY ' + self._order_by
+        mql = ','.join(fields) + where + (' ORDER BY %s' % self._order_by if self._order_by else '')
         return self.select(cr, mql, **kargs)
 
     def select(self, cr, mql='*', datas=None, **kargs):

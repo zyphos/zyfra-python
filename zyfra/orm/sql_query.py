@@ -416,7 +416,7 @@ class SQLQuery(object):
         sql_order = []
         self.convert_order_by(sql_order, mql_order_by)
         sql_order += self.order_by
-        if not self.context.get('no_order_by'):
+        if not self.context.get('no_order_by') and self.object._order_by:
             self.convert_order_by(sql_order, self.object._order_by)
         return ','.join(sql_order)
 

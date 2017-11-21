@@ -56,7 +56,7 @@ class Many2Many(One2Many):
             from .. import Model
             rel_table_object = Model(_name=self.relation_table, _columns={self.rt_local_field: Many2One(None, object._name),
                             self.rt_foreign_field: Many2One(None, robj._name)
-                    })
+                    }, _key=None)
             pool[self.relation_table] = rel_table_object
         else:
             rel_table_object = object._pool[self.relation_table]
