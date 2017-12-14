@@ -30,7 +30,7 @@ class MqlWhere(object):
     def __init__(self, sql_query):
         self.sql_query = sql_query
         self.operators = ['parent_of', 'child_of']
-        self.reserved_words = ['unknown', 'between', 'False', 'like', 'None', 'True', 'div', 'mod', 'not', 'xor', 'and', 'or', 'in']
+        self.reserved_words = ['unknown', 'between', 'false', 'like', 'none', 'true', 'div', 'mod', 'not', 'xor', 'and', 'or', 'in']
         self.basic_operators = ['+','-','=',' ','/','*','(',')',',','<','>','!']
 
     def parse(self, mql_where, obj=None, ta=None):
