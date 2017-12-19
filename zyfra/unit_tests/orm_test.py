@@ -12,10 +12,11 @@ models_path = os.path.join(SCRIPT_PATH, 'models')
 
 
 db = Sqlite3(':memory:')
-o = Pool(db, models_path)
+o = Pool(db, models_path, lazy_load=False) # load all model
 cr = Cursor()
 
-o.set_auto_create(True) # Create table and column on the fly
+#o.set_auto_create(True) # Create table and column on the fly
+o.update_sql_structure() # Create table and column
 
 nb_passed = 0
 nb_test = 0
@@ -23,13 +24,18 @@ nb_test = 0
 def check(result, expected, description):
     global nb_test
     global nb_passed
-    print 'Testing %s...' % description,
     nb_test += 1
+    print '#%03d Testing %s...' % (nb_test, description),
     if result == expected:
         print 'OK'
         nb_passed += 1
     else:
-        print "Failed, %s != %s" % (result, expected)
+        print "!!! Failed !!!"
+        print '=' * 30
+        pprint(result)
+        print '...   !=   ...'
+        pprint(expected)
+        print '=' * 30
 
 # Check creation
 id = o.language.create(cr, {'name': 'en'})
@@ -49,7 +55,82 @@ check(o.language.select(cr, 'name'), [], "unlink all")
 o.language.create(cr, [{'name': 'en'},{'name':'fr'},{'name':'nl'}])
 check(o.language.select(cr, 'name'), [{'name':u'en'},{'name':u'fr'},{'name':u'nl'}], "multiple creation")
 
-# TODO: test relation, M2M, M2O, O2M
+# name_search
+check(o.language.name_search(cr, 'fr'), [2], 'name_search')
+
+# name_search_details
+check(o.language.name_search_details(cr, 'fr'), [{'id':2, 'name':'fr'}], 'name_search_details')
+
+# get_id_from_value
+check(o.language.get_id_from_value(cr, 'fr'), 2, 'get_id_from_value')
+
+# Create dataset
+o.can_action.create(cr, [{'name': 'read'},
+                         {'name': 'create'},
+                         {'name': 'update'},
+                         {'name': 'delete'},
+                         {'name': 'approve'},
+                         ])
+o.user_group.create(cr, [{'name': 'reader',
+                          'can_action_ids': [(4, 'read')]},
+                         {'name': 'writer',
+                          'can_action_ids': [(6, 0, ['create','update'])]},
+                         {'name': 'admin',
+                          'can_action_ids': [(6, 0, ['read','create','update','delete'])]},
+                         ])
+o.user.create(cr, [{'name': 'max',
+                    'language_id': 'fr',
+                    'can_action_ids': [(4, 'approve')],
+                    'group_ids': [(6, 0, ['reader','writer'])]},
+                   {'name': 'tom',
+                    'language_id': 'en',
+                    'group_ids': [(4, 'admin')]}
+                   ])
+
+# M2O
+check(o.user.select(cr, "language_id.name AS name WHERE name='max'"),
+      [{'name': 'fr'}],
+      'read M2O')
+
+# O2M
+check(o.language.select(cr, "user_ids.(name) WHERE name='en'"),
+      [{'user_ids': [{'name': 'tom'}]}],
+      'read O2M')
+
+# Check M2M create
+check(o.m2m_user_user_group.select(cr, 'user_id,user_group_id'),
+      [{'user_group_id': 1, 'user_id': 1},
+       {'user_group_id': 2, 'user_id': 1},
+       {'user_group_id': 3, 'user_id': 2},
+       ] ,
+      'Check M2M create')
+
+# M2M
+cr.context['debug'] = False
+check(o.user.select(cr, 'name,group_ids.(name) AS groups'),
+   [{'name': 'max',
+     'groups': [{'name': 'reader'},
+                {'name': 'writer'}]},
+    {'name': 'tom',
+     'groups': [{'name': 'admin'}]}
+   ], "read M2M")
+cr.context['debug'] = False
+
+# where M2M
+check(o.can_action.select(cr, "name WHERE user_ids.name='max' OR group_ids.user_ids.name='max'"),
+    [{'name': 'read'},
+     {'name': 'create'},
+     {'name': 'update'},
+     {'name': 'approve'},
+    ], 'where M2M')
+
+# where M2M is null
+check(o.user.select(cr, "name WHERE can_action_ids IS NULL"),
+    [{'name': 'tom'}
+    ], 'where M2M is null');
+
+#is null
+o.user.select(cr, 'name WHERE language_id IS NULL');
 
 print 'Test passed: %s/%s' % (nb_passed, nb_test)
 if nb_passed != nb_test:
