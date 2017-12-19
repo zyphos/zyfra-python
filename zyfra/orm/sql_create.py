@@ -3,75 +3,97 @@
 
 import time
 
-from sql_interface import SQLInterface
+from sql_interface import SQLInterface, Callback
+from fields import Field
 
 from zyfra import tools
 
 class SQLCreate(SQLInterface):
-    def create(self, values_array):
-        debug = self.cr.context.get('debug', False)
-        test_only = self.cr.context.get('test_only', False)
+    def create(self, values):
         obj = self.object
-        columns = []
-        sql_columns = []
-        for col_name in values_array[0].keys():
+        # check required field
+        required_lacking = [];
+        for col_name, column in obj._columns.iteritems():
+            if column.required and col_name not in values:
+                required_lacking.append(col_name)
+        
+        if required_lacking:
+            raise Exception('Fields: %s are required for creation in object[%s]' % (', '.join(required_lacking), obj.name))
+        
+        self.debug = self.cr.context.get('debug', False)
+        test_only = self.cr.context.get('test_only', False)
+        
+        user_id = self.cr.context.get('user_id', obj._pool._default_user_id)
+        if obj._create_user_id is not None:
+            values[obj._create_user_id] = user_id
+        
+        if obj._write_user_id is not None:
+            values[obj._write_user_id] = user_id
+        
+        treated_columns = []
+        sql_values = {}
+        # Parse all values and fieldname
+        for col_name, value in values.iteritems():
             fields = tools.specialsplit(col_name, '.')
             field = fields.pop(0)
             field_name, field_data = tools.specialsplitparam(field)
-            ctx = self.cr.context
+            ctx = self.cr.context.copy()
             ctx['parameter'] = field_data
+            if field_name not in obj._columns:
+                raise Exception('Column [%s] does not exist in object[%s]' % (field_name, obj._name))
+            
             col_obj = obj._columns[field_name]
-            if col_obj.stored:
-               sql_columns.append(col_obj.sql_name)
-            columns.append([col_obj, field_name, ctx, fields])
-        if obj._create_date:
-            sql_columns.append(obj._create_date)
-        if obj._write_date:
-            sql_columns.append(obj._write_date)
+            if not isinstance(col_obj, Field):
+                raise Exception('Column [%s] does not exist in object[%s]' % (field_name, obj._name))
+            sql_value = col_obj.sql_create(self, value, fields, ctx)
+            if isinstance(sql_value, Callback):
+                self.add_callback(sql_value.function, [value, fields, ctx])
+                sql_value = sql_value.return_value
+            if col_obj.is_stored(ctx):
+                sql_values[field_name] = sql_value
+            treated_columns.append(field_name) 
+        
+        # Add datetimes
         date = time.strftime("'%Y-%m-%d %H:%M:%S'", time.gmtime())
-        sql_values = []
-        ids = []
-        for values in values_array:
-            sql_values_array = [[]]
-            for col in columns:
-                col_obj, field_name, ctx, fields = col
-                value = values[field_name]
-                if col_obj.stored:
-                    if not tools.is_array(value):
-                        value = [value]
-                    for val in value:
-                        new_value = col_obj.sql_create(self, val, fields, ctx)
-                        if new_value is None:
-                            continue
-                        new_sql_value_array = []
-                        for row in sql_values_array:
-                            new_row = row[:]
-                            new_row.append(new_value)
-                            new_sql_value_array.append(new_row)
-                        sql_values_array = new_sql_value_array
-                else:
-                    col_obj.sql_create(self, value, fields, ctx)
-            for row in sql_values_array:
-                if obj._create_date:
-                    row.append(date)
-                if obj._write_date:
-                    row.append(date)
-                sql_values.append('(' + ','.join(row) + ')')
-            del sql_values_array
-        sql = 'INSERT INTO ' + obj._table + ' (' + ','.join(sql_columns) + ') VALUES ' + ','.join(sql_values)
-        if debug:
-            print sql
+        if obj._create_date is not None and obj._create_date not in treated_columns:
+            sql_values[obj._create_date] = date
+            treated_columns.append(obj._create_date)
+            
+        if obj._write_date is not None and obj._write_date not in treated_columns:
+            sql_values[obj._write_date] = date
+            treated_columns.append(obj._write_date)
+        
+        # Do default values
+        for field_name, columns in obj._columns.iteritems():
+            if field_name in treated_columns:
+                continue
+            default_value = column.get_default()
+            if default_value is not None:
+                sql_value[field_name] = default_value
+        
+        # Do the insert SQL
+        sql = 'INSERT INTO %s (%s) VALUES (%s)' % (obj._table, ','.join(sql_values.keys()), ','.join(sql_values.values()))
+        
+        if self.debug:
+            print 'CREATE:', sql
+        
+        if self.dry_run:
+            return None
+        
         cr = self.cr(self.object)
-        if not test_only: 
-            cr.execute(sql)
+        cr.execute(sql)
+        
+        # Treat all callback
         context = self.cr.context
-        ids.append(cr.get_last_insert_id())
-        for callback in self.callbacks:
-            callback(self, values[col_name], id, context)
+        id = cr.get_last_insert_id()
+        for callback, parameters in self.callbacks:
+            parameters = parameters[:] # copy
+            parameters.append(id)
+            callback(self, *parameters)
         #for column in obj.__after_create_fields.keys():
         #    if column in values:
         #        value = values[column]
         #    else:
         #        value = obj._columns[column].default_value
         #    obj._columns[column].after_create_trigger(id, value, context)
-        return ids
+        return id

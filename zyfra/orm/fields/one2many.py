@@ -9,6 +9,7 @@ class One2Many(Relational):
     widget = 'one2many'
     relation_object_field = None
     stored = False
+    local_key = None
 
     def __init__(self, label, relation_object_name, relation_object_field = None, **kargs):
         super(One2Many, self).__init__(label, relation_object_name, **kargs)
@@ -17,6 +18,8 @@ class One2Many(Relational):
     
     def set_instance(self, obj, name):
         super(One2Many, self).set_instance(obj, name)
+        if self.local_key is None:
+            self.local_key = obj._key
         if self.relation_object_field is None:
             self.relation_object_field = self.relation_object_sql_key
         else:
@@ -26,16 +29,23 @@ class One2Many(Relational):
                     self.relation_object_field = sql_name
 
     def get_sql(self, parent_alias, fields, sql_query, context=None):
+        if sql_query.debug > 1:
+            print 'O2M[%s] fields: '% self.name, fields;
         if context is None:
             context = {}
         if 'parameter' in context:
             parameter = context['parameter']
         else:
             parameter = ''
+        
+        is_where = 'is_where' in context and context['is_where']
+        
+        if is_where and len(fields) == 0:
+            fields.append(self.relation_object_key)
         key_field = parent_alias.alias + '.' + self.object._key_sql_name
         robject = self.get_relation_object()
-        sql = 'LEFT JOIN ' + robject._table + ' AS %ta% ON %ta%.' + self.relation_object_field + '=' + key_field
-        field_link = parent_alias.alias + '.' + self.name + parameter
+        sql = 'LEFT JOIN %s AS %%ta%% ON %%ta%%.%s=%s' % (robject._table, self.relation_object_field, key_field)
+        field_link = '%s.%s%s' % (parent_alias.alias, self.name, parameter)
         ta = sql_query.get_table_alias(field_link, sql, parent_alias)
 
         if len(fields) == 0:
@@ -44,8 +54,8 @@ class One2Many(Relational):
             if parameter != '':
                 mql_where = MqlWhere(sql_query)
                 sql_where = mql_where.parse(parameter, robject, ta)
-                sql_query.table_alias[field_link].sql += ' AND(' + sql_where + ')'
-            return 'count(' + key_field + ')'
+                sql_query.table_alias[field_link].sql += ' AND(%s)' % sql_where
+            return 'count(%s)' % key_field
         else:
             field_name = fields.pop(0)
             if(field_name[0] == '('):
@@ -61,7 +71,7 @@ class One2Many(Relational):
                 if parameter != '':
                     mql_where = MqlWhere(sql_query)
                     sql_where = mql_where.parse(parameter, robject, ta)
-                    sql_query.table_alias[field_link].sql += ' AND(' + sql_where + ')'
+                    sql_query.table_alias[field_link].sql += ' AND(%s)' % sql_where
                 field_name, field_param = specialsplitparam(field_name)
                 context['parameter'] = field_param
                 return robject._columns[field_name].get_sql(ta, fields, sql_query, context)

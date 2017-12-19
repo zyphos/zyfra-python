@@ -4,34 +4,28 @@
 from relational import Relational
 import numerics
 from zyfra.orm.sql_query import SQLQuery
+from .one2many import One2Many
 
 class Many2One(Relational):
     local_key = None
-    left_right = False
     default_value = None
     back_ref_field = None # If set, name of the back reference (O2M) to this field in the relational object
+    index = True
     widget = 'many2one'
-
+    handle_operator = True
+    
     def __init__(self, label, relation_object_name, **kargs):
         self.local_key = ''
         super(Many2One, self).__init__(label, relation_object_name, **kargs)
 
     def set_instance(self, obj, name):
         super(Many2One, self).set_instance(obj, name)
-        if self.left_right:
-            if obj._name != self.relation_object_name:
-                self.left_right = False
-            else:
-                self.pleft = name + '_pleft'
-                self.pright = name + '_pright'
-                self.needed_columns[self.pleft] = numerics.Int(self.label + ' left')
-                self.needed_columns[self.pright] = numerics.Int(self.label + ' right')
         if self.back_ref_field is not None:
             if isinstance(self.back_ref_field, (list, tuple)):
                 label, field = self.back_ref_field
             else:
                 label = field = self.back_ref_field
-            self.relation_object.add_column(field, One2ManyField(label, obj._name, name))
+            self.relation_object.add_column(field, One2Many(label, obj._name, name))
         if self.relation_object_key == '':
             self.relation_object_key = self.relation_object._key
             self.relation_object_sql_key = self.relation_object[self.relation_object._key].sql_name
@@ -63,31 +57,17 @@ class Many2One(Relational):
     def get_sql(self, parent_alias, fields, sql_query, context=None):
         if context is None:
             context = {}
+        if sql_query.debug > 1: print 'M2O[%s]:' % self.name, fields
         robj = self.get_relation_object()
-        if len(fields) == 0 or fields[0] == self.relation_object_key:
-            if self.left_right and 'operator' in context and context['operator'] in ['parent_of', 'child_of']:
-                obj = self.object
-                pa = parent_alias.alias
-                operator = context['operator']
-                op_data = context['op_data']
-                ta = sql_query.get_new_table_alias()
-                if operator == 'parent_of':
-                    sql = 'EXISTS(SELECT %s FROM %s AS %s WHERE %s.%s=%s AND %s.%s<%s.%s AND %s.%s>%s.%s' % (obj._key_sql_name, obj._table, ta,
-                                                                                                             ta, obj._key_sql_name, op_data,
-                                                                                                             pa, self.pleft, ta, self.pleft,
-                                                                                                             pa, self.pright, ta, self.pright)
-                elif operator == 'child_of':
-                    sql = 'EXISTS(SELECT %s FROM %s AS %s WHERE %s.%s=%s AND %s.%s>%s.%s AND %s.%s<%s.%s' % (obj._key_sql_name, obj._table, ta,
-                                                                                                             ta, obj._key_sql_name, op_data,
-                                                                                                             pa, self.pleft, ta, self.pleft,
-                                                                                                             pa, self.pright, ta, self.pright)
-                sql_query.order_by.append(pa + '.' + self.pleft)
-                return sql
-            field_link = parent_alias.alias + '.' + self.sql_name
+        nb_fields = len(fields)
+        if nb_fields == 0: #||($fields[0] == $this->relation_object_key)
+            field_link = '%s.%s' % (parent_alias.alias, self.local_key if self.local_key != '' else self.name)
             parent_alias.set_used()
+            if nb_fields == 0: field_link = self.add_operator(field_link, context)
             return field_link
+        
         parameter = 'param' in context and context['parameter'] or ''
-        field_link = parent_alias.alias + '.' + self.sql_name + parameter
+        field_link = '%s.%s%s' % (parent_alias.alias, self.sql_name, parameter)
         if hasattr(self, 'local_keys'):
             # Threat multi key
             palias = parent_alias.alias
@@ -101,9 +81,9 @@ class Many2One(Relational):
                 relations.append('%s=%s' % (foreign_key, local_key))
             sql_on = implode(' and ', relations)
         else:
-            sql_on = '%%ta%%.%s=%s.%s' % (self.relation_object_sql_key, parent_alias.alias, self.sql_name)
+            sql_on = '%%ta%%.%s=%s.%s' % (self.relation_object_sql_key, parent_alias.alias, self.local_key if self.local_key != '' else self.sql_name)
         
-        sql = '%sJOIN %s AS %%ta%% ON %s' % ((not self.required and '' or 'LEFT '), robj._table, sql_on)
+        sql = '%sJOIN %s AS %%ta%% ON %s' % (('' if self.required else 'LEFT '), robj._table, sql_on)
         if sql_query.context.get('visible', True) and robj._visible_condition != '':
             sql_txt, on_condition = sql.split(' ON ')
             visible_sql_q = SQLQuery(robj, '%ta%')
@@ -120,12 +100,21 @@ class Many2One(Relational):
             sql_query.split_select_fields(sub_mql, False, robj, ta, field_alias)
             return None
         context['parameter'] = field_param
-        return robj._columns[field_name].get_sql(ta, fields, sql_query, context)
+        sql_result = robj._columns[field_name].get_sql(ta, fields, sql_query, context)
+        
+        if nb_fields == 0: sql_result = self.add_operator(sql_result, context)
+        return sql_result
 
     def sql_create(self, sql_create, value, fields, context):
+        if value is None: return 'null'
         if len(fields) == 0:
-            return super(Many2One, self).sql_create(sql_create, value, fields, context)
-        # Handle subfield (meanfull ?)
+            relation_object = self.get_relation_object()
+            if isinstance(value, dict): # Create remote object aswell
+                return relation_object.create(value, context)
+            
+            relation_id = relation_object.get_id_from_value(sql_create.cr, value, self.relation_object_key)
+            return relation_object._columns[self.relation_object_key].sql_create(sql_create, relation_id, fields, context)
+        #Handle subfield (meanfull ?)
         return None
 
     def sql_write(self, sql_write, value, fields, context):
@@ -134,9 +123,55 @@ class Many2One(Relational):
             return
         # to do: handle case of subfield
 
+
+class Many2OneSelf(Many2One):
+    """ Field Many2One with left and right parent optimization for recursive object """
+
+    def __init__(self, label, relation_object_name, **kargs):
+        super(Many2One, self).__init__(label, None, **kargs)
+
+    def set_instance(self, obj, name):
+        self.relation_object_name = obj._name
+        super(Many2OneSelf, self).set_instance(obj, name)
+        self.pleft = name + '_pleft'
+        self.pright = name + '_pright'
+        self.needed_columns[self.pleft] = numerics.Int(self.label + ' left')
+        self.needed_columns[self.pright] = numerics.Int(self.label + ' right')
+
+    def get_sql(self, parent_alias, fields, sql_query, context=None):
+        if sql_query.debug > 1: print 'M2OS[%s]:' % self.name, fields
+        if context is None:
+            context = {}
+        robj = self.get_relation_object()
+        nb_fields = len(fields)
+        if nb_fields == 0 and 'operator' in context and context['operator'] in ['parent_of', 'child_of']:
+            obj = self.object
+            pa = parent_alias.alias
+            operator = context['operator']
+            op_data = context['op_data'].trim()
+            if len(op_data) and op_data[0] == '(':
+                cmp_operator = ' IN '
+            else:
+                cmp_operator = '='
+            
+            ta = sql_query.get_new_table_alias()
+            if operator == 'parent_of':
+                sql = 'EXISTS(SELECT %s FROM %s AS %s WHERE %s.%s%s%s AND %s.%s<%s.%s AND %s.%s>%s.%s' % (obj._key_sql_name, obj._table, ta,
+                                                                                                         ta, obj._key_sql_name, cmp_operator, op_data,
+                                                                                                         pa, self.pleft, ta, self.pleft,
+                                                                                                         pa, self.pright, ta, self.pright)
+                parent_alias.set_used()
+            elif operator == 'child_of':
+                sql = 'EXISTS(SELECT %s FROM %s AS %s WHERE %s.%s%s%s AND %s.%s>%s.%s AND %s.%s<%s.%s' % (obj._key_sql_name, obj._table, ta,
+                                                                                                         ta, obj._key_sql_name, cmp_operator, op_data,
+                                                                                                         pa, self.pleft, ta, self.pleft,
+                                                                                                         pa, self.pright, ta, self.pright)
+                parent_alias.set_used()
+            sql_query.order_by.append('%s.%s' % (pa, self.pleft))
+            return sql
+        return super(Many2OneSelf, self).get_sql(parent_alias, fields, sql_query, context)
+
     def after_write_trigger(self, old_values, new_value):
-        if  not self.left_right:
-            return
         # Update left and right tree
         db = self.object._pool.db
         modified_values_ids = array()
@@ -204,8 +239,6 @@ class Many2One(Relational):
         return right+1
 
     def before_unlink_trigger(self, old_values):
-        if not self.left_right:
-            return
         if not len(old_values):
             return
         db = self.object._pool.db
@@ -225,8 +258,7 @@ class Many2One(Relational):
                 db.safe_query('UPDATE %s SET %s=%s-%s WHERE %s>%s' % (table, right_col, right_col, nbi, right_col, plefts[i]))
 
     def after_create_trigger(self, id, value, context):
-        if not self.left_right:
-            return
+        if id is None or id.strip() == '': return
         db = self.object._pool.db
         l1 = self._tree_get_new_left(id, value)
         left_col = self.pleft

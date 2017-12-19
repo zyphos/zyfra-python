@@ -13,9 +13,9 @@ class Cursor(object):
     def execute(self, sql, data=None):
         args = []
         if data is not None:
-            args = [data]
+            args = data
         try:
-            self.cr.execute(sql, *args)
+            self.cr.execute(sql, args)
         except:
             print 'SQL: %s' % sql
             print 'Arg: %s' % repr(args)
@@ -118,7 +118,8 @@ class OdbcCursor(Cursor):
         sql = sql.encode('ascii') 
         if params is None:
             params = []
-        sql.replace('%s','?')
+        if params:
+            sql.replace('%s','?')
         try:
             #print 'sql: %s (%s)' % (sql, repr(params))
             try:
@@ -169,17 +170,25 @@ class PostgreSQL(Database):
         self.cnx = psycopg2.connect(*args, **kargs)
 
 " sqlite3 "
+
+class Sqlite3Cursor(Cursor):
+    def execute(self, sql, data=None):
+        if data:
+            sql = sql.replace('%s', '?')
+        return super(Sqlite3Cursor, self).execute(sql, data)
+    
 class Sqlite3(Database):
     # TODO: Handle table auto alter 
     type = 'sqlite3'
     table_auto_create = True
     table_auto_alter = False
+    cursor_class = Sqlite3Cursor
     
     def __init__(self, filename):
         import sqlite3
         self.sqlite3 = sqlite3
         self.cnx = sqlite3.connect(filename)
-    
+        
     def get_table_names(self):
         return self.cursor().get_scalar("SELECT name FROM sqlite_master WHERE type='table'")
     

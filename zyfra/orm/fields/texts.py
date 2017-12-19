@@ -55,7 +55,7 @@ class Text(Field):
 
     def __get_translate_col_instance(self):
         cls = type(self)
-        if cls.__class__.__name__ == 'Char':
+        if cls.__name__ == 'Char':
             return cls(self.label, self.size)
         return cls(self.label)
 
@@ -66,21 +66,19 @@ class Text(Field):
         pool = obj._pool
         if self.translate == True:
             tr_name = obj._name + '_tr'
-            if pool.obj_in_pool(tr_name):
+            if tr_name in pool:
                 # Add field
                 pool[tr_name].add_column(name, self.__get_translate_col_instance())
             else:
                 from .. import Model
-                if not pool.obj_in_pool('language'):
-                    lg_obj = Model(pool, {
-                                   '_name': 'language', 
-                                   '_columns': {'name': Char('Name', 30)}})
+                if 'language' not in pool:
+                    lg_obj = Model(_name='language', 
+                                   _columns={'name': Char('Name', 30)})
                     pool['language'] = lg_obj
-                tr_obj = Model(pool, {
-                            '_name': tr_name,
-                            '_columns': {'language_id': Many2One('Language', 'language'), 
+                tr_obj = Model(_name=tr_name,
+                            _columns={'language_id': Many2One('Language', 'language'), 
                                          'source_id': Many2One('Source row id', obj._name),\
-                                         name: self.__get_translate_col_instance()}})
+                                         name: self.__get_translate_col_instance()})
                 pool[tr_name] = tr_obj
             self.translate = {'obj': tr_name, 'column': name, 'key': 'source_id', 'language_id': 'language_id'}
         if '_translation' not in obj:

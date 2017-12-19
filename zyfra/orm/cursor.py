@@ -47,3 +47,8 @@ class Cursor(object):
     def rollback(self):
         for cursor in cursors:
             cursor.rollback()
+
+    def copy(self):
+        new_cr = Cursor(self.context.copy(), self.autocommit)
+        new_cr.cursors = self.cursors
+        return new_cr

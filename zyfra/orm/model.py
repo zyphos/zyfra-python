@@ -18,6 +18,8 @@ class Model(object):
     _order_by = ''
     _create_date = 'create_date'
     _write_date = 'write_date'
+    _create_user_id = 'create_user_id'
+    _write_user_id = 'write_user_id'
     _visible_field = 'visible'
     _visible_condition = ''
     _read_only = False
@@ -30,6 +32,11 @@ class Model(object):
     _key_sql_name = ''
     _columns_order = None
     _auto_columns_order = False
+    _form_view_fields = None
+    _tree_view_fields = None
+    
+    _name_search_fieldname = 'name'
+    
     _before_create_fields = None
     _after_create_fields = None
     _before_write_fields = None
@@ -56,6 +63,8 @@ class Model(object):
                 if self._auto_columns_order:
                     self._columns_order.append(name)
                 #delattr(self, col)
+        if not self._columns: raise Exception('Object needs _columns')
+        
         self._field_prefix = self._field_prefix.lower()
         methods = ['before_create', 'after_create', 'before_write',
                 'after_write', 'before_unlink', 'after_unlink']
@@ -74,6 +83,12 @@ class Model(object):
         
         if not len(self._order_by):
             self._order_by = self._key if self._key in self._columns else ''
+        
+        if '_display_name' not in self._columns:
+            if '_display_name_field' in self._columns:
+                self._columns['_display_name'] = fields.Shortcut('Display name', self._display_name_field)
+            else:
+                self._columns['_display_name'] = fields.Shortcut('Display name', self._key)
 
     def add_column(self, name, col):
         name = name.lower()
@@ -112,15 +127,21 @@ class Model(object):
             self._name = self.__class__.__name__.lower()
         if not self._table:
             self._table = pool._table_prefix + self._name
+        
+        if self._create_user_id and self._create_user_id not in self._columns:
+            self._columns[self._create_user_id] = fields.Int('Create user', default_value=self._pool._default_user_id)
+        
+        if self._write_user_id and self._write_user_id not in self._columns:
+            self._columns[self._write_user_id] = fields.Int('Write user', default_value=self._pool._default_user_id)
+
         self.__set_columns_instance()
-        if self._pool.get_auto_create():
-            self.update_sql()
     
     def __set_columns_instance(self):
         #print "[%s] Instanciate columns" % self._name
         if self._key in self._columns:
             self.set_column_instance(self._key, self._columns[self._key])
-        for name, col in self._columns.iteritems():
+        columns = self._columns.copy()
+        for name, col in columns.iteritems():
             if name == self._key:
                 continue
             self.set_column_instance(name, col)
@@ -158,7 +179,7 @@ class Model(object):
             res[name] = column.get_sql_column_definition(db)
         return res   
     
-    def update_sql(self):
+    def update_sql_structure(self):
         # TODO: handle index creation, update and deletion
         if self._read_only:
             return None
@@ -212,15 +233,15 @@ class Model(object):
             if cr.context.get('debug'):
                 print 'Nothing to create (Readonly %s) (len %s)' % (self._read_only and 'True' or 'False', len(values))
             return None
-        sql_create = SQLCreate(cr, self)
         if isinstance(values, list):
-            values2add = []
-            for value in values:
-                value = self.__add_default_values(value, True)
-                values2add.append(value)
-            return sql_create.create(values2add)
+            ids = []
+            for values_data in values:
+                sql_create = SQLCreate(cr, self)
+                ids.append(sql_create.create(values_data))
+            return ids
         values = self.__add_default_values(values, True)
-        return sql_create.create([values])[0]
+        sql_create = SQLCreate(cr, self)
+        return sql_create.create(values)
 
     def write(self, cr, values, where, where_datas=None):
         if self._read_only:
@@ -253,7 +274,8 @@ class Model(object):
         if cr.context.get('debug'):
             print sql
         #print sql, datas
-        cr(self).execute(sql, datas)
+        sql = cr(self)._safe_sql(sql, datas)
+        cr(self).execute(sql)
         for column in columns_after:
             old_values = {}
             for row in rows:
@@ -398,6 +420,30 @@ class Model(object):
                 txt += validation_error + "\n"
             return txt
         return False
+    
+    def name_search(self, cr, txt, operator='='):
+        """Return ids corresponding to search on name"""
+        mql = '%s WHERE %s %s %%s' % (self._key, self._name_search_fieldname, operator)
+        return self.get_scalar(cr, mql, datas=[txt])
+    
+    def name_search_details(self, cr, txt, context=None, operator='='):
+        """ Return ids corresponding to search on name"""
+        mql = '%s AS id,%s AS name WHERE %s %s %%s' % (self._key, self._name_search_fieldname, self._name_search_fieldname, operator)
+        return self.select(cr, mql, datas=[txt])
+    
+    def get_id_from_value(self, cr, value, field_name=None):
+        if field_name is None: field_name = self._key
+        try:
+            return self._columns[field_name].python_format(value)
+        except ValueError:
+            pass
+
+        # Try to search it
+        ids = self.name_search(cr, value)
+        if len(ids) != 1:
+            raise Exception('Can not found match for this value. [%s] in [%s]' % (value, self._name));
+
+        return ids[0]
     
     def help(self):
         print self._name
