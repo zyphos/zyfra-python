@@ -7,16 +7,12 @@ from zyfra.orm.sql_query import SQLQuery
 from .one2many import One2Many
 
 class Many2One(Relational):
-    local_key = None
+    local_key = ''
     default_value = None
     back_ref_field = None # If set, name of the back reference (O2M) to this field in the relational object
     index = True
     widget = 'many2one'
     handle_operator = True
-    
-    def __init__(self, label, relation_object_name, **kargs):
-        self.local_key = ''
-        super(Many2One, self).__init__(label, relation_object_name, **kargs)
 
     def set_instance(self, obj, name):
         super(Many2One, self).set_instance(obj, name)

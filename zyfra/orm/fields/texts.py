@@ -13,7 +13,7 @@ class Text(Field):
         if not self.translate or not context.get('language_id'):
             return Field.sql_create(self, sql_create, value, fields, context)
         else:
-            sql_create.add_callback(self, 'sql_create_after_trigger')
+            sql_create.add_callback(self.sql_create_after_trigger, None)
         return null
 
     def sql_create_after_trigger(self, sql_create, value, fields, id, context):

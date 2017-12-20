@@ -5,7 +5,7 @@ from many2one import Many2One
 
 class One2One(Many2One):
     stored=False
-    local_key = None
+    local_key = ''
     left_right = False
     default_value = None
     back_ref_field = None # If set, name of the back reference (O2O) to this field in the relational object

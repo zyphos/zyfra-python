@@ -9,7 +9,7 @@ class One2Many(Relational):
     widget = 'one2many'
     relation_object_field = None
     stored = False
-    local_key = None
+    local_key = ''
 
     def __init__(self, label, relation_object_name, relation_object_field = None, **kargs):
         super(One2Many, self).__init__(label, relation_object_name, **kargs)
@@ -18,8 +18,8 @@ class One2Many(Relational):
     
     def set_instance(self, obj, name):
         super(One2Many, self).set_instance(obj, name)
-        if self.local_key is None:
-            self.local_key = obj._key
+        if self.local_key == '':
+            self.local_key = obj._key_sql_name
         if self.relation_object_field is None:
             self.relation_object_field = self.relation_object_sql_key
         else:

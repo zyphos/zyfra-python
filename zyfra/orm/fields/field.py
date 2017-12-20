@@ -85,10 +85,10 @@ class Field(object):
     
     def add_operator(self, field_sql, context):
         if 'operator' in context:
-            operator = context['operator']
+            operator = str(context['operator'])
             if operator in ['in','is']: operator = ' %s ' % operator
             op_data = context['op_data'].strip()
-            return field_sql + operator + op_data
+            return '%s%s%s' % (field_sql, operator, op_data)
         return field_sql
     
     def get_sql_column_definition(self, db):

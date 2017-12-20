@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import re
+from pprint import pprint
 
 from tools import r_multi_split_array
 
@@ -24,6 +25,25 @@ class SqlTableAlias:
         if self.parent is not None:
             self.parent.set_used()
 
+class Operator(object):
+    value = ''
+    
+    def __init__(self, value=''):
+        self.value = value
+    
+    def __repr__(self):
+        return repr(self.value)
+    
+    def __str__(self):
+        if self.value is None:
+            return ''
+        return self.value
+    
+    def __cmp__(self, a):
+        if isinstance(a, basestring):
+            return cmp(self.value, str(a))
+        return cmp(self, a)
+
 class MqlWhere(object):
     sql_query = None
     ta = None
@@ -32,8 +52,23 @@ class MqlWhere(object):
     def __init__(self, sql_query):
         self.sql_query = sql_query
         self.operators = ['parent_of', 'child_of']
-        self.reserved_words = ['unknown', 'between', 'false', 'like', 'none', 'true', 'div', 'mod', 'not', 'xor', 'and', 'or', 'in']
-        self.basic_operators = ['+','-','=',' ','/','*','(',')',',','<','>','!']
+        
+        self.reserved_words = ['unknown', 'between', 'false', 'like', 'null', 'true', 'div', 'mod', 'not', 'xor', 'and', 'or','in','is']
+        self.basic_operators = ['+','-','=','/','*','<','>','!','is not','is','not in','in']
+        self.parenthesis = ['(',')',' ',',']
+        self.split_char = self.basic_operators + self.parenthesis
+        self.all_operators = self.basic_operators + self.operators
+    
+    def field2sql(self, field_name, obj = None, ta = None, field_alias = '', operator=None, op_data=''):
+        # fixme: operator must be by reference to be deleted
+        if self.sql_query.debug > 4:
+            obj_name = '' if obj is None else obj._name
+            print 'Where Field2sql[%s.%s]' % (obj_name, field_name)
+        res = self.sql_query.field2sql(field_name, obj, ta, field_alias, operator, op_data, True)
+        if self.sql_query.debug > 3:
+            obj_name = '' if obj is None else obj._name
+            print 'Where Field2sql[%s.%s]=>[%s]' % (obj_name, field_name, res)
+        return res
 
     def parse(self, mql_where, obj=None, ta=None):
         language_id = self.sql_query.context.get('language_id', 0)
@@ -41,26 +76,83 @@ class MqlWhere(object):
         self.obj = obj
         self.ta = ta
         mql_where = tools.trim_inside(mql_where)
-        fields = tools.specialsplitnotpar(mql_where, self.basic_operators)
-        for key, field in enumerate(fields):
+        fields = tools.specialsplitnotpar(mql_where, self.split_char)
+        previous_operator = None
+        for i in xrange(len(fields)-1, 0, -1):
+            field = fields[i]
+            if field.strip() == '':
+                del fields[i]
+                continue
+            if field in self.basic_operators:
+                if previous_operator is None:
+                    previous_operator = i
+                    continue
+                else:
+                    fields[previous_operator] = field + fields[previous_operator]
+                    del fields[i]
+                    continue
+            else:
+                previous_operator = None
+            if field == 'in':
+                fields[i] = ' in '
+        
+        if self.sql_query.debug > 3:
+            print 'Where fields: %s' % fields
+        
+        max_field_index = len(fields) - 1
+        key = -1
+        while key < len(fields) - 1:
+            key += 1
+            field = fields[key]
+            if field in ['', ',']:
+                continue
             lfield = field.lower()
-            if key % 2 == 1:
-                continue
-            if field == '':
-                continue
-            if field[0] in ('"', "'"):
-                continue
             if lfield in self.operators:
                 fields[key] = ''
+                continue
             elif lfield in self.reserved_words:
                 continue
-            elif key + 4 < len(fields) and fields[key+2].lower() in self.operators:
-                op_data = self.sql_query.field2sql(fields[key+4], self.obj, self.ta)
-                fields[key] = self.sql_query.field2sql(field, self.obj, self.ta, '', fields[key+2].lower(), op_data)
-                fields[key+4] = fields[key+2] = ''
+            elif (key+2 <= max_field_index) and fields[key+1].lower() in self.all_operators:
+                i = 2
+                parenthesis_lvl = 0
+                op_data = ''
+                while (key + i <= max_field_index):
+                    val = fields[key+i].strip()
+                    if val == '':
+                        pass
+                    elif val == '(':
+                        op_data += val
+                        parenthesis_lvl += 1
+                    elif parenthesis_lvl:
+                        if val == ')':
+                            op_data += val
+                            parenthesis_lvl -= 1
+                            if parenthesis_lvl == 0:
+                                break
+                        else:
+                            op_data += self.field2sql(val, self.obj, self.ta)
+                    else:
+                        op_data += self.field2sql(val, self.obj, self.ta)
+                        break
+                    i += 1
+                
+                # Rebuild                
+                operator = Operator(fields[key+1].lower())
+                fields[key] = self.field2sql(field, self.obj, self.ta, '', operator, op_data)
+                if operator.value is None and i > 0: # Operator has been treated
+                    fields = fields[:key+1] + fields[key+i+1:]
+                    max_field_index = len(fields) - 1
             else:
-                fields[key] = self.sql_query.field2sql(field, self.obj, self.ta)
-        sql_where = ''.join(fields)
+                fields[key] = self.field2sql(field, self.obj, self.ta)
+            
+        if self.sql_query.debug > 4:
+            print 'Fields after where parse: %s' % fields
+        
+        sql_where = ' '.join(fields).replace(' (', '(').replace(' )', ')')
+        if self.sql_query.debug > 3:
+            print 'Where sql:'
+            print sql_where
+
         return sql_where
 
 sql_query_id = 0
@@ -154,7 +246,7 @@ class SQLQuery(object):
         return [mql, query_datas]
 
     def mql2sql(self, cr, mql, no_init= False):
-        debug = cr.context.get('debug', False)
+        self.debug = debug = cr.context.get('debug', False)
         self.context = cr.context.copy() # it can be modified by sql_query
         mql = tools.special_lower(mql)
         mql, query_datas = self.split_keywords(mql)
@@ -445,7 +537,9 @@ class SQLQuery(object):
     def split_field_param(self, field_name):
         return tools.specialsplitparam(field_name)
 
-    def field2sql(self, field_name, obj = None, ta = None, field_alias = '', operator='', op_data='', is_where=False):
+    def field2sql(self, field_name, obj = None, ta = None, field_alias = '', operator=None, op_data='', is_where=False):
+        if not isinstance(operator, Operator):
+            operator = Operator(operator)
         if obj is None:
             obj = self.object
         if self.debug > 1:
@@ -479,10 +573,10 @@ class SQLQuery(object):
                         'field_alias':field_alias,
                         'is_where': is_where})
         if field_obj.handle_operator:
-            context['operator'] = operator
+            context['operator'] = Operator(operator.value) # Copy
             context['op_data'] = op_data
             #FIX ME: find a way to update original operator variable
-            operator = None
+            operator.value = None
         return obj._columns[field_name].get_sql(ta, fields, self, context)
 
     def add_sub_query(self, robject, rfield, sub_mql, field_alias, parameter):

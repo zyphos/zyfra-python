@@ -4,6 +4,7 @@
 from field import Field
 
 class Relational(Field):
+    local_key = ''
     relation_object_name = None
     relation_object_key = None
     relation_object_sql_key = None

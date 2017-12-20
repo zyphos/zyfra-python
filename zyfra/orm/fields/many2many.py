@@ -172,7 +172,7 @@ class Many2Many(One2Many):
         if not is_array(value):
             return
         cr = sql_write.cr.copy()
-        cr.context = context
+        cr.context.update(context)
         # Values: (0, 0,  : fields })    create
         #         (1, ID, : fields })    modification
         #         (2, ID)                remove

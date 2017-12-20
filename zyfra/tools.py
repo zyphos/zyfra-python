@@ -131,13 +131,16 @@ def specialsplit(string, split_var=',') :
     return ret
 
 def specialsplitnotpar(string, split_var=',') :
+    #print 'specialsplitnotpar(%s,%s)' % (repr(string), repr(split_var))
     level = 0  # number of nested sets of brackets
     ret = ['']  # array to return
     cur = 0  # current index in the array to return, for convenience
     ignore = ''
+    
+    split_var_array = isinstance(split_var, (list, tuple))
 
-    for c in string:
-        if c in ['"', "'"] and level == 0:
+    for i, c in enumerate(string):
+        if c in ['"', "'"] and level == 0 and (i==0 or string[i-1] != '\\'):
             if c == ignore:
                 ignore = ''
             elif ignore == '':
@@ -148,8 +151,8 @@ def specialsplitnotpar(string, split_var=',') :
             level += 1
         elif c == ']':
             level -= 1
-        if level == 0:
-            if is_array(split_var) and c in split_var:
+        elif level == 0:
+            if split_var_array and c in split_var:
                 ret.append(c)
                 cur += 2
                 ret.append('')
@@ -159,6 +162,7 @@ def specialsplitnotpar(string, split_var=',') :
                 ret.append('')
                 continue
         ret[cur] += c
+    #print ret
     return ret
 
 def multispecialsplit(string, split_var=',', return_key=False, key_index=False):

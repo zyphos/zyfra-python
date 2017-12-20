@@ -106,7 +106,6 @@ check(o.m2m_user_user_group.select(cr, 'user_id,user_group_id'),
       'Check M2M create')
 
 # M2M
-cr.context['debug'] = False
 check(o.user.select(cr, 'name,group_ids.(name) AS groups'),
    [{'name': 'max',
      'groups': [{'name': 'reader'},
@@ -114,7 +113,6 @@ check(o.user.select(cr, 'name,group_ids.(name) AS groups'),
     {'name': 'tom',
      'groups': [{'name': 'admin'}]}
    ], "read M2M")
-cr.context['debug'] = False
 
 # where M2M
 check(o.can_action.select(cr, "name WHERE user_ids.name='max' OR group_ids.user_ids.name='max'"),
@@ -130,7 +128,7 @@ check(o.user.select(cr, "name WHERE can_action_ids IS NULL"),
     ], 'where M2M is null');
 
 #is null
-o.user.select(cr, 'name WHERE language_id IS NULL');
+o.user.select(cr, 'name WHERE language_id IS NULL')
 
 print 'Test passed: %s/%s' % (nb_passed, nb_test)
 if nb_passed != nb_test:
