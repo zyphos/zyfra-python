@@ -384,6 +384,8 @@ class linux_version(HostService):
                              'validity': '2021-01'},
                             {'version':'18.2',
                              'validity': '2021-01'},
+                            {'version':'18.3',
+                             'validity': '2021-01'},
                             ]
                         }
     
