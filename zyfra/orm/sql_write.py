@@ -1,34 +1,29 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import time
 
 from sql_interface import SQLInterface
 from .. import tools
 
 class SQLWrite(SQLInterface):
     def __init__(self, cr, object, values, where, where_datas):
+        super(SQLWrite, self).__init__(cr, object)
         if where_datas is None:
             where_datas = []
-        debug = cr.context.get('debug', False)
-        test_only = cr.context.get('test_only', False)
-        super(SQLWrite, self).__init__(cr, object)
-        for column in values.keys():
-            if column not in object._columns:
-                del values[column]
-        if not len(values):
-            if debug:
-                print 'SQLWrite: No value'
-            return
-        if object._write_date:
+        if object._write_date and object._write_date not in values:
             values[object._write_date] = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
+        user_id = cr.context.get('user_id', object._pool._default_user_id)
+        if object._write_user_id:
+            values[object._write_user_id] = user_id
+        
         self.values = values
         self.col_assign = []
         self.col_assign_data = []
         old_values = {}
-        #db = object._pool.db
-        #sql = 'SELECT ' + object._key + ' FROM ' + object._table + ' WHERE ' + where
-        #self.ids = db.get_array(sql, object._key, '', where_datas)
-        #if len(self.ids) == 0:
-        #     return
+        sql = 'SELECT %s FROM %s WHERE %s' % (object._key, object._table, where)
+        sql = cr(object)._safe_sql(sql, where_datas)
+        self.ids = cr(object).get_scalar(sql)
+
         for column, value in values.iteritems():
             fields = tools.specialsplit(column, '.')
             field = fields.pop(0)
@@ -41,17 +36,17 @@ class SQLWrite(SQLInterface):
             if field_name in object._columns:
                 object._columns[field_name].sql_write(self, value, fields, nctx)
             else:
-                self.col_assign.append(field_name + '=%s')
+                self.col_assign.append('%s=%%s' % field_name)
                 self.col_assign_data.append(value)
         if len(self.col_assign) == 0:
-            if debug:
+            if self.debug:
                 print 'SQLWrite: No column found'
             return
-        sql = 'UPDATE ' + object._table + ' AS t0 SET ' + ','.join(self.col_assign) + ' WHERE ' + where
-        sql = cr(self.object)._safe_sql(sql, self.col_assign_data + where_datas)
-        if debug:
+        sql = 'UPDATE %s SET %s WHERE %s' % (object._table, ','.join(self.col_assign), where)
+        sql = cr(object)._safe_sql(sql, self.col_assign_data + where_datas)
+        if self.debug:
             print sql
-        if not test_only:
+        if not self.dry_run:
             cr(self.object).execute(sql)
         
         # for callback in self.callbacks as callback:

@@ -33,25 +33,26 @@ class Text(Field):
         object_tr = self.object._pool[t['object']]
         #'column'=>name, 'key'=>'source_id', 'language_id'=>'language_id'
         where = t['key'] + ' IN %s AND ' + t['language_id'] + '=%s'
-        where_values = array(sql_write.ids, language_id)
+        where_values = [sql_write.ids, language_id]
         if value == None or value == '':
             object_tr.unlink(where, where_values)
             return
         sql = t['key'] + ' AS oid,' + object_tr._key + ' AS id,' + t['column'] + ' AS tr WHERE ' + where
-        sql_write.cr.context
-        rows = object_tr.select(sql, array_merge(sql_write.context, {'key':'oid'}), where_values)
+        sql_write.cr.context = dict(ctx, key='oid')
+        rows = object_tr.select(sql_write.cr, sql, where_values)
+        sql_write.cr.context = ctx
         row2add = []
         row2update = []
         for id in sql_write.ids:
             if id not in rows: row2add += [id]
             elif rows[id].tr != value: row2update += [rows[id].id]
         for id in row2add:
-            create = {t['column']: value, t['key']: id, t['language_id']: language_id}
-            object_tr.create(create, sql_write.context)
+            data = {t['column']: value, t['key']: id, t['language_id']: language_id}
+            object_tr.create(sql_write.cr, data)
         if not len(row2update):
             return
         where = object_tr._key + ' IN %s AND ' + t['language_id'] + '=%s'
-        object_tr.write({t['column']: value}, where, [row2update, language_id], sql_write.context)
+        object_tr.write(sql_write.cr, {t['column']: value}, where, [row2update, language_id])
 
     def __get_translate_col_instance(self):
         cls = type(self)
@@ -80,9 +81,9 @@ class Text(Field):
                                          'source_id': Many2One('Source row id', obj._name),\
                                          name: self.__get_translate_col_instance()})
                 pool[tr_name] = tr_obj
-            self.translate = {'obj': tr_name, 'column': name, 'key': 'source_id', 'language_id': 'language_id'}
+            self.translate = {'object': tr_name, 'column': name, 'key': 'source_id', 'language_id': 'language_id'}
         if '_translation' not in obj:
-            obj.add_column('_translation', One2Many('Translation', self.translate['obj'], self.translate['key']))
+            obj.add_column('_translation', One2Many('Translation', self.translate['object'], self.translate['key']))
 
     def get_sql(self, parent_alias, fields, sql_query, context=None):
         if context is None:
@@ -96,7 +97,7 @@ class Text(Field):
             language_id = sql_query.context.get('language_id')
         if not language_id:
             return self_sql
-        context = {'parameter': self.translate['language_id'] + '=' + language_id}
+        context = {'parameter': '%s=%s' % (self.translate['language_id'], language_id)}
         fields = [self.translate['column']]
         tr_sql = self.object._columns['_translation'].get_sql(parent_alias, fields, sql_query, context)
         return 'coalesce(' + tr_sql + ',' + self_sql + ')'
