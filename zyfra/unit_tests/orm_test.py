@@ -138,11 +138,18 @@ id = o.task.create(cr, {'name':'work',
                    'description':'something to do',
                    'priority': 1
                    })
-cr.context['language_id'] = 2
-o.task.write(cr, {'name':'travail'}, id)
+check("o.task_tr.select(cr, 'language_id,name')",
+      [{'language_id': 3, 'name': u'werk'},
+       {'language_id': 2, 'name': u'travail'},
+       ], 'insert translations')
+check("o.task.select(cr, 'name,name[fr] AS name_fr,name[nl] AS name_nl,description,description[fr] AS description_fr')",
+      [{'description': u'something to do',
+        'description_fr': u'something to do',
+        'name': u'work',
+        'name_fr': u'travail',
+        'name_nl': u'werk'}
+       ], 'read translations')
 
-print o.task.select(cr, 'name,description,priority,_translation.(name)')
-print o.task_tr.select(cr, '*')
 
 print 'Test passed: %s/%s' % (nb_passed, nb_test)
 if nb_passed != nb_test:

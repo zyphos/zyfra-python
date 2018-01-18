@@ -246,6 +246,7 @@ class SQLQuery(object):
         return [mql, query_datas]
 
     def mql2sql(self, cr, mql, no_init= False):
+        self.cr = cr
         self.debug = debug = cr.context.get('debug', False)
         self.context = cr.context.copy() # it can be modified by sql_query
         mql = tools.special_lower(mql)
