@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import datetime
+
 OK=0
 UNKNOWN=1
 WARNING=2
@@ -10,6 +12,7 @@ class State(dict):
     def __init__(self, state, message=''):
         self['state'] = state
         self['message'] = message
+        self['last_update'] = str(datetime.datetime.now())[:19].replace(' ', '\n')
     
     def __cmp__(self, other):
         if isinstance(other, State):

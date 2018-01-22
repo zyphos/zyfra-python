@@ -457,7 +457,8 @@ class Monitor(object):
             for service_name in host['services']:
                 if service_name not in host_states:
                     continue
-                value = host_states[service_name].value
+                service_state = host_states[service_name]
+                value = service_state.value
                 if value is None:
                     service_state = None
                     message = ''
@@ -473,6 +474,7 @@ class Monitor(object):
                 service_data['name'] = service_name
                 service_data['state'] = render_status(service_state)
                 service_data['message'] = message
+                service_data['last_update'] = value.last_update
                 services.append(service_data)
             hostdata['services'] = services
             hostdata['state'] = render_status(state)

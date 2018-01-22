@@ -40,7 +40,7 @@ li{
 	display: inline;
 }
 
-li > ul > li .message {
+li > ul > li .message, li > ul > li .last_update {
 	font-size: 8pt;
 	font-family: monospace;
 	overflow-x: auto;
@@ -64,11 +64,11 @@ div > ul > li:hover > ul > li.OK{
     display: inline;
 }
 
-li > ul > li.OK .message{
+li > ul > li.OK .message, li > ul > li .last_update{
 	background-color:#CFC;
 	display: none;
 }
-li:hover > ul > li.OK .message{
+li:hover > ul > li.OK .message, li:hover > ul > li .last_update{
 	display: block;
 }
 
