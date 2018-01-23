@@ -508,6 +508,12 @@ class reboot_needed(HostService):
 class clamav(process):
     process_name = 'clamd'
 
+class mysql_local(process):
+    process_name = 'sbin/mysqld'
+
+class amavis_local(process):
+    process_name = 'sbin/amavisd'
+
 #from pprint import pprint
 
 """cmd_exec = CmdLocalhost()
