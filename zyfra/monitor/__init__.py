@@ -40,6 +40,8 @@ adduser --system --home / --no-create-home monitor --shell /bin/bash
 
 #from zyfra.tools import duration
 import threading
+from multiprocessing import Queue
+from Queue import Empty as queue_empty
 import time
 import dateutil.relativedelta
 import datetime
@@ -104,7 +106,7 @@ def render_status(status, target='txt'):
     else:
         return txt
 
-def probe_host(host, hostname, old_service_states, all_results, debug):
+def probe_host(host, hostname, old_service_states, all_results, force_refresh, debug):
     name = host['name']
     service_states = {}
     state_changed = []
@@ -129,7 +131,13 @@ def probe_host(host, hostname, old_service_states, all_results, debug):
                     ping = state_value == OK
             elif isinstance(service_obj, host_service.HostService):
                 if ping is None or ping:
-                    state_value = service_obj.get_state(host['cmd_exec'])
+                    force_refresh_service = service_obj.name in force_refresh
+                    #state_value = service_obj.get_state(host['cmd_exec'], _no_cache_=force_refresh_service)
+                    if service_obj.get_state.__name__ == '_delay_cache':
+                        state_value = service_obj.get_state(host['cmd_exec'], _no_cache_=force_refresh_service)
+                        state_value.is_cached = True
+                    else:
+                        state_value = service_obj.get_state(host['cmd_exec'])
                 else:
                     state_value = UNKNOWN
             else:
@@ -213,8 +221,9 @@ class Monitor(object):
         self.__instanciate_services()
         self.service_states = {}
         if self.webserver_port is not None:
+            self.queue2probe = Queue()
             import web_server
-            self.queue2middle = web_server.start_server(self.webserver_port, self.webserver_ssl, self.webserver_certfile, self.webserver_keyfile)
+            self.queue2middle = web_server.start_server(self.webserver_port, self.webserver_ssl, self.webserver_certfile, self.webserver_keyfile, self.queue2probe)
         self.init()
     
     def stop(self, *args):
@@ -225,10 +234,22 @@ class Monitor(object):
         # can be overcharged
         #signal.signal(signal.SIGINT, self.stop)
         try:
-            self.probe_hosts(first_check=True, thread_limit=self.thread_limit)
-            time.sleep(self.interval)
-            while(True):
-                self.probe_hosts(thread_limit=self.thread_limit)
+            first_check = True
+            while True:
+                force_refresh = {}
+                # Threat queue
+                try:
+                    while True:
+                        action, parameters = self.queue2probe.get(False)
+                        if action == 'force_refresh':
+                            hostname, service_name = parameters 
+                            force_refresh.setdefault(hostname, []).append(service_name) 
+                        pass
+                except queue_empty:
+                    pass
+                    
+                self.probe_hosts(first_check=first_check, thread_limit=self.thread_limit, force_refresh=force_refresh)
+                first_check = False
                 time.sleep(self.interval)
         except KeyboardInterrupt:
             print 'CTRL-C pressed, quitting'
@@ -327,7 +348,7 @@ class Monitor(object):
         self.service_states = temp_results
         self.queue2middle.put(['set_status', self.convert_state2report(temp_results)])
 
-    def probe_hosts(self, first_check=False, thread_limit=None):
+    def probe_hosts(self, first_check=False, thread_limit=None, force_refresh=None):
         if first_check and self.webserver_port is not None:
             self.temp_probe_first_result()
         if self.internet_needed:
@@ -348,8 +369,9 @@ class Monitor(object):
                 old_service_state = self.service_states[hostname]
             else:
                 old_service_state = {}
+            force_refresh4hostname = force_refresh.get(hostname, [])
             if thread_limit == 0: # No thread at all
-                probe_host(host, hostname, old_service_state, all_results, self.debug)
+                probe_host(host, hostname, old_service_state, all_results, force_refresh4hostname,self.debug)
                 if self.webserver_port is not None:
                     tmp_service_state = self.service_states.copy()
                     tmp_service_state.update(all_results.service_states)
@@ -359,7 +381,7 @@ class Monitor(object):
                     for i, thread in enumerate(reversed(active_threads)):
                         if not thread.is_alive():
                              del active_threads[i]
-                t = threading.Thread(target=probe_host, args=(host, hostname, old_service_state, all_results, self.debug))
+                t = threading.Thread(target=probe_host, args=(host, hostname, old_service_state, all_results, force_refresh4hostname, self.debug))
                 t.start()
                 active_threads.append(t)
             #probe_host(host, hostname, old_service_state, all_results)
@@ -476,6 +498,7 @@ class Monitor(object):
                 service_data['message'] = message
                 service_data['last_update'] = value.last_update
                 service_data['last_update_ts'] = value.last_update_ts
+                service_data['is_cached'] = value.is_cached
                 services.append(service_data)
             hostdata['services'] = services
             hostdata['state'] = render_status(state)

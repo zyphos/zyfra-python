@@ -15,6 +15,7 @@ class State(dict):
         self['message'] = message
         self['last_update'] = str(datetime.datetime.now())[:19].replace(' ', '\n')
         self['last_update_ts'] = time.time()
+        self['is_cached'] = False
     
     def __cmp__(self, other):
         if isinstance(other, State):

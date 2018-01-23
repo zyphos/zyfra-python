@@ -30,9 +30,10 @@ def display_time(seconds, granularity=2):
     return ' '.join(result[:granularity])
 
 class MainHandler(tornado.web.RequestHandler):
-    def initialize(self, queue2middle, queue2web, debug):
+    def initialize(self, queue2middle, queue2web, queue2probe, debug):
         self.queue2middle = queue2middle
         self.queue2web = queue2web
+        self.queue2probe = queue2probe
         self.debug = debug
     
     def get(self, path):
@@ -45,6 +46,12 @@ class MainHandler(tornado.web.RequestHandler):
             self.queue2middle.put(('get_status',''))
             status = self.queue2web.get()
             return self.write(simplejson.dumps(status))
+        elif path == 'force_refresh':
+            hostname = self.get_argument('hostname', None)
+            service_name = self.get_argument('service', None)
+            if hostname is not None and service_name is not None:
+                self.queue2probe.put(('force_refresh',(hostname, service_name)))
+            return
         #print '[HTTP] Sending put'
         self.queue2middle.put(('get_status',''))
         #print '[HTTP] receiving get'
@@ -81,7 +88,7 @@ def middleware(queue2middle, queue2web):
         else:
             print '[MIDDLE] Command [%s] not found' % cmd
 
-def start_server(port=8888, ssl=False, certfile=None, keyfile=None, debug=False):
+def start_server(port=8888, ssl=False, certfile=None, keyfile=None, queue2probe=None, debug=False):
     queue2middle = Queue()
     queue2web = Queue()
     favicon_path = os.path.join(SCRIPT_PATH, 'favicon.ico')
@@ -89,7 +96,7 @@ def start_server(port=8888, ssl=False, certfile=None, keyfile=None, debug=False)
     application = tornado.web.Application([
                                            (r'/(favicon\.ico)', tornado.web.StaticFileHandler, {'path': SCRIPT_PATH}),
                                            (r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path}),
-                                           (r"/(.*)", MainHandler, {'queue2middle': queue2middle, 'queue2web': queue2web, 'debug': debug}),
+                                           (r"/(.*)", MainHandler, {'queue2middle': queue2middle, 'queue2web': queue2web, 'queue2probe': queue2probe, 'debug': debug}),
                                            ], compiled_template_cache=False)
     if ssl and certfile and keyfile:
         ssl_options={

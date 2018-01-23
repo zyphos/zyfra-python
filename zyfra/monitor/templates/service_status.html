@@ -7,7 +7,7 @@
 					   {% if service['message'] %}
 					       <pre class='message'>{{ escape(service['message']) }}</pre>
 					   {% end %}
-             <pre class='age'>{{ escape(service['age']) }}</pre>
+             <pre class='age'>{{ escape(service['age']) }} {% if service['is_cached'] %}<a href='test' onclick="ajax('/force_refresh?hostname={{ escape(host['hostname']) }}&service={{ escape(service['name']) }}');return false;">Refresh</a>{% end %}</pre>
 					</li>
 				{% end %}
 				</ul>

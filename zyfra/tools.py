@@ -385,7 +385,9 @@ def delay_cache(delay=60, garbage_collector=False, debug=False): # fn decorator
                 if data.next_query_timestamp <= timestamp:
                     del datas[args]
         
-        def _fn(*args):
+        def _delay_cache(*args, **kargs):
+            if '_no_cache_' in kargs and kargs['_no_cache_']:
+                return fn(*args)
             if garbage_collector:
                 do_garbage_collector()
             data = datas.setdefault(args, CacheData())
@@ -401,7 +403,7 @@ def delay_cache(delay=60, garbage_collector=False, debug=False): # fn decorator
             data.cached_result = result
             return result
     
-        return _fn
+        return _delay_cache
     return decorator
 
 # Threading safe lock, be sure that the function is not executed in parallel mode
