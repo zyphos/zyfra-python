@@ -1,6 +1,6 @@
 	<ul>
 		{% for host in status %}
-			<li class='{{ host['state'] }}'><h2>{{ escape(host['name']) }} ({{ escape(host['hostname']) }}) {% if host['probing'] %} [Probing]{% end %}</h2>
+			<li class='{{ host['state'] }}{% if host['probing'] %} probing{% end %}'><h2>{{ escape(host['name']) }} ({{ escape(host['hostname']) }}) {% if host['probing'] %} [Probing]{% end %}</h2>
 				<ul>
 				{% for service in host['services'] %}
 					<li class='{{ service['state'] }}'>{{ escape(service['name']) }}

@@ -30,6 +30,10 @@ div > ul > li {
 	background-color:#EEE;
 }
 
+div > ul > li.probing {
+    background-color:#FDF;
+}
+
 li > ul > li{
 	margin: 2px;
 	padding: 1px;
