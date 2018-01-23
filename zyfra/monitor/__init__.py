@@ -139,14 +139,14 @@ def probe_host(host, hostname, old_service_states, all_results, force_refresh, d
                     else:
                         state_value = service_obj.get_state(host['cmd_exec'])
                 else:
-                    state_value = UNKNOWN
+                    state_value = cState(UNKNOWN)
             else:
                 if debug:
                     print 'Unknown service type'
                 # Unknown service type
                 continue
         except Exception as e:
-            state_value = UNKNOWN
+            state_value = cState(UNKNOWN)
             print 'Exception for host [%s(%s)] in module [%s]: %s' % (name, hostname, service_name, e)
             if debug:
                 raise
@@ -384,7 +384,6 @@ class Monitor(object):
                 t = threading.Thread(target=probe_host, args=(host, hostname, old_service_state, all_results, force_refresh4hostname, self.debug))
                 t.start()
                 active_threads.append(t)
-            #probe_host(host, hostname, old_service_state, all_results)
         
         for t in active_threads:
             t.join()
@@ -400,69 +399,6 @@ class Monitor(object):
             self.queue2middle.put(['set_status', self.convert_state2report(all_results.service_states)]) #
         self.on_after_check_services()
         return all_results.state_changed
-    
-    def check_services(self, first_check=False):
-        service_states = {}
-        state_changed = {}
-        new_criticals = {}
-        bad_states = {}
-        if self.internet_needed:
-            internet_state = self.get_internet_state()
-            print 'Internet access is %s' % render_status(internet_state)
-        else:
-            internet_state = False
-        print 'Checking services'
-        for host in self.hosts:
-            if host.get('disabled'):
-                continue
-            if host.get('internet_needed') and internet_state != OK:
-                continue
-
-            name = host['name']
-            hostname = host['hostname']
-            #print '%s (%s)' % (name, hostname)
-            for service_obj in host['service_objs']:
-                service_name = service_obj.name
-                if hostname in self.service_states and service_name in self.service_states[hostname]:
-                    old_state = self.service_states[hostname][service_name]
-                else:
-                    old_state = State()
-                try:
-                    if isinstance(service_obj, network_services.NetworkService):
-                        state_value = service_obj(hostname)
-                    elif isinstance(service_obj, host_service.HostService):
-                        state_value = service_obj.get_state(host['cmd_exec'])
-                    else:
-                        # Unknown service type
-                        continue
-                except Exception as e:
-                    state_value = UNKNOWN
-                    print 'Exception for host [%s(%s)] in module [%s]: %s' % (name, hostname, service_name, e)
-                    if self.debug:
-                        raise
-                old_state_value = old_state.value
-                if state_value != old_state_value:
-                    state_changed.setdefault(hostname, []).append(service_name)
-                if old_state_value != CRITICAL and state_value == CRITICAL:
-                    new_criticals.setdefault(hostname, []).append(service_name)
-                old_state(state_value)
-                if state_value > 0:
-                    bad_states.setdefault(hostname, []).append(service_name)
-                service_states.setdefault(hostname, {})[service_name] = old_state
-                #render_status(service_obj.name, state_value)
-            print '.'
-        print 'Done.'
-        print
-        self.service_states = service_states
-        self.bad_states = bad_states
-        if not first_check and len(state_changed):
-            self.on_changed_state(service_states, state_changed)
-        if not first_check and len(new_criticals):
-            self.on_new_critical_state(service_states, new_criticals)
-        if self.webserver_port is not None:
-            self.queue2middle.put(['set_status', self.convert_state2report(service_states)]) #
-        self.on_after_check_services()
-        return state_changed
     
     def convert_state2report(self, service_states):
         report = []
@@ -481,15 +417,8 @@ class Monitor(object):
                     continue
                 service_state = host_states[service_name]
                 value = service_state.value
-                if value is None:
-                    service_state = None
-                    message = ''
-                elif isinstance(value, int):
-                    service_state = value
-                    message = ''
-                else:
-                    service_state = value.state
-                    message = value.message
+                service_state = value.state
+                message = value.message
                 if service_state > state:
                     state = service_state
                 service_data = {}
