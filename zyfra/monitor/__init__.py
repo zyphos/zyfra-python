@@ -107,6 +107,7 @@ def render_status(status, target='txt'):
         return txt
 
 def probe_host(host, hostname, old_service_states, all_results, force_refresh, debug):
+    all_results.set_host_probe_in_progress(hostname)
     name = host['name']
     service_states = {}
     state_changed = []
@@ -165,6 +166,7 @@ def probe_host(host, hostname, old_service_states, all_results, force_refresh, d
         if state_value > 0:
             bad_states.append(service_name)
         service_states[service_name] = old_state
+    all_results.unset_host_probe_in_progress(hostname)
     all_results.set_result(hostname, service_states, state_changed, new_criticals, bad_states)
 
 class ProbeAllResult():
@@ -174,6 +176,7 @@ class ProbeAllResult():
         self.state_changed = {}
         self.new_criticals = {}
         self.bad_states = {}
+        self.host_probe_in_progress = []
 
     def set_result(self, hostname, service_states, state_changed, new_criticals, bad_states):
         self.lock.acquire()
@@ -186,6 +189,22 @@ class ProbeAllResult():
                 self.new_criticals[hostname] = new_criticals
             if len(bad_states):
                 self.bad_states[hostname] = bad_states
+        finally:
+            self.lock.release()
+    
+    def set_host_probe_in_progress(self, hostname):
+        self.lock.acquire()
+        try:
+            if hostname not in self.host_probe_in_progress:
+                self.host_probe_in_progress.append(hostname)
+        finally:
+            self.lock.release()
+    
+    def unset_host_probe_in_progress(self, hostname):
+        self.lock.acquire()
+        try:
+            if hostname in self.host_probe_in_progress:
+                self.host_probe_in_progress.remove(hostname) 
         finally:
             self.lock.release()
 
@@ -344,9 +363,9 @@ class Monitor(object):
                 s.value = cState(UNKNOWN, 'Probing...')
                 service_results[service_obj.name] = s
             temp_results[host['hostname']] = service_results
-        data = self.convert_state2report(temp_results)
+        data = self.convert_state2report(temp_results, [])
         self.service_states = temp_results
-        self.queue2middle.put(['set_status', self.convert_state2report(temp_results)])
+        self.queue2middle.put(['set_status', data])
 
     def probe_hosts(self, first_check=False, thread_limit=None, force_refresh=None):
         if first_check and self.webserver_port is not None:
@@ -375,7 +394,7 @@ class Monitor(object):
                 if self.webserver_port is not None:
                     tmp_service_state = self.service_states.copy()
                     tmp_service_state.update(all_results.service_states)
-                    self.queue2middle.put(['set_status', self.convert_state2report(tmp_service_state)])
+                    self.queue2middle.put(['set_status', self.convert_state2report(tmp_service_state,all_results.host_probe_in_progress)])
             else:
                 while thread_limit is not None and len(active_threads) >= thread_limit:
                     for i, thread in enumerate(reversed(active_threads)):
@@ -396,11 +415,11 @@ class Monitor(object):
         if not first_check and len(all_results.new_criticals):
             self.on_new_critical_state(all_results.service_states, all_results.new_criticals)
         if self.webserver_port is not None:
-            self.queue2middle.put(['set_status', self.convert_state2report(all_results.service_states)]) #
+            self.queue2middle.put(['set_status', self.convert_state2report(all_results.service_states,all_results.host_probe_in_progress)]) #
         self.on_after_check_services()
         return all_results.state_changed
     
-    def convert_state2report(self, service_states):
+    def convert_state2report(self, service_states, host_probe_in_progress):
         report = []
         for host in self.hosts:
             hostdata = {}
@@ -409,6 +428,7 @@ class Monitor(object):
             hostdata['hostname'] = hostname
             if hostname not in service_states:
                 continue
+            hostdata['probing'] = hostname in host_probe_in_progress
             host_states = service_states[hostname]
             services = []
             state = OK
