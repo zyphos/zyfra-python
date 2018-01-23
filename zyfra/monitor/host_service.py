@@ -405,6 +405,7 @@ class linux_version(HostService):
             data[property] = value
         return data
         
+    @tools.delay_cache(3600) # 1h cached
     def get_state(self, cmd_exec):
         data = self._get_version_details(cmd_exec)
         if data is None:
