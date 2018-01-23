@@ -386,13 +386,11 @@ def delay_cache(delay=60, garbage_collector=False, debug=False): # fn decorator
                     del datas[args]
         
         def _delay_cache(*args, **kargs):
-            if '_no_cache_' in kargs and kargs['_no_cache_']:
-                return fn(*args)
             if garbage_collector:
                 do_garbage_collector()
             data = datas.setdefault(args, CacheData())
             timestamp = int(time.time())
-            if data.next_query_timestamp is not None and data.next_query_timestamp > timestamp:
+            if data.next_query_timestamp is not None and data.next_query_timestamp > timestamp and ('_no_cache_' not in kargs or not kargs['_no_cache_']):
                 if debug:
                     print 'Cached result for %s sec' % (data.next_query_timestamp - timestamp)
                 return data.cached_result
