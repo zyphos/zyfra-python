@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+import time
 
 OK=0
 UNKNOWN=1
@@ -13,6 +14,7 @@ class State(dict):
         self['state'] = state
         self['message'] = message
         self['last_update'] = str(datetime.datetime.now())[:19].replace(' ', '\n')
+        self['last_update_ts'] = time.time()
     
     def __cmp__(self, other):
         if isinstance(other, State):

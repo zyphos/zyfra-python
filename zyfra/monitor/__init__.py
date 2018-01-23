@@ -475,6 +475,7 @@ class Monitor(object):
                 service_data['state'] = render_status(service_state)
                 service_data['message'] = message
                 service_data['last_update'] = value.last_update
+                service_data['last_update_ts'] = value.last_update_ts
                 services.append(service_data)
             hostdata['services'] = services
             hostdata['state'] = render_status(state)

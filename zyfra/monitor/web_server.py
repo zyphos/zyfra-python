@@ -3,12 +3,31 @@
 
 import signal
 import os
+import time
 from multiprocessing import Process, Queue 
 import tornado.ioloop
 import tornado.web
 import simplejson
 
 SCRIPT_PATH=os.path.dirname(os.path.realpath(__file__))
+
+intervals = (
+    ('w', 604800),  # 60 * 60 * 24 * 7
+    ('d', 86400),    # 60 * 60 * 24
+    ('h', 3600),    # 60 * 60
+    ('m', 60),
+    ('s', 1),
+    )
+
+def display_time(seconds, granularity=2):
+    result = []
+
+    for name, count in intervals:
+        value = seconds // count
+        if value:
+            seconds -= value * count
+            result.append('%s%s' % (value, name))
+    return ' '.join(result[:granularity])
 
 class MainHandler(tornado.web.RequestHandler):
     def initialize(self, queue2middle, queue2web, debug):
@@ -53,6 +72,11 @@ def middleware(queue2middle, queue2web):
             _status = data
         elif cmd == 'get_status':
             #print '[MIDDLE] sending status to web'
+            now_ts = time.time()
+            for node in _status:
+                for service in node['services']:
+                    service['age'] = 'Age: %s' % display_time(int(round(now_ts-service['last_update_ts'])))
+                    
             queue2web.put(_status)
         else:
             print '[MIDDLE] Command [%s] not found' % cmd

@@ -48,7 +48,7 @@ li > ul > li .message {
 	margin-bottom: 0;
 }
 
-li > ul > li .last_update {
+li > ul > li .age {
 	font-size: 7pt;
     font-family: monospace;
     overflow-x: auto;
@@ -77,7 +77,7 @@ li > ul > li.OK .message{
 	background-color:#CFC;
 	display: none;
 }
-li:hover > ul > li.OK .message, li:hover > ul > li .last_update{
+li:hover > ul > li.OK .message, li:hover > ul > li .age{
 	display: block;
 }
 
