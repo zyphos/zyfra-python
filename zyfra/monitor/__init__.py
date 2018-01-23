@@ -108,6 +108,7 @@ def render_status(status, target='txt'):
 
 def probe_host(host, hostname, old_service_states, all_results, force_refresh, debug):
     all_results.set_host_probe_in_progress(hostname)
+    all_results.convert_state2report()
     name = host['name']
     service_states = {}
     state_changed = []
@@ -168,9 +169,13 @@ def probe_host(host, hostname, old_service_states, all_results, force_refresh, d
         service_states[service_name] = old_state
     all_results.unset_host_probe_in_progress(hostname)
     all_results.set_result(hostname, service_states, state_changed, new_criticals, bad_states)
+    all_results.convert_state2report()
 
 class ProbeAllResult():
-    def __init__(self):
+    def __init__(self, old_service_states, hosts, queue2middle):
+        self.old_service_states = old_service_states
+        self.hosts = hosts
+        self.queue2middle = queue2middle
         self.lock = threading.Lock()
         self.service_states = {}
         self.state_changed = {}
@@ -207,6 +212,47 @@ class ProbeAllResult():
                 self.host_probe_in_progress.remove(hostname) 
         finally:
             self.lock.release()
+    
+    def convert_state2report(self):
+        self.lock.acquire()
+        service_states = self.old_service_states.copy()
+        service_states.update(self.service_states)
+        report = []
+        for host in self.hosts:
+            hostdata = {}
+            hostdata['name'] = host['name']
+            hostname = host['hostname']
+            hostdata['hostname'] = hostname
+            if hostname not in service_states:
+                continue
+            hostdata['probing'] = hostname in self.host_probe_in_progress
+            host_states = service_states[hostname]
+            services = []
+            state = OK
+            for service_name in host['services']:
+                if service_name not in host_states:
+                    continue
+                service_state = host_states[service_name]
+                value = service_state.value
+                service_state = value.state
+                message = value.message
+                if service_state > state:
+                    state = service_state
+                service_data = {}
+                service_data['name'] = service_name
+                service_data['state'] = render_status(service_state)
+                service_data['message'] = message
+                service_data['last_update'] = value.last_update
+                service_data['last_update_ts'] = value.last_update_ts
+                service_data['is_cached'] = value.is_cached
+                services.append(service_data)
+            hostdata['services'] = services
+            hostdata['state'] = render_status(state)
+            report.append(hostdata)
+        self.lock.release()
+        if self.queue2middle is not None:
+            self.queue2middle.put(['set_status', report])
+        return report
 
 class Monitor(object):
     host_filename = 'hosts.yml'
@@ -243,6 +289,8 @@ class Monitor(object):
             self.queue2probe = Queue()
             import web_server
             self.queue2middle = web_server.start_server(self.webserver_port, self.webserver_ssl, self.webserver_certfile, self.webserver_keyfile, self.queue2probe)
+        else:
+            self.queue2middle = None
         self.init()
     
     def stop(self, *args):
@@ -272,7 +320,7 @@ class Monitor(object):
                 time.sleep(self.interval)
         except KeyboardInterrupt:
             print 'CTRL-C pressed, quitting'
-            if self.webserver_port is not None:
+            if self.queue2middle is not None:
                 self.queue2middle.put(['exit',''])
             
     def read_hosts(self, hostfilename):
@@ -363,20 +411,19 @@ class Monitor(object):
                 s.value = cState(UNKNOWN, 'Probing...')
                 service_results[service_obj.name] = s
             temp_results[host['hostname']] = service_results
-        data = self.convert_state2report(temp_results, [])
-        self.service_states = temp_results
-        self.queue2middle.put(['set_status', data])
+        return temp_results
 
     def probe_hosts(self, first_check=False, thread_limit=None, force_refresh=None):
-        if first_check and self.webserver_port is not None:
-            self.temp_probe_first_result()
+        if first_check:
+            self.service_states = self.temp_probe_first_result()
+        all_results = ProbeAllResult(self.service_states, self.hosts, self.queue2middle)
+        all_results.convert_state2report()
         if self.internet_needed:
             internet_state = self.get_internet_state().state
             print 'Internet access is %s' % render_status(internet_state)
         else:
             internet_state = False
         print 'Checking services'
-        all_results = ProbeAllResult()
         active_threads = []
         for host in self.hosts:
             if host.get('disabled'):
@@ -391,10 +438,6 @@ class Monitor(object):
             force_refresh4hostname = force_refresh.get(hostname, [])
             if thread_limit == 0: # No thread at all
                 probe_host(host, hostname, old_service_state, all_results, force_refresh4hostname,self.debug)
-                if self.webserver_port is not None:
-                    tmp_service_state = self.service_states.copy()
-                    tmp_service_state.update(all_results.service_states)
-                    self.queue2middle.put(['set_status', self.convert_state2report(tmp_service_state,all_results.host_probe_in_progress)])
             else:
                 while thread_limit is not None and len(active_threads) >= thread_limit:
                     for i, thread in enumerate(reversed(active_threads)):
@@ -414,45 +457,9 @@ class Monitor(object):
             self.on_changed_state(all_results.service_states, all_results.state_changed)
         if not first_check and len(all_results.new_criticals):
             self.on_new_critical_state(all_results.service_states, all_results.new_criticals)
-        if self.webserver_port is not None:
-            self.queue2middle.put(['set_status', self.convert_state2report(all_results.service_states,all_results.host_probe_in_progress)]) #
+        all_results.convert_state2report()
         self.on_after_check_services()
         return all_results.state_changed
-    
-    def convert_state2report(self, service_states, host_probe_in_progress):
-        report = []
-        for host in self.hosts:
-            hostdata = {}
-            hostdata['name'] = host['name']
-            hostname = host['hostname']
-            hostdata['hostname'] = hostname
-            if hostname not in service_states:
-                continue
-            hostdata['probing'] = hostname in host_probe_in_progress
-            host_states = service_states[hostname]
-            services = []
-            state = OK
-            for service_name in host['services']:
-                if service_name not in host_states:
-                    continue
-                service_state = host_states[service_name]
-                value = service_state.value
-                service_state = value.state
-                message = value.message
-                if service_state > state:
-                    state = service_state
-                service_data = {}
-                service_data['name'] = service_name
-                service_data['state'] = render_status(service_state)
-                service_data['message'] = message
-                service_data['last_update'] = value.last_update
-                service_data['last_update_ts'] = value.last_update_ts
-                service_data['is_cached'] = value.is_cached
-                services.append(service_data)
-            hostdata['services'] = services
-            hostdata['state'] = render_status(state)
-            report.append(hostdata)
-        return report
     
     def report_state(self, service_states, target='txt'):
         if len(service_states) == 0:
