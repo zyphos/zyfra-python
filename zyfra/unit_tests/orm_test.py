@@ -150,6 +150,10 @@ check("o.task.select(cr, 'name,name[fr] AS name_fr,name[nl] AS name_nl,descripti
         'name_nl': u'werk'}
        ], 'read translations')
 
+# BUG: if language in context
+cr.context['language_id'] = 1
+o.task.create(cr, {'name':'work2'})
+del cr.context['language_id']
 
 print 'Test passed: %s/%s' % (nb_passed, nb_test)
 if nb_passed != nb_test:

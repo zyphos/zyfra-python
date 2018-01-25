@@ -53,7 +53,8 @@ class Field(object):
         return 'null'
     
     def sql_format(self, value):
-        if value is None: return self._sql_format_null
+        if value is None:
+            return self._sql_format_null()
         if self.sql_escape_fx is None:
             return "'%s'" % (str(value).replace("'","\\'")) # !! SQL injection !!!
         if self.sql_escape_fx is None:

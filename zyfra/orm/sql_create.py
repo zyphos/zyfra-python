@@ -49,7 +49,7 @@ class SQLCreate(SQLInterface):
             if isinstance(sql_value, Callback):
                 self.add_callback(sql_value.function, [value, fields, ctx])
                 sql_value = sql_value.return_value
-            if col_obj.is_stored(ctx):
+            if col_obj.is_stored(ctx) and sql_value is not None:
                 sql_values[field_name] = sql_value
             treated_columns.append(field_name) 
         
@@ -72,7 +72,14 @@ class SQLCreate(SQLInterface):
                 sql_value[field_name] = default_value
         
         # Do the insert SQL
-        sql = 'INSERT INTO %s (%s) VALUES (%s)' % (obj._table, ','.join(sql_values.keys()), ','.join(sql_values.values()))
+        try:
+            sql = 'INSERT INTO %s (%s) VALUES (%s)' % (obj._table, ','.join(sql_values.keys()), ','.join(sql_values.values()))
+        except:
+            print 'INSERT INTO %s (%s) VALUES (%s)'
+            print 'Table:', obj._table
+            print 'keys:', sql_values.keys()
+            print 'values:', sql_values.values()
+            raise
         
         if self.debug:
             print 'CREATE:', sql
