@@ -46,6 +46,9 @@ def is_numeric(var):
         return True
     except ValueError:
         return False
+    except TypeError:
+        print 'is_numeric(%s)' % repr(var)
+        raise
 
 is_array = lambda var: isinstance(var, (list, tuple))
 
