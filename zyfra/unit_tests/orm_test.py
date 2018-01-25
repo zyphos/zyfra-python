@@ -44,6 +44,12 @@ o.language.create(cr, {'name': 'fr'})
 o.language.create(cr, {'name': 'nl'})
 check("o.language.select(cr, 'name')", [{'name':u'en'},{'name':u'fr'},{'name':u'nl'}], "single creation")
 
+# Check attribute access
+check("o.language.select(cr, 'name')[0].name", u'en', "attribute access")
+cr.context['key'] = 'id'
+check("o.language.select(cr, 'id,name')[1].name", u'en', "attribute access with key")
+del cr.context['key']
+
 # Unlink one
 o.language.unlink(cr, id)
 check("o.language.select(cr, 'name')", [{'name':u'fr'},{'name':u'nl'}], "deletion by id")

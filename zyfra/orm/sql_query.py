@@ -353,7 +353,7 @@ class SQLQuery(object):
                     new_key = key.rstrip()
                     if new_key != key:
                         res[new_key] = row
-                        del res[key] 
+                        del res[key]
         else:
             for row in res:
                 for col in row:
@@ -361,7 +361,10 @@ class SQLQuery(object):
                     if isinstance(value, basestring):
                         row[col] = row[col].rstrip()
         
-        datas = tools.DictObject(res)
+        if isinstance(res, dict):
+            datas = dict([(key, tools.DictObject(value)) for key, value in res.iteritems()])
+        else:
+            datas = tools.DictObject(res)
         #print 'datas', datas
         field_alias_ids = {}
         row_field_alias_ids = {}
