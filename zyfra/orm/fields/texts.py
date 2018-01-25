@@ -17,7 +17,7 @@ class Text(Field):
     def _get_language_id(self, cr, context):
         language_id = context.get('language_id')
         parameter = context.get('parameter', None)
-        if parameter is not None:
+        if parameter is not None and parameter != '':
             try:
                 language_id = int(parameter)
             except:
