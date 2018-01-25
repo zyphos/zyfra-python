@@ -62,7 +62,7 @@ class Text(Field):
         where = '%s IN %%s AND %s=%%s' % (t['key'], t['language_id'])
         where_values = [sql_write.ids, language_id]
         if value == None or value == '':
-            object_tr.unlink(where, where_values)
+            object_tr.unlink(sql_write.cr, where, where_values)
             return
         sql = '%s AS oid,%s AS id,%s AS tr WHERE %s' % (t['key'], object_tr._key, t['column'], where)
         ctx = sql_write.cr.context

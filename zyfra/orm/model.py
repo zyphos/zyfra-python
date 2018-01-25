@@ -225,6 +225,8 @@ class Model(object):
         return values
 
     def create(self, cr, values):
+        if not isinstance(cr, Cursor):
+            raise Exception('cr parameter must be a cursor class got this instead: %s' % repr(cr))
         # Create new record(s)
         # values = {column: value, col2: value2}
         # or
@@ -244,6 +246,8 @@ class Model(object):
         return sql_create.create(values)
 
     def write(self, cr, values, where, where_datas=None):
+        if not isinstance(cr, Cursor):
+            raise Exception('cr parameter must be a cursor class got this instead: %s' % repr(cr))
         if self._read_only:
             return None
         if tools.is_numeric(where):
@@ -253,6 +257,8 @@ class Model(object):
         sql_write = SQLWrite(cr, self, values, where, where_datas)
 
     def unlink(self, cr, where, datas=None):
+        if not isinstance(cr, Cursor):
+            raise Exception('cr parameter must be a cursor class got this instead: %s' % repr(cr))
         if self._read_only:
             return None
         if tools.is_numeric(where):
@@ -283,6 +289,8 @@ class Model(object):
             self._columns[column].after_unlink_trigger(old_values)
 
     def read(self, cr, where='', fields=None, **kargs):
+        if not isinstance(cr, Cursor):
+            raise Exception('cr parameter must be a cursor class got this instead: %s' % repr(cr))
         if not fields:
             fields = self._columns.keys()
         if where.strip() != '':
@@ -292,7 +300,7 @@ class Model(object):
 
     def select(self, cr, mql='*', datas=None, **kargs):
         if not isinstance(cr, Cursor):
-            raise Exception('cr parameter must be a cursor class got this instead %s' % repr(cr))
+            raise Exception('cr parameter must be a cursor class got this instead: %s' % repr(cr))
         try:
             mql = cr(self)._safe_sql(mql, datas)
         except:
@@ -315,6 +323,8 @@ class Model(object):
         return sql_query.get_scalar(cr, mql)
     
     def sql(self, cr, sql, **kargs):
+        if not isinstance(cr, Cursor):
+            raise Exception('cr parameter must be a cursor class got this instead: %s' % repr(cr))
         sql_query = SQLQuery(self)
         return sql_query.get_array_sql(cr, sql, **kargs)
 
@@ -406,6 +416,8 @@ class Model(object):
         return txt
 
     def validate_values(self, cr, values):
+        if not isinstance(cr, Cursor):
+            raise Exception('cr parameter must be a cursor class got this instead: %s' % repr(cr))
         validation_errors = []
         for name in values:
             if name in self._columns:
@@ -422,16 +434,22 @@ class Model(object):
         return False
     
     def name_search(self, cr, txt, operator='='):
+        if not isinstance(cr, Cursor):
+            raise Exception('cr parameter must be a cursor class got this instead: %s' % repr(cr))
         """Return ids corresponding to search on name"""
         mql = '%s WHERE %s %s %%s' % (self._key, self._name_search_fieldname, operator)
         return self.get_scalar(cr, mql, datas=[txt])
     
     def name_search_details(self, cr, txt, context=None, operator='='):
+        if not isinstance(cr, Cursor):
+            raise Exception('cr parameter must be a cursor class got this instead: %s' % repr(cr))
         """ Return ids corresponding to search on name"""
         mql = '%s AS id,%s AS name WHERE %s %s %%s' % (self._key, self._name_search_fieldname, self._name_search_fieldname, operator)
         return self.select(cr, mql, datas=[txt])
     
     def get_id_from_value(self, cr, value, field_name=None):
+        if not isinstance(cr, Cursor):
+            raise Exception('cr parameter must be a cursor class got this instead: %s' % repr(cr))
         if field_name is None: field_name = self._key
         try:
             return self._columns[field_name].python_format(value)
