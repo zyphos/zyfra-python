@@ -4,7 +4,7 @@
 import os.path
 from pprint import pprint
 
-from zyfra.orm import Sqlite3, Pool, Model, fields, Cursor
+from zyfra.orm import Sqlite3, Pool, Model, fields, Cursor, tools
 
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -38,11 +38,22 @@ def check(to_eval, expected, description):
         pprint(expected)
         print '=' * 30
 
+# Check r_multi_split_array
+mql = "a,b,c WHERE a=2 HAVING c=1 ORDER BY a DESC".lower()
+split_var = ['limit ', 'order by ', 'having ', 'group by ', 'where ']
+check("tools.r_multi_split_array(mql, split_var)", {'': 'a,b,c ', 'order by ': 'a desc', 'where ': 'a=2 ', 'having ': 'c=1 '}, "r_multi_split_array")
+
 # Check creation
 id = o.language.create(cr, {'name': 'en'})
 o.language.create(cr, {'name': 'fr'})
 o.language.create(cr, {'name': 'nl'})
 check("o.language.select(cr, 'name')", [{'name':u'en'},{'name':u'fr'},{'name':u'nl'}], "single creation")
+
+# Check order by
+check("o.language.select(cr, 'name ORDER BY name DESC')", [{'name':u'nl'},{'name':u'fr'},{'name':u'en'}], "Order by")
+
+# Check order by
+check("o.language.select(cr, 'name WHERE name=\"fr\" ORDER BY name DESC')", [{'name':u'fr'}], "Order by")
 
 # Check attribute access
 check("o.language.select(cr, 'name')[0].name", u'en', "attribute access")

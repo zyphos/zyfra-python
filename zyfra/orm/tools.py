@@ -19,7 +19,8 @@ def r_multi_split_array(string, split_var):
     ignore = ''
     min_len -= 1
     result = {}
-    for i in xrange(string_len-1, min_len, -1):
+    i = string_len-1
+    while i > min_len:
         c = string[i]
         if (c == '"' or c == "'") and (level == 0) and (i==0 or string[i-1] == "\\"):
             if c == ignore:
@@ -49,10 +50,11 @@ def r_multi_split_array(string, split_var):
                         i -= sv_len
                         del split_var_len[sv]
                         if not split_var_len: break
-                        min_len = min(split_var_len) - 1
+                        min_len = min(split_var_len.values()) - 1
                         break
                 if not split_var_len: break
             buffer = c + buffer
+        i -= 1
     
     result[''] = string[:i+1] + buffer
     return result
