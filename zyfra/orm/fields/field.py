@@ -32,7 +32,7 @@ class Field(object):
             if hasattr(self, key):
                 setattr(self, key, args[key])
             else:
-                raise Exception('Field do not have attribute [%s]' % key)
+                raise Exception('Field (%s) do not have attribute [%s]' % (label, key))
         self.needed_columns = {}
         if self.not_null and self.default_value is None:
             raise Exception('Field do not accept null values, but default value is null.')
