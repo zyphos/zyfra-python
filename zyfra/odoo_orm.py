@@ -115,7 +115,7 @@ def generate_object(oo, db, obj_name, debug=False):
             field_obj = orm.fields.Datetime(txt)
         elif type == 'selection':
             selection = dict(field['selection'])
-            field_obj = orm.fields.Text(txt, select=selection)
+            field_obj = orm.fields.Text(txt) # , select=selection
         elif type == 'many2one':
             relation = field['relation']
             field_obj = orm.fields.Many2One(txt, relation)
