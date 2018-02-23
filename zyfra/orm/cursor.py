@@ -41,12 +41,12 @@ class Cursor(object):
         return self.cursors.setdefault(db, VirtualCursor(self, db, db_encoding))
 
     def commit(self):
-        for cursor in cursors:
-            cursor.commit()
+        for db, cursor in self.cursors.iteritems():
+            cursor.cr.commit()
     
     def rollback(self):
-        for cursor in cursors:
-            cursor.rollback()
+        for db, cursor in self.cursors.iteritems():
+            cursor.cr.rollback()
 
     def copy(self):
         new_cr = Cursor(self.context.copy(), self.autocommit)

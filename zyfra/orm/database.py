@@ -5,9 +5,9 @@ class DatabaseException(Exception):
     pass
 
 class Cursor(object):
-    def __init__(self, cnx, cr, encoding=None):
+    def __init__(self, db, cr, encoding=None):
         self.cr = cr
-        self.cnx = cnx
+        self.db = db
         self.encoding = encoding
     
     def execute(self, sql, data=None):
@@ -176,6 +176,9 @@ class Sqlite3Cursor(Cursor):
         if data:
             sql = sql.replace('%s', '?')
         return super(Sqlite3Cursor, self).execute(sql, data)
+    
+    def commit(self):
+        self.db.cnx.commit()
     
 class Sqlite3(Database):
     # TODO: Handle table auto alter 
