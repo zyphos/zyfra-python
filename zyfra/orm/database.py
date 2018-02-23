@@ -186,11 +186,17 @@ class Sqlite3(Database):
     table_auto_create = True
     table_auto_alter = False
     cursor_class = Sqlite3Cursor
+    __filename = None
     
-    def __init__(self, filename):
+    def __init__(self, filename=':memory:', auto_connect=True):
         import sqlite3
         self.sqlite3 = sqlite3
-        self.cnx = sqlite3.connect(filename)
+        self.__filename = filename
+        if auto_connect:
+            self.connect()
+    
+    def connect(self):
+        self.cnx = self.sqlite3.connect(self.__filename)
         
     def get_table_names(self):
         return self.cursor().get_scalar("SELECT name FROM sqlite_master WHERE type='table'")
@@ -206,6 +212,10 @@ class Sqlite3(Database):
                            notnull and ' NOT NULL' or '',
                            default is not None and (' DEFAULT %s' % default) or '',
                            primary and ' PRIMARY KEY' or '')
+    
+    def close(self):
+        self.cnx.close()
+        self.cnx = None
 
 " MySQL "
 class MySQL(Database):
