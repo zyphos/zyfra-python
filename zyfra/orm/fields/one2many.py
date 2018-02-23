@@ -11,7 +11,7 @@ class One2Many(Relational):
     stored = False
     local_key = ''
 
-    def __init__(self, label, relation_object_name, relation_object_field = None, **kargs):
+    def __init__(self, label, relation_object_name, relation_object_field, **kargs):
         super(One2Many, self).__init__(label, relation_object_name, **kargs)
         self.left_right = True
         self.relation_object_field = relation_object_field
