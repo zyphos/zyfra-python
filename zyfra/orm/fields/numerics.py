@@ -73,6 +73,9 @@ class Boolean(Field):
 
     def get_sql_def(self, db_type):
         return 'INT(1)'
+    
+    def python_format(self, value):
+        return value == 1
 
 class IntSelect(Field):
     select_values = None
@@ -93,3 +96,9 @@ class IntSelect(Field):
         if is_numeric(value):
             return int(value)
         return None
+    
+    def python_format(self, value):
+        try:
+            return self.select_values[int(value)]
+        except:
+            return value

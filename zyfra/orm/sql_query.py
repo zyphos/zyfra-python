@@ -54,7 +54,7 @@ class MqlWhere(object):
         self.operators = ['parent_of', 'child_of']
         
         self.reserved_words = ['unknown', 'between', 'false', 'like', 'null', 'true', 'div', 'mod', 'not', 'xor', 'and', 'or','in','is']
-        self.basic_operators = ['+','-','=','/','*','<','>','!','is not','is','not in','in']
+        self.basic_operators = ['+','-','=','/','*','<=','>=','<>','<','>','!','is not','is','not in','in']
         self.parenthesis = ['(',')',' ',',']
         self.split_char = self.basic_operators + self.parenthesis
         self.all_operators = self.basic_operators + self.operators

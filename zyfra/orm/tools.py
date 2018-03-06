@@ -2,7 +2,6 @@
 def r_multi_split_array(string, split_var):
     """ Reverse multi split with associative array as result
     Split var only appears once."""
-    
     string_len = len(string)
     
     split_var_len = {};
@@ -11,7 +10,8 @@ def r_multi_split_array(string, split_var):
         if sv_len <= string_len and string.find(sv) != -1:
             split_var_len[sv] = len(sv)
     
-    if not len(split_var_len): return {'': string} # Stop losing time
+    if not len(split_var_len):
+        return {'': string} # Stop losing time
     min_len = min(split_var_len.values())
     
     level = 0 # number of nested sets of brackets

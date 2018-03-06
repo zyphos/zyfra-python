@@ -61,6 +61,9 @@ cr.context['key'] = 'id'
 check("o.language.select(cr, 'id,name')[1].name", u'en', "attribute access with key")
 del cr.context['key']
 
+# Check <= and >= operators
+check("o.language.select(cr, 'name WHERE id <= 3 AND id >= 1')", [{'name':u'en'},{'name':u'fr'},{'name':u'nl'}], "<= and >= operators")
+
 # Unlink one
 o.language.unlink(cr, id)
 check("o.language.select(cr, 'name')", [{'name':u'fr'},{'name':u'nl'}], "deletion by id")

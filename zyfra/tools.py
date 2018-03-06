@@ -141,8 +141,21 @@ def specialsplitnotpar(string, split_var=',') :
     ignore = ''
     
     split_var_array = isinstance(split_var, (list, tuple))
-
-    for i, c in enumerate(string):
+    
+    if split_var_array:
+        split_by_sizes = {}
+        for sv in split_var:
+            split_by_sizes.setdefault(len(sv), []).append(sv)
+        lengths = split_by_sizes.keys()
+        lengths.sort(reverse=True)
+        split_by_sizes = [(l, split_by_sizes[l]) for l in lengths]
+    else:
+        split_by_sizes = [(len(split_var), [split_var])] 
+    
+    str_len = len(string)
+    i = 0
+    while i < str_len:
+        c = string[i]
         if c in ['"', "'"] and level == 0 and (i==0 or string[i-1] != '\\'):
             if c == ignore:
                 ignore = ''
@@ -155,16 +168,23 @@ def specialsplitnotpar(string, split_var=',') :
         elif c == ']':
             level -= 1
         elif level == 0:
-            if split_var_array and c in split_var:
-                ret.append(c)
-                cur += 2
-                ret.append('')
-                continue
-            elif c == split_var:
-                cur += 1
-                ret.append('')
+            treated = False
+            for split_var_len, split_vars in split_by_sizes:
+                if string[i:i+split_var_len] in split_vars:
+                    treated = True
+                    if split_var_array:
+                        ret.append(string[i:i+split_var_len])
+                        cur += 2
+                    else:
+                        cur += 1
+                    i += split_var_len
+                    ret.append('')
+                    break
+
+            if treated:
                 continue
         ret[cur] += c
+        i += 1
     #print ret
     return ret
 
