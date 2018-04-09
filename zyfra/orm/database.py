@@ -173,6 +173,7 @@ class PostgreSQL(Database):
 
 class Sqlite3Cursor(Cursor):
     def execute(self, sql, data=None):
+        sql = sql.replace('\\\'','\'\'')
         if data:
             sql = sql.replace('%s', '?')
         return super(Sqlite3Cursor, self).execute(sql, data)
