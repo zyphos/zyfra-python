@@ -311,6 +311,7 @@ class Model(object):
         return sql_query.get_array(cr, mql, **kargs)
     
     def get_scalar(self, cr, mql, datas=None):
+        """Return simple list with first column of result"""
         if not isinstance(cr, Cursor):
             raise Exception('cr parameter must be a cursor class got this instead %s' % repr(cr))
         try:

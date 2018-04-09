@@ -55,10 +55,10 @@ class MqlWhere(object):
         self.sql_query = sql_query
         self.operators = ['parent_of', 'child_of']
         
-        self.reserved_words = ['unknown', 'between', 'false', 'like', 'null', 'true', 'div', 'mod', 'not', 'xor', 'and', 'or','in','is']
+        self.reserved_words = ['unknown', 'between', 'false', 'like', 'null', 'true', 'div', 'mod', 'not', 'xor ', 'and', 'or','in','is']
         self.basic_operators = ['+','-','=','/','*','<=','>=','<>','<','>','!','is not','is','not in','in']
         self.parenthesis = ['(',')',' ',',']
-        self.split_char = self.basic_operators + self.parenthesis
+        self.split_char = self.basic_operators[:-4] + self.parenthesis
         self.all_operators = self.basic_operators + self.operators
     
     def field2sql(self, field_name, obj = None, ta = None, field_alias = '', operator=None, op_data=''):
