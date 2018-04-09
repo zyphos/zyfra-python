@@ -81,9 +81,6 @@ class Model(object):
         if self._write_date and self._write_date not in self._columns:
             self._columns[self._write_date] = fields.Datetime('Writed date')
         
-        if not len(self._order_by):
-            self._order_by = self._key if self._key in self._columns else ''
-        
         if '_display_name' not in self._columns:
             if '_display_name_field' in self._columns:
                 self._columns['_display_name'] = fields.Shortcut('Display name', self._display_name_field)

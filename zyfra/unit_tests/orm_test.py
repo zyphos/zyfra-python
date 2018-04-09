@@ -44,7 +44,7 @@ split_var = ['limit ', 'order by ', 'having ', 'group by ', 'where ']
 check("tools.r_multi_split_array(mql, split_var)", {'': 'a,b,c ', 'order by ': 'a desc', 'where ': 'a=2 ', 'having ': 'c=1 '}, "r_multi_split_array")
 
 # Check mql2sql function
-check("o.language._get_sql_query().mql2sql(cr, 'sum(id) AS total')", 'SELECT sum(t0.id) AS total  FROM language AS t0 ORDER BY t0.id ', "mql2sql: Function")
+check("o.language._get_sql_query().mql2sql(cr, 'sum(id) AS total')", 'SELECT sum(t0.id) AS total  FROM language AS t0', "mql2sql: Function")
 
 # Check creation
 id = o.language.create(cr, {'name': 'en'})
