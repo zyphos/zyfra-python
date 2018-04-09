@@ -536,23 +536,34 @@ class ShowProgress(object):
             print '%s %s/%s Elapsed:%ss Total estimated:%ss ETA:%ss' % (self.__name, nb_done, self.__total_nb, str_s(time_elapsed), str_s(estimated_total_time), str_s(eta))
 
 class StopWatch(object):
-    def __init__(self):
+    def __init__(self, name=None):
+        self.name = name
         self.restart()
     
     def restart(self):
         self.start = datetime.datetime.now()
         self.last_ask = None
     
-    def show(self):
+    def show(self, description=None):
         last_ask = datetime.datetime.now()
         since_last_txt = ''
         if self.last_ask is not None:
             since_last_txt = ' Since last query: %ss' % ((last_ask - self.last_ask).total_seconds())
         self.last_ask = last_ask
-        return 'duration: %ss%s' % ((last_ask - self.start).total_seconds(), since_last_txt)
+        name = ''
+        if self.name:
+            name = '[%s]' % self.name
+        if description:
+            name += '[%s]' % description
+        if name:
+            name += ' '
+        return '%sduration: %ss%s' % (name, (last_ask - self.start).total_seconds(), since_last_txt)
     
     def __repr__(self):
         return str(self)
     
     def __str__(self):
-        return 'duration: %ss' % ((datetime.datetime.now() - self.start).total_seconds())
+        name = ''
+        if self.name:
+            name = '[%s] ' % self.name
+        return '%sduration: %ss' % (name, (datetime.datetime.now() - self.start).total_seconds())
