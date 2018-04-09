@@ -8,6 +8,8 @@ from tools import r_multi_split_array
 
 from zyfra import tools
 
+regex_sql_fx_field = re.compile(r'^([a-z_]+)\((.*)\)$')
+
 class SqlTableAlias:
     parent = None
     used = None
@@ -554,8 +556,7 @@ class SQLQuery(object):
             print 'FULL treatment[%s->%s]' % (obj._name, field_name)
         if ta is None:
             ta = self.table_alias['']
-        fx_regex = r'/^([a-z_]+)\((.*)\)$/'
-        matches = re.search(fx_regex, field_name)
+        matches = regex_sql_fx_field.match(field_name)
         if matches:
             return matches.group(1) + '(' + self.parse_mql_fields(matches.group(2), True) + ')'
         fields = tools.specialsplit(field_name, '.')

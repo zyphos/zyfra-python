@@ -483,3 +483,6 @@ class Model(object):
                 col_type += '[%s]' % col_obj.relation_object_name
             table.append([col_name, col_type, label])
         tools.print_table(table, ['Name', 'Type', 'Description'])
+    
+    def _get_sql_query(self):
+        return SQLQuery(self)
