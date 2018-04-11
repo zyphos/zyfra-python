@@ -46,6 +46,9 @@ check("tools.r_multi_split_array(mql, split_var)", {'': 'a,b,c ', 'order by ': '
 # Check mql2sql function
 check("o.language._get_sql_query().mql2sql(cr, 'sum(id) AS total')", 'SELECT sum(t0.id) AS total  FROM language AS t0', "mql2sql: Function")
 
+# Skip string parse
+check("o.language._get_sql_query().mql2sql(cr, \"id WHERE name='name.test,string'\")","SELECT t0.id  FROM language AS t0 WHERE t0.name = 'name.test,string'", "Skip string")
+
 # Check creation
 id = o.language.create(cr, {'name': 'en'})
 o.language.create(cr, {'name': 'fr'})

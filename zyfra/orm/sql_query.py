@@ -550,7 +550,7 @@ class SQLQuery(object):
             obj = self.object
         if self.debug > 1:
             print 'Field2sql[%s->%s]' % (obj._name, field_name)
-        if tools.is_numeric(field_name) or field_name in [',',' ','','(',')','unknown', 'between', 'false', 'like', 'null', 'true', 'div', 'mod', 'not', 'xor', 'and', 'or','in','is']:
+        if field_name == '' or tools.is_numeric(field_name) or field_name[0] in [',',' ','(',')',"'"] or field_name in ['unknown', 'between', 'false', 'like', 'null', 'true', 'div', 'mod', 'not', 'xor', 'and', 'or','in','is']:
             return field_name
         if self.debug >1:
             print 'FULL treatment[%s->%s]' % (obj._name, field_name)
