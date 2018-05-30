@@ -34,7 +34,7 @@ class Float(Field):
     widget = 'float'
 
     def sql_format(self, value):
-        return float(value)
+        return str(float(value))
 
     def get_sql_def(self, db_type):
         return 'FLOAT'
@@ -44,7 +44,7 @@ class Double(Field):
     widget = 'double'
 
     def sql_format(self, value):
-        return float(value)
+        return str(float(value))
 
     def get_sql_def(self, db_type):
         return 'DOUBLE'
@@ -69,7 +69,7 @@ class Boolean(Field):
     widget = 'boolean'
 
     def sql_format(self, value):
-        return value and 1 or 0
+        return str(value and 1 or 0)
 
     def get_sql_def(self, db_type):
         return 'INT(1)'
@@ -92,9 +92,9 @@ class IntSelect(Field):
         if isinstance(value, basestring):
             key = array_search(value, self.select_values)
             if key is not False:
-                return key
+                return str(key)
         if is_numeric(value):
-            return int(value)
+            return str(int(value))
         return None
     
     def python_format(self, value):
