@@ -181,10 +181,10 @@ class raid(HostService):
         msgs = []
         for raid_name in raid_status:
             raid_s = raid_status[raid_name]
+            if raid_s['msg']:
+                msgs.append('%s: %s' % (raid_name, raid_s['msg']))
+                state = WARNING
             for disk_state in raid_s['status']:
-                if raid_s['msg']:
-                    msgs.append('%s: %s' % (raid_name, raid_s['msg']))
-                    state = WARNING
                 if disk_state != 'U':
                     state = CRITICAL
                     break
