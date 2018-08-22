@@ -161,22 +161,33 @@ class raid(HostService):
             disk_ratio = rsplit[-2]
             status = rsplit[-1]
             i += 1
+            if rows[i].strip() != '':
+                msg = rows[i].strip()
+            else:
+                msg = None
             raids[name] = {'composition': composition,
                            'size': int(size),
                            'disk_ratio': disk_ratio,
-                           'status': status[1:-1]}
+                           'status': status[1:-1],
+                           'msg': msg
+                           }
         return raids
     
     @tools.delay_cache(60) # 1 min cached
     def get_state(self, cmd_exec):
         state = OK
         raid_status = self._get_raid_status(cmd_exec)
+        msgs = []
         for raid_name in raid_status:
-            for disk_state in raid_status[raid_name]['status']:
+            raid_s = raid_status[raid_name]
+            for disk_state in raid_s['status']:
+                if raid_s['msg']:
+                    msgs.append('%s: %s' % (raid_name, raid_s['msg']))
+                    state = WARNING
                 if disk_state != 'U':
                     state = CRITICAL
                     break
-        return State(state)
+        return State(state, '\n'.join(msgs))
 
 class smart(HostService):
     'Retrieve device S.M.A.R.T. status, for Hard Drive failure, ...'
