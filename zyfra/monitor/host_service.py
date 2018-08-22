@@ -161,8 +161,9 @@ class raid(HostService):
             disk_ratio = rsplit[-2]
             status = rsplit[-1]
             i += 1
-            if rows[i].strip() != '':
+            if i < len(rows) and rows[i].strip() != '':
                 msg = rows[i].strip()
+                i += 1
             else:
                 msg = None
             raids[name] = {'composition': composition,
