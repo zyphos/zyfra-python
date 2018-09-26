@@ -119,6 +119,12 @@ check("""o.user.select(cr, "language_id.name AS name WHERE name='max'")""",
       [{'name': 'fr'}],
       'read M2O')
 
+# M2O where
+check("""o.user.select(cr, "name WHERE language_id.name = 'en'")""",
+      [{'name': u'tom'}],
+      'search M2O'
+      )
+
 # O2M
 check("""o.language.select(cr, "user_ids.(name) WHERE name='en'")""",
       [{'user_ids': [{'name': 'tom'}]}],

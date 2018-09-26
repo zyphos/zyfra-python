@@ -315,10 +315,18 @@ class SQLQuery(object):
         return sql
     
     def where2sql(self, mql, context = None):
-        self.context = cr(self).context
-        if self.context.get('domain'):
-            self.where.append(self.context['domain'])
-        if self.context.get('visible', True) and self.object._visible_condition != '':
+        if context is None:
+            if hasattr(self, 'context'):
+                pass
+            elif hasattr(self, 'cr'):
+                self.context = self.cr.context.copy() # it can be modified by sql_query
+            else:
+                self.context = {}
+            context = self.context
+        context = self.context
+        if context.get('domain'):
+            self.where.append(context['domain'])
+        if context.get('visible', True) and self.object._visible_condition != '':
             self.where.append(self.object._visible_condition)
         sql = self.parse_mql_where(mql)
         sql  += ' ' + self.get_table_sql()

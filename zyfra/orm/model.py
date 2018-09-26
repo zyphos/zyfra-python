@@ -99,7 +99,7 @@ class Model(object):
             return
         col.set_instance(self, name)
         if name == self._visible_field and self._visible_condition == '':
-            self._visible_condition = self._visible_field + '=1'
+            self._visible_condition = name + '=' + col.sql_format(True)
         """methods = array('before_create', 'after_create', 'before_write',
                 'after_write', 'before_unlink', 'after_unlink')
         foreach(methods as method):

@@ -69,12 +69,18 @@ class Boolean(Field):
     widget = 'boolean'
 
     def sql_format(self, value):
+        if self.object._pool._db.type == 'postgresql':
+            return 'true' if value else 'false'
         return str(value and 1 or 0)
 
     def get_sql_def(self, db_type):
+        if db.type == 'postgresql':
+            return 'BOOLEAN'
         return 'INT(1)'
     
     def python_format(self, value):
+        if self.object._pool._db.type == 'postgresql':
+            return value
         return value == 1
 
 class IntSelect(Field):
