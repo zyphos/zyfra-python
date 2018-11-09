@@ -66,6 +66,9 @@ class mount_usage(HostService):
             free_space = int(free_space)
             if device in ('none', 'cgroup','udev','tmpfs','cgmfs','varrun','varlock','devshm','lrm'):
                 continue
+            if mount_point[:11] == '/snap/core/':
+                continue
+
             mounts[mount_point] = {'device': device,
                                    'size': size,
                                    'used_space': used_space,
