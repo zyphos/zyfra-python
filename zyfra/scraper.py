@@ -152,7 +152,7 @@ class Data(MetaObject):
         return Data(res)
     
     def html(self):
-        if html and isinstance(data, (lxml.etree._ElementTree, lxml.etree._Element, lxml.html.HtmlElement)):
+        if isinstance(self, (lxml.etree._ElementTree, lxml.etree._Element, lxml.html.HtmlElement)):
             return lxml.etree.tostring(self)
         raise ScraperException('This is not an element')
 
