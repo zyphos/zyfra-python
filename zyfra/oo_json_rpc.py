@@ -9,6 +9,11 @@ import simplejson
 from zyfra import WebBrowser
 
 """
+Helper for using NetRPC with OpenERP, Odoo
+Tested on:
+- OpenERP 7.0
+- Odoo 12.0
+
 Usage:
 
 from zyfra import OoJsonRPC
@@ -69,8 +74,9 @@ class JsonRPC(object):
             error = json['error']
             print error['data']['debug']
             raise Exception('ERROR: %s\n%s' % (error['code'], error['message']))
-        return json['result']
-
+        if 'result' in json:
+            return json['result']
+        return None
 
 class ProxyWorkflow(object):
     def __init__(self, oo_rpc, model):
@@ -82,8 +88,9 @@ class ProxyWorkflow(object):
             params = {'model':self.model,
                       'signal':signal,
                       'id': id,
-                      "session_id":self.oo_rpc.session_id,
                       'context': self.oo_rpc.context}
+            if self.oo_rpc.version < 12:
+                params["session_id"] = self.oo_rpc.session_id
             return self.oo_rpc.json_rpc('dataset/exec_workflow', params)
         return fx
 
@@ -98,8 +105,9 @@ class ProxyObject(object):
                       'method':method,
                       'args': args,
                       'kwargs': kwargs,
-                      "session_id":self.oo_rpc.session_id,
                       'context': self.oo_rpc.context}
+            if self.oo_rpc.version < 12:
+                params["session_id"] = self.oo_rpc.session_id
             return self.oo_rpc.json_rpc('dataset/call_kw', params)
         if method[:2] == '__':
             return super(ProxyObject, self).__getattr__(method)
@@ -119,9 +127,10 @@ class OoJsonRPC(object):
     url = None
     json_rpc = None
     session_id = None
+    version = 7
 
     def __init__(self, url=None, db=None, login=None, password=None,
-                 config_filename='~/.oo7_rpc', config_section='options', no_login=False):
+                 config_filename='~/.oo7_rpc', config_section='options', no_login=False, version=None):
         self.context = {}
         self._read_config(config_filename, config_section)
         if db:
@@ -132,14 +141,17 @@ class OoJsonRPC(object):
             self.password = password
         if url:
             self.url = url
+        if version:
+            self.version = version
 
         if self.url is None:
             raise Exception('Error, no url defined')
 
         self.json_rpc = JsonRPC(self.url)
-        res = self.json_rpc('session/get_session_info', {'session_id':'',
+        if self.version < 12:
+            res = self.json_rpc('session/get_session_info', {'session_id':'',
                                                               'context':{}})
-        self.session_id = res['session_id']
+            self.session_id = res['session_id']
         if not no_login:
             self.do_login()
     
@@ -159,11 +171,14 @@ class OoJsonRPC(object):
         params = {"db":self.db,
                   "login":self.login,
                   "password":self.password,
-                  "base_location":self.url,
-                  "session_id":self.session_id,
-                  "context":{}}
+                  "base_location":self.url
+                  }
+        if self.version < 12:
+            params.extends(session_id=self.session_id, context={})
         res = self.json_rpc('session/authenticate', params)
+        print(repr(res))
         self.context = res['user_context']
+        self.session_id = res['session_id']
 
     def _read_config(self, filename, section):
         filename = os.path.expanduser(filename)
@@ -182,10 +197,14 @@ class OoJsonRPC(object):
                 self.url = value
             if name == 'admin_password':
                 self.admin_passwd = value
+            if name == 'version':
+                self.version = float(value)
 
     def get_database_list(self):
-        params = {'session_id': self.session_id, 'context':{}}
-        return self.json_rpc('database/get_list', params)
+        if self.version < 12:
+            params = {'session_id': self.session_id, 'context':{}}
+            return self.json_rpc('database/get_list', params)
+        return self.json_rpc('database/list', {})
 
     def get_installed_module_list(self):
         params = {'session_id': self.session_id, 'context':self.context}
@@ -234,11 +253,12 @@ class OoJsonRPC(object):
                   'offset': offset,
                   'limit': limit,
                   'sort': sort,
-                  'context': new_context,
-                  'session_id':self.session_id}
+                  'context': new_context}
+        if self.version < 12:
+            params['session_id'] = self.session_id
         res = self.json_rpc('dataset/search_read', params)
         return res['records']
-    
+
     def make_dict(self, model, fields, key, domain=None, limit=0):
         fields = fields[:]
         if key not in fields:
@@ -256,5 +276,7 @@ class OoJsonRPC(object):
 
     def __del__(self):
         if self.json_rpc and self.session_id:
-            self.json_rpc('session/destroy', {'session_id': self.session_id,
-                                              'context': self.context})
+            params = {'context': self.context}
+            if self.version < 12:
+                params['session_id'] = self.session_id
+            self.json_rpc('session/destroy', params)
