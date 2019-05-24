@@ -174,9 +174,8 @@ class OoJsonRPC(object):
                   "base_location":self.url
                   }
         if self.version < 12:
-            params.extends(session_id=self.session_id, context={})
+            params.update(session_id=self.session_id, context={})
         res = self.json_rpc('session/authenticate', params)
-        print(repr(res))
         self.context = res['user_context']
         self.session_id = res['session_id']
 
