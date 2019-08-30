@@ -18,6 +18,12 @@ import inotify
 from .. import message_queue
 import threaded_loop
 """
+No space left on device (ENOSPC):
+sysctl -n fs.inotify.max_user_watches
+update it:
+sysctl -n -w fs.inotify.max_user_watches=16384
+"""
+"""
 TODO:
 - Server: remove ghost ssh client instance: partialy done
 - Add inotify on server too
