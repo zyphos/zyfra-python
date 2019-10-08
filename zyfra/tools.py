@@ -303,7 +303,8 @@ def dump_result(func):
     return echo_func
 
 def print_table_dict(table):
-    "Prety print dict as a table"
+    "Pretty print dict as a table"
+    "table: dict"
     if not isinstance(table, dict):
         return
     names = []
@@ -328,31 +329,59 @@ def print_table_dict(table):
     print '|'.join(values)
 
 def print_table(table, columns=None):
-    "Prety print data as a table"
+    "Pretty print data as a table"
+    "table: dict or list"
+    "column: list"
     if isinstance(table, dict):
         print_table_dict(table)
         return
     if not isinstance(table, list):
         print 'print_table: Type not supported %s' % repr(table)
         return
-    # calculate column size
+    if not table:
+        print 'Empty'
+        return
+    if isinstance(table[0], dict):
+        print_table_list_dict(table)
+        return
+
+    # compute column size
     col_sizes = [len(c) for c in columns]
     for row in table:
         for i, value in enumerate(row):
-            length = len(value)
+            length = len(str(value))
             if length > col_sizes[i]:
                 col_sizes[i] = length
-    
+
     columns = [c.ljust(col_sizes[i]) for i, c in enumerate(columns)]
     lines = ['-' * s for s in col_sizes]
     for row in table:
         for i, value in enumerate(row):
-            row[i] = row[i].ljust(col_sizes[i])
-    
+            row[i] = str(row[i]).ljust(col_sizes[i])
+
     print '|'.join(columns)
     print '|'.join(lines)
     for row in table:
         print '|'.join(row)
+
+def print_table_list_dict(data):
+    "Pretty print a list of dict"
+    "data: [{},]"
+    if not isinstance(data, list):
+        print 'print_table: Type not supported %s' % repr(data)
+        return
+    if not data:
+        print 'Empty'
+        return
+    if not isinstance(data[0], dict):
+        print 'print_table: Sub type not supported %s' % repr(data[0])
+        return
+    if not data[0]:
+        print 'Sub data is empty'
+        return
+    columns = data[0].keys()
+    rows = [[row[c] for c in columns] for row in data]
+    print_table(rows, columns)
 
 # source : https://wiki.python.org/moin/PythonDecoratorLibrary#Line_Tracing_Individual_Functions
 def trace(f):
