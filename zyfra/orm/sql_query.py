@@ -341,7 +341,7 @@ class SQLQuery(object):
         sql = self.mql2sql(cr, mql)
         return cr(self.object).get_scalar(sql)
 
-    def get_array(self, cr, mql, **kargs):
+    def get_array(self, cr, mql, data=None, **kargs):
         sql = self.mql2sql(cr, mql, True)
         cr = cr.copy()
         if 'key' in cr.context:
@@ -349,7 +349,7 @@ class SQLQuery(object):
             del cr.context['key']
         else:
             key = ''
-        res = cr(self.object).get_array_object(sql, key=key, **kargs)
+        res = cr(self.object).get_array_object(sql, key=key, data=data, **kargs)
 
         # Clean result
         if isinstance(res, dict):

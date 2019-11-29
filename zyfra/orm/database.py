@@ -179,8 +179,30 @@ class PostgreSQL(Database):
 class Sqlite3Cursor(Cursor):
     def execute(self, sql, data=None):
         sql = sql.replace('\\\'','\'\'')
-        if data:
+        if data: # Parse data
             sql = sql.replace('%s', '?')
+            sql_splitted = sql.split('?')
+            nb_place_holder = len(sql_splitted) - 1
+            if len(data) != nb_place_holder:
+                raise Exception('Bad number of placeholder (?)[%s] for data provided[%s]' % (nb_place_holder, len(data)))
+            new_sql = ''
+            new_data = []
+            for i, sql_trunk in enumerate(sql_splitted):
+                new_sql += sql_trunk
+                if i == nb_place_holder:
+                    break
+                value = data[i]
+                if isinstance(value, (int, float)):
+                    new_sql += str(value)
+                elif isinstance(value, (list, tuple)):
+                    for v in value:
+                        new_data.append(v)
+                    new_sql += '(%s)' % (','.join(['?'] * len(value)))
+                else:
+                    new_sql += '?'
+                    new_data.append(value)
+            data = new_data
+            sql = new_sql
         try:
             return super(Sqlite3Cursor, self).execute(sql, data)
         except:

@@ -185,6 +185,9 @@ check("o.task.select(cr, 'name,name[fr] AS name_fr,name[nl] AS name_nl,descripti
         'name_nl': u'werk'}
        ], 'read translations')
 
+# placeholder
+check("o.task.select(cr, 'name WHERE id=%s',[1])",
+      [{'name': u'work'}], 'select placeholder (%s)')
 # BUG: if language in context on translatable field
 cr.context['language_id'] = 1
 o.task.create(cr, {'name':'work2'})
