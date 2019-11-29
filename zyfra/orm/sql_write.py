@@ -21,8 +21,8 @@ class SQLWrite(SQLInterface):
         self.col_assign_data = []
         old_values = {}
         sql = 'SELECT %s FROM %s WHERE %s' % (object._key, object._table, where)
-        sql = cr(object)._safe_sql(sql, where_datas)
-        self.ids = cr(object).get_scalar(sql)
+        #sql = cr(object)._safe_sql(sql, where_datas)
+        self.ids = cr(object).get_scalar(sql, where_datas)
 
         for column, value in values.iteritems():
             fields = tools.specialsplit(column, '.')
