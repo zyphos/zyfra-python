@@ -10,6 +10,9 @@ SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 
 models_path = os.path.join(SCRIPT_PATH, 'models')
 
+print 'ORM test'
+print '========'
+print 'DB engine Sqlite3 memory'
 
 db = Sqlite3(':memory:')
 o = Pool(db, models_path, lazy_load=False) # load all model

@@ -112,6 +112,11 @@ class Database(object):
                            default is not None and (' DEFAULT %s' % default) or '',
                            primary and ' PRIMARY KEY' or '')
 
+    def safe_var(self, value):
+        if not isinstance(value, unicode):
+            value = str(value)
+        return "'%s'" % (value.replace("'","\\'")) # !! SQL injection !!!
+
 " ODBC "
 class OdbcCursor(Cursor):
     def execute(self, sql, params=None):
@@ -213,7 +218,10 @@ class Sqlite3(Database):
                            notnull and ' NOT NULL' or '',
                            default is not None and (' DEFAULT %s' % default) or '',
                            primary and ' PRIMARY KEY' or '')
-    
+
+    def safe_var(self, value):
+        return value # Handled by execute, data
+
     def close(self):
         self.cnx.close()
         self.cnx = None

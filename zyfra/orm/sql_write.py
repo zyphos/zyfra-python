@@ -43,12 +43,13 @@ class SQLWrite(SQLInterface):
                 print 'SQLWrite: No column found'
             return
         sql = 'UPDATE %s SET %s WHERE %s' % (object._table, ','.join(self.col_assign), where)
-        sql = cr(object)._safe_sql(sql, self.col_assign_data + where_datas)
+        #sql = cr(object)._safe_sql(sql, self.col_assign_data + where_datas)
         if self.debug:
             print sql
         if not self.dry_run:
-            cr(self.object).execute(sql)
-        
+            datas = self.col_assign_data + where_datas
+            cr(self.object).execute(sql, datas)
+
         # for callback in self.callbacks as callback:
         # call_user_func(callback, self, values[col_name], self.ids, context)
         for col_name, old_value in old_values.iteritems():

@@ -54,7 +54,7 @@ class SQLCreate(SQLInterface):
             treated_columns.append(field_name) 
         
         # Add datetimes
-        date = time.strftime("'%Y-%m-%d %H:%M:%S'", time.gmtime())
+        date = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         if obj._create_date is not None and obj._create_date not in treated_columns:
             sql_values[obj._create_date] = date
             treated_columns.append(obj._create_date)
@@ -73,7 +73,7 @@ class SQLCreate(SQLInterface):
         
         # Do the insert SQL
         try:
-            sql = 'INSERT INTO %s (%s) VALUES (%s)' % (obj._table, ','.join(sql_values.keys()), ','.join(sql_values.values()))
+            sql = 'INSERT INTO %s (%s) VALUES (%s)' % (obj._table, ','.join(sql_values.keys()), ','.join(['%s']* len(sql_values)))
         except:
             print 'INSERT INTO %s (%s) VALUES (%s)'
             print 'Table:', obj._table
@@ -88,7 +88,8 @@ class SQLCreate(SQLInterface):
             return None
         
         cr = self.cr(self.object)
-        cr.execute(sql)
+        data = sql_values.values()
+        cr.execute(sql, data)
         
         # Treat all callback
         context = self.cr.context

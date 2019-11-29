@@ -45,7 +45,8 @@ class Field(object):
 
     def sql_write(self, sql_write, value, fields, context):
         if self.read_only: return
-        sql_write.add_assign('%s=%s' % (self.sql_name, self.sql_format(value)))
+        sql_write.add_assign('%s=%%s' % self.sql_name)
+        sql_write.add_data(self.sql_format(value))
 
     def _sql_format_null(self):
         if self.not_null:
@@ -56,14 +57,9 @@ class Field(object):
         if value is None:
             return self._sql_format_null()
         if self.sql_escape_fx is None:
-            if not isinstance(value, unicode):
-                value = str(value)
-            return "'%s'" % (value.replace("'","\\'")) # !! SQL injection !!!
-        if self.sql_escape_fx is None:
-            self.sql_escape_fx = self.object._pool.db.safe_var
-        
+            self.sql_escape_fx = self.object._pool._db.safe_var
         return self.sql_escape_fx(value)
-    
+
     def python_format(self, value):
         return value
     
