@@ -181,8 +181,13 @@ class Sqlite3Cursor(Cursor):
         sql = sql.replace('\\\'','\'\'')
         if data:
             sql = sql.replace('%s', '?')
-        return super(Sqlite3Cursor, self).execute(sql, data)
-    
+        try:
+            return super(Sqlite3Cursor, self).execute(sql, data)
+        except:
+            print 'sql:'
+            print sql
+            print 'data: %s' % repr(data)
+            raise
     def commit(self):
         self.db.cnx.commit()
     
