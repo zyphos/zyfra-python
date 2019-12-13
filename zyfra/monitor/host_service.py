@@ -320,11 +320,11 @@ class linux_version(HostService):
                             {'version':'13.10',
                              'validity':'expired'},
                             {'version':'14.04',
-                             'validity':'2019-04'},
+                             'validity':'2019-04-30'},
                             {'version':'14.10',
                              'validity':'2015-07-23'},
                             {'version':'15.04',
-                             'validity':'2016-07'},
+                             'validity':'2016-02-04'},
                             {'version':'15.10',
                              'validity':'2016-07-28'},
                             {'version':'16.04',
@@ -332,11 +332,19 @@ class linux_version(HostService):
                             {'version':'16.10',
                              'validity':'2017-07-20'},
                             {'version':'17.04',
-                             'validity':'2018-01'},
+                             'validity':'2018-01-13'},
                             {'version':'17.10',
-                             'validity':'2018-07'},
+                             'validity':'2018-07-19'},
                             {'version':'18.04',
                              'validity':'2023-04'},
+                            {'version':'18.10',
+                             'validity':'2019-07-18'},
+                            {'version':'19.04',
+                             'validity':'2020-01'},
+                            {'version':'19.10',
+                             'validity':'2020-07'},
+                            {'version':'20.04',
+                             'validity':'2025-04'},
                                    ],
                         'Debian': [
                             {'codename':'slink',
@@ -359,6 +367,8 @@ class linux_version(HostService):
                              'validity':'2020-04'},
                             {'codename':'stretch',
                              'validity':'2022-06'},
+                            {'codename':'buster',
+                             'validity':'2024-01'},
                             ],
                         'LinuxMint': [
                             {'version':'5',
@@ -401,8 +411,15 @@ class linux_version(HostService):
                              'validity': '2021-01'},
                             {'version':'18.3',
                              'validity': '2021-01'},
+                            {'version':'19.1',
+                             'validity': '2023-01'},
+                            {'version':'19.2',
+                             'validity': '2023-01'},
+                            {'version':'19.3',
+                             'validity': '2023-01'},
                             ]
                         }
+    version_validity['Raspbian'] = version_validity['Debian']
     
     def _get_version_details(self, cmd_exec):
         cmd_line = '/usr/bin/lsb_release'
