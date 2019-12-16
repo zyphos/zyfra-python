@@ -13,7 +13,28 @@ class Cursor(object):
     def execute(self, sql, data=None):
         args = []
         if data is not None:
-            args = data
+            sql_splitted = sql.split('%s') # Warning if %%s in query, should not be splitted
+            nb_place_holder = len(sql_splitted) - 1
+            if len(data) != nb_place_holder:
+                raise Exception('Bad number of placeholder (%s)[%s] for data provided[%s]' % (nb_place_holder, len(data)))
+            new_sql = ''
+            new_data = []
+            for i, sql_trunk in enumerate(sql_splitted):
+                new_sql += sql_trunk
+                if i == nb_place_holder:
+                    break
+                value = data[i]
+                if isinstance(value, (int, float)):
+                    new_sql += str(value)
+                elif isinstance(value, (list, tuple)):
+                    for v in value:
+                        new_data.append(v)
+                    new_sql += '(%s)' % (','.join(['%s'] * len(value)))
+                else:
+                    new_sql += '%s'
+                    new_data.append(value)
+            args = new_data
+            sql = new_sql
         try:
             self.cr.execute(sql, args)
         except:
@@ -203,13 +224,16 @@ class Sqlite3Cursor(Cursor):
                     new_data.append(value)
             data = new_data
             sql = new_sql
+        else:
+            data = []
         try:
-            return super(Sqlite3Cursor, self).execute(sql, data)
+            return self.cr.execute(sql, data)
         except:
             print 'sql:'
             print sql
             print 'data: %s' % repr(data)
             raise
+
     def commit(self):
         self.db.cnx.commit()
     
