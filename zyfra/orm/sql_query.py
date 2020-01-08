@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import re
+import datetime
 from pprint import pprint
 
 from tools import r_multi_split_array
@@ -342,7 +343,13 @@ class SQLQuery(object):
         return cr(self.object).get_scalar(sql)
 
     def get_array(self, cr, mql, data=None, **kargs):
+        debug = cr.context.get('debug')
+        if debug:
+            print 'Get_array...'
+        start_time = datetime.datetime.now()
         sql = self.mql2sql(cr, mql, True)
+        if debug:
+            print '[mql2sql] duration: %s' % ((datetime.datetime.now() - start_time).total_seconds())
         cr = cr.copy()
         if 'key' in cr.context:
             key = cr.context['key']
@@ -350,6 +357,8 @@ class SQLQuery(object):
         else:
             key = ''
         res = cr(self.object).get_array_object(sql, key=key, data=data, **kargs)
+        if debug:
+            print '[get_array_object] duration: %s' % ((datetime.datetime.now() - start_time).total_seconds())
 
         # Clean result
         if isinstance(res, dict):
