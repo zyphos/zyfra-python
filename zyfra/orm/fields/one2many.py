@@ -10,11 +10,14 @@ class One2Many(Relational):
     relation_object_field = None
     stored = False
     local_key = ''
+    only_one = False # Only one record on foreign table, act so as Many2One (or One2One) to Avoid sub query
+                     # !! warning !! Be sure to have only one record on foreign table !!! or it will duplicate record
 
     def __init__(self, label, relation_object_name, relation_object_field, **kargs):
         super(One2Many, self).__init__(label, relation_object_name, **kargs)
         self.left_right = True
         self.relation_object_field = relation_object_field
+        self.only_gone = kargs.get('only_one')
     
     def set_instance(self, obj, name):
         super(One2Many, self).set_instance(obj, name)
@@ -58,15 +61,23 @@ class One2Many(Relational):
             return 'count(%s)' % key_field
         else:
             field_name = fields.pop(0)
-            if(field_name[0] == '('):
+            if(field_name[0] == '(' and field_name[-1] == ')'):
                 if 'field_alias' in context:
                     field_alias = context['field_alias']
                 else:
                     field_alias = ''
                 sub_mql = field_name[1:-1]
-                sql_query.add_sub_query(robject, self.relation_object_field, sub_mql, field_alias, parameter)
-                parent_alias.set_used()
-                return key_field
+                if self.only_one: # Avoid sub query, treat like a Many2One
+                    if 'field_alias' in context:
+                        field_alias = context['field_alias']
+                    else:
+                        field_alias = ''
+                    sql_query.split_select_fields(sub_mql, False, robject, ta, field_alias)
+                    return None
+                else:
+                    sql_query.add_sub_query(robject, self.relation_object_field, sub_mql, field_alias, parameter)
+                    parent_alias.set_used()
+                    return key_field
             else:
                 if parameter != '':
                     mql_where = MqlWhere(sql_query)
