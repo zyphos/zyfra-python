@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from types import MethodType
+
 from zyfra import tools
 import fields
 from active_record import ActiveRecord
@@ -70,7 +72,7 @@ class Model(object):
                 'after_write', 'before_unlink', 'after_unlink']
         for method in methods:
             #super(Model, self).__setattr__('__' + method + '_fields', [])
-            setattr(self, '_' + method + '_fields', {})
+            setattr(self, '_%s_fields' % method, [])
 
         if self._key and self._key not in self._columns:
             self._columns[self._key] = fields.Int('Id', primary_key=True, auto_increment=True)
@@ -100,16 +102,16 @@ class Model(object):
         col.set_instance(self, name)
         if name == self._visible_field and self._visible_condition == '':
             self._visible_condition = name + '=' + col.sql_format(True)
-        """methods = array('before_create', 'after_create', 'before_write',
-                'after_write', 'before_unlink', 'after_unlink')
-        foreach(methods as method):
-            if (method_exists(col, method + '_trigger')):
-                self.:'__' + method + '_fields'}[name] = True
-            }
-        }"""
-        #for name, column in col.iteritems():
-        #    self.set_column_instance(name, column)
-        #    self._columns[name] = column
+        methods = ['before_create', 'after_create', 'before_write',
+                'after_write', 'before_unlink', 'after_unlink']
+        for method in methods:
+            hasattr(object, name)
+            if isinstance(getattr(col, method + '_trigger', False), MethodType):
+                getattr(self, '_%s_fields' % method).append(name)
+
+        for name, column in col.needed_columns.iteritems():
+            self.set_column_instance(name, column)
+            self._columns[name] = column
 
     def set_instance(self, pool):
         if self._instanciated:
@@ -262,17 +264,16 @@ class Model(object):
             where = '%s=%s' % (self._key_sql_name, where)
         elif tools.is_array(where):
             where = '%s in (%s)' % (self._key_sql_name, implode(',', where))
-        columns_before = self._before_unlink_fields.keys()
-        columns_after = self._after_unlink_fields.keys()
+        columns_before = self._before_unlink_fields
+        columns_after = self._after_unlink_fields
         columns = columns_before + columns_after
+        columns = list(set(columns))
         if len(columns) > 0:
-            sql = 'SELECT ' + self._key + ', ' + ','.join(columns) + ' FROM ' + self._table + ' WHERE ' + where
-            rows = self._pool._db.get_array_object(sql, data=datas, key='')
+            sql = 'SELECT %s,%s FROM %s WHERE %s' % (self._key, ','.join(columns), self._table, where)
+            rows = cr(self).get_array_object(sql, data=datas)
         for column in columns_before:
-            old_values = {}
-            for row in rows:
-                old_values[getattr(row, self._key)] = getattr(row, column)
-            self._columns[column].before_unlink_trigger(old_values)
+            old_values = dict([(row[self._key], row[column]) for row in rows])
+            self._columns[column].before_unlink_trigger(cr, old_values)
         sql = 'DELETE FROM ' + self._table + ' WHERE ' + where
         if cr.context.get('debug'):
             print sql
@@ -280,10 +281,8 @@ class Model(object):
         sql = cr(self)._safe_sql(sql, datas)
         cr(self).execute(sql)
         for column in columns_after:
-            old_values = {}
-            for row in rows:
-                old_values[getattr(row, self._key)] = getattr(row, column)
-            self._columns[column].after_unlink_trigger(old_values)
+            old_values = dict([(row[self._key], row[column]) for row in rows])
+            self._columns[column].after_unlink_trigger(cr, old_values)
 
     def read(self, cr, where='', fields=None, **kargs):
         if not isinstance(cr, Cursor):

@@ -194,6 +194,67 @@ o.task.create(cr, {'name':'work2'})
 o.task.create(cr, {'name':''})
 del cr.context['language_id']
 
+"""
+      1 A 10
+2 B 3      4 C 9
+       5 D 6  7 E 8
+"""
+a_id = o.category.create(cr, {'name': 'A'})
+b_id = o.category.create(cr, {'name': 'B', 'parent_id': a_id})
+c_id = o.category.create(cr, {'name': 'C', 'parent_id': a_id})
+d_id = o.category.create(cr, {'name': 'D', 'parent_id': c_id})
+e_id = o.category.create(cr, {'name': 'E', 'parent_id': c_id})
+#print db.get_table_column_definitions('category')
+check("o.category.select(cr, 'id,parent_id_pleft,parent_id_pright ORDER BY id')",
+      [{'id': a_id, 'parent_id_pleft': 1, 'parent_id_pright': 10},
+       {'id': b_id, 'parent_id_pleft': 2, 'parent_id_pright': 3},
+       {'id': c_id, 'parent_id_pleft': 4, 'parent_id_pright': 9},
+       {'id': d_id, 'parent_id_pleft': 5, 'parent_id_pright': 6},
+       {'id': e_id, 'parent_id_pleft': 7, 'parent_id_pright': 8},
+      ], 'Check p left and right')
+check("o.category.select(cr, 'name WHERE parent_id child_of %s')" % a_id,[{'name': u'B'},{'name': u'C'},{'name': u'D'},{'name': u'E'}], 'child_of A')
+check("o.category.select(cr, 'name WHERE parent_id child_of %s')" % c_id,[{'name': u'D'},{'name': u'E'}], 'child_of C')
+check("o.category.select(cr, 'name WHERE parent_id parent_of %s')" % e_id,[{'name': u'A'},{'name': u'C'}], 'parent_of E')
+"""
+       1 A 10
+2 B 3  4 C 7  8 D 9
+       5 E 6
+"""
+o.category.write(cr, {'parent_id': a_id}, d_id)
+new_tree = [{'id': a_id, 'parent_id_pleft': 1, 'parent_id_pright': 10},
+       {'id': b_id, 'parent_id_pleft': 2, 'parent_id_pright': 3},
+       {'id': c_id, 'parent_id_pleft': 4, 'parent_id_pright': 7},
+       {'id': d_id, 'parent_id_pleft': 8, 'parent_id_pright': 9},
+       {'id': e_id, 'parent_id_pleft': 5, 'parent_id_pright': 6},
+      ]
+check("o.category.select(cr, 'id,parent_id_pleft,parent_id_pright ORDER BY id')",
+      new_tree,
+      'Check p left and right after write')
+check("o.category.select(cr, 'name WHERE parent_id child_of %s')" % a_id,[{'name': u'B'},{'name': u'C'},{'name': u'E'},{'name': u'D'}], 'child_of A')
+check("o.category.select(cr, 'name WHERE parent_id child_of %s')" % c_id,[{'name': u'E'}], 'child_of C')
+check("o.category.select(cr, 'name WHERE parent_id parent_of %s')" % e_id,[{'name': u'A'},{'name': u'C'}], 'parent_of E')
+check("o.category.select(cr, 'name WHERE parent_id parent_of %s')" % d_id,[{'name': u'A'}], 'parent_of D')
+
+o.category._columns['parent_id'].rebuild_tree(cr)
+check("o.category.select(cr, 'id,parent_id_pleft,parent_id_pright ORDER BY id')",
+      new_tree,
+      'Check p left and right after rebuild')
+
+"""
+    1 A 8
+2 C 5  6 D 7
+3 E 4
+"""
+o.category.unlink(cr, b_id)
+new_tree = [{'id': a_id, 'parent_id_pleft': 1, 'parent_id_pright': 8},
+       {'id': c_id, 'parent_id_pleft': 2, 'parent_id_pright': 5},
+       {'id': d_id, 'parent_id_pleft': 6, 'parent_id_pright': 7},
+       {'id': e_id, 'parent_id_pleft': 3, 'parent_id_pright': 4},
+      ]
+check("o.category.select(cr, 'id,parent_id_pleft,parent_id_pright ORDER BY id')",
+      new_tree,
+      'After unlink')
+
 print 'Test passed: %s/%s' % (nb_passed, nb_test)
 if nb_passed != nb_test:
     warning = '# Warning: %s test(s) FAILED #' % (nb_test-nb_passed)

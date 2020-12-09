@@ -98,10 +98,10 @@ class SQLCreate(SQLInterface):
             parameters = parameters[:] # copy
             parameters.append(id)
             callback(self, *parameters)
-        #for column in obj.__after_create_fields.keys():
-        #    if column in values:
-        #        value = values[column]
-        #    else:
-        #        value = obj._columns[column].default_value
-        #    obj._columns[column].after_create_trigger(id, value, context)
+        for column in obj._after_create_fields:
+            if column in values:
+                value = values[column]
+            else:
+                value = obj._columns[column].default_value
+            obj._columns[column].after_create_trigger(self.cr, id, value, context)
         return id

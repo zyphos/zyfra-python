@@ -123,7 +123,7 @@ class Many2One(Relational):
 class Many2OneSelf(Many2One):
     """ Field Many2One with left and right parent optimization for recursive object """
 
-    def __init__(self, label, relation_object_name, **kargs):
+    def __init__(self, label, **kargs):
         super(Many2One, self).__init__(label, None, **kargs)
 
     def set_instance(self, obj, name):
@@ -144,7 +144,7 @@ class Many2OneSelf(Many2One):
             obj = self.object
             pa = parent_alias.alias
             operator = context['operator']
-            op_data = context['op_data'].trim()
+            op_data = context['op_data'].strip()
             if len(op_data) and op_data[0] == '(':
                 cmp_operator = ' IN '
             else:
@@ -152,13 +152,13 @@ class Many2OneSelf(Many2One):
             
             ta = sql_query.get_new_table_alias()
             if operator == 'parent_of':
-                sql = 'EXISTS(SELECT %s FROM %s AS %s WHERE %s.%s%s%s AND %s.%s<%s.%s AND %s.%s>%s.%s' % (obj._key_sql_name, obj._table, ta,
+                sql = 'EXISTS(SELECT %s FROM %s AS %s WHERE %s.%s%s%s AND %s.%s<%s.%s AND %s.%s>%s.%s)' % (obj._key_sql_name, obj._table, ta,
                                                                                                          ta, obj._key_sql_name, cmp_operator, op_data,
                                                                                                          pa, self.pleft, ta, self.pleft,
                                                                                                          pa, self.pright, ta, self.pright)
                 parent_alias.set_used()
             elif operator == 'child_of':
-                sql = 'EXISTS(SELECT %s FROM %s AS %s WHERE %s.%s%s%s AND %s.%s>%s.%s AND %s.%s<%s.%s' % (obj._key_sql_name, obj._table, ta,
+                sql = 'EXISTS(SELECT %s FROM %s AS %s WHERE %s.%s%s%s AND %s.%s>%s.%s AND %s.%s<%s.%s)' % (obj._key_sql_name, obj._table, ta,
                                                                                                          ta, obj._key_sql_name, cmp_operator, op_data,
                                                                                                          pa, self.pleft, ta, self.pleft,
                                                                                                          pa, self.pright, ta, self.pright)
@@ -167,99 +167,102 @@ class Many2OneSelf(Many2One):
             return sql
         return super(Many2OneSelf, self).get_sql(parent_alias, fields, sql_query, context)
 
-    def after_write_trigger(self, old_values, new_value):
+    def after_write_trigger(self, cr, old_values, new_value):
+        #print 'After write'
         # Update left and right tree
-        db = self.object._pool.db
-        modified_values_ids = array()
         left_col = self.pleft
         right_col = self.pright
         table = self.object._table
         key = self.object._key
+        cr_o = cr(self.object)
         for id, old_value in old_values.iteritems():
             if old_value == new_value:
                 continue
-            obj = db.get_object('SELECT %s AS lc, %s AS rc FROM %s WHERE %s=%s' % (left_col, right_col, table, self.object._key, id))
-            l0 = obj.lc
-            r0 = obj.rc
+            obj = cr_o.get_object('SELECT %s AS lc, %s AS rc FROM %s WHERE %s=%s' % (left_col, right_col, table, self.object._key, id))
+            l0 = obj['lc']
+            r0 = obj['rc']
             d = r0 - l0
-            children_ids = db.get_array('SELECT %s FROM %s WHERE %s>=%s AND %s<=%s' % (key, table, left_col, l0, right_col, r0), key)
-            l1 = self._tree_get_new_left(id, new_value)
+            children_ids = cr_o.get_scalar('SELECT %s FROM %s WHERE %s>=%s AND %s<=%s' % (key, table, left_col, l0, right_col, r0))
+            l1 = self._tree_get_new_left(cr, id, new_value)
             if (l1 > l0):
-                db.safe_query('UPDATE %s SET %s=%s-%s WHERE %s>%s AND %s<%s' % (table, left_col, left_col, (d+1), left_col, r0, left_col, l1))
-                db.safe_query('UPDATE %s SET %s=%s-%s WHERE %s>%s AND %s<%s' % (table, right_col, right_col, (d+1), right_col, r0, right_col, l1))
+                cr_o.execute('UPDATE %s SET %s=%s-%s WHERE %s>%s AND %s<%s' % (table, left_col, left_col, (d+1), left_col, r0, left_col, l1))
+                cr_o.execute('UPDATE %s SET %s=%s-%s WHERE %s>%s AND %s<%s' % (table, right_col, right_col, (d+1), right_col, r0, right_col, l1))
                 delta = l1 - l0 - d - 1
             else:
-                db.safe_query('UPDATE %s SET %s=%s+%s WHERE %s>=%s AND %s<%s' % (table, left_col, left_col, (d+1), left_col, l1, left_col, l0))
-                db.safe_query('UPDATE %s SET %s=%s+%s WHERE %s>=%s AND %s<%s' % (table, right_col, right_col, (d+1), right_col, l1, right_col, l0))
+                cr_o.execute('UPDATE %s SET %s=%s+%s WHERE %s>=%s AND %s<%s' % (table, left_col, left_col, (d+1), left_col, l1, left_col, l0))
+                cr_o.execute('UPDATE %s SET %s=%s+%s WHERE %s>=%s AND %s<%s' % (table, right_col, right_col, (d+1), right_col, l1, right_col, l0))
                 delta = l1 - l0
-            db.safe_query('UPDATE %s SET %s=%s+%s,%s=%s+%s WHERE %s IN %%s' % (table, left_col, left_col, delta, right_col, right_col, delta, key), [children_ids])
+            cr_o.execute('UPDATE %s SET %s=%s+%s,%s=%s+%s WHERE %s IN %%s' % (table, left_col, left_col, delta, right_col, right_col, delta, key), [children_ids])
 
-    def _tree_get_new_left(self, id, value):
-        db = self.object._pool.db
+    def _tree_get_new_left(self, cr, id, value):
+        db = self.object._pool._db
         key = self.object._key
         left_col = self.pleft
         right_col = self.pright
         table = self.object._table
-        if value == null or value == 0:
+        cr_o = cr(self.object)
+        if not value:
             l1 = 1
-            brothers = self.object.select('%s AS id, %s AS rc WHERE %s IS NULL OR %s=0' % (key, right_col, self.sql_name, self.sql_name))
+            brothers = cr_o.get_array_object('SELECT %s AS id, %s AS rc FROM %s WHERE %s IS NULL OR %s=0' % (key, right_col, table, self.sql_name, self.sql_name))
             for brother in brothers:
-                if brother.id == id:
+                if brother['id'] == id:
                     break
-                l1 = brother.rc + 1
+                l1 = brother['rc'] + 1
         else:
-            parent_obj = self.object._pool.db.get_object('SELECT %s AS lc FROM %s WHERE %s=%%s' % (left_col, table, key), [value])
-            l1 = parent_obj.lc + 1
-            brothers = self.object.select('%s AS id, %s AS rc WHERE %s=%%s' % (key, right_col, self.sql_name), [], [value])
+            parent_obj = cr_o.get_object('SELECT %s AS lc FROM %s WHERE %s=%%s' % (left_col, table, key), [value])
+            l1 = parent_obj['lc'] + 1
+            brothers = cr_o.get_array_object('SELECT %s AS id, %s AS rc FROM %s WHERE %s=%%s' % (key, right_col, table, self.sql_name),[value])
             for brother in brothers:
-                if brother.id == id:
+                if brother['id'] == id:
                     break
-                l1 = brother.rc + 1
+                l1 = brother['rc'] + 1
         return l1
 
-    def rebuild_tree(self, id = 0, left = 1, key='', table=''):
+    def rebuild_tree(self, cr,  id = 0, left = 0, key='', table=''):
         if key == '' or table == '':
             key = self.object._key
             table = self.object._table
         right = left+1
 
+        cr_o = cr(self.object)
         if id is None or id == 0:
-            rows = self.object.select('%s AS id WHERE %s IS NULL OR %s=0' % (key, self.sql_name, self.sql_name))
+            child_ids = cr_o.get_scalar('SELECT %s AS id FROM %s WHERE %s IS NULL OR %s=0' % (key, table, self.sql_name, self.sql_name))
         else:
-            rows = self.object.select('%s AS id WHERE %s=%%s' % (key, self.sql_name), [], [id])
-        for row in rows:
-            right = self.rebuild_tree(row.id, right, key, table)
+            child_ids = cr_o.get_scalar('SELECT %s AS id FROM %s WHERE %s=%%s' % (key, table, self.sql_name), [id])
+        for child_id in child_ids:
+            right = self.rebuild_tree(cr, child_id, right, key, table)
         if id != 0 and id is not None:
-            db = self.object._pool.db
-            db.safe_query('UPDATE %s SET %s=%s, %s=%s WHERE %s=%%s' % (table, self.pleft, left, self.pright, right, key), [id])
-        return right+1
+            cr_o.execute('UPDATE %s SET %s=%s, %s=%s WHERE %s=%%s' % (table, self.pleft, left, self.pright, right, key), [id])
+        return right + 1
 
-    def before_unlink_trigger(self, old_values):
+    def before_unlink_trigger(self, cr, old_values):
         if not len(old_values):
             return
-        db = self.object._pool.db
         table = self.object._table
         left_col = self.pleft
         right_col = self.pright
-        sql = 'SELECT %s AS pleft FROM %s WHERE %s IN %%s ORDER BY pleft' % (self.pleft, self.object._table, self.object._key)
-        plefts = db.get_array(sql, 'pleft', '', [old_values.keys()])
+        cr_o = cr(self.object)
+        sql = 'SELECT %s FROM %s WHERE %s IN %%s ORDER BY %s' % (self.pleft, self.object._table, self.object._key, self.pleft)
+        plefts = cr_o.get_scalar(sql, [old_values.keys()])
+        nb = len(plefts)
         for i in xrange(len(plefts)):
             nbi = (i + 1) * 2
             if i+1 < nb:
                 if plefts[i+1] - plefts[i] >= 2:
-                    db.safe_query('UPDATE %s SET %s=%s-%s WHERE %s>%s AND %s<%s' % (table, left_col, left_col, nbi, left_col, plefts[i], left_col, plefts[i+1]))
-                    db.safe_query('UPDATE %s SET %s=%s-%s WHERE %s>%s AND %s<%s' % (table, right_col, right_col, nbi, right_col, plefts[i], right_col, plefts[i+1]))
+                    cr_o.execute('UPDATE %s SET %s=%s-%s WHERE %s>%s AND %s<%s' % (table, left_col, left_col, nbi, left_col, plefts[i], left_col, plefts[i+1]))
+                    cr_o.execute('UPDATE %s SET %s=%s-%s WHERE %s>%s AND %s<%s' % (table, right_col, right_col, nbi, right_col, plefts[i], right_col, plefts[i+1]))
             else:
-                db.safe_query('UPDATE %s SET %s=%s-%s WHERE %s>%s' % (table, left_col, left_col, nbi, left_col, plefts[i]))
-                db.safe_query('UPDATE %s SET %s=%s-%s WHERE %s>%s' % (table, right_col, right_col, nbi, right_col, plefts[i]))
+                cr_o.execute('UPDATE %s SET %s=%s-%s WHERE %s>%s' % (table, left_col, left_col, nbi, left_col, plefts[i]))
+                cr_o.execute('UPDATE %s SET %s=%s-%s WHERE %s>%s' % (table, right_col, right_col, nbi, right_col, plefts[i]))
 
-    def after_create_trigger(self, id, value, context):
-        if id is None or id.strip() == '': return
-        db = self.object._pool.db
-        l1 = self._tree_get_new_left(id, value)
+    def after_create_trigger(self, cr, id, value, context):
+        if not isinstance(id, int) or not id:
+            return
+        l1 = self._tree_get_new_left(cr, id, value)
         left_col = self.pleft
         right_col = self.pright
         table = self.object._table
-        db.safe_query('UPDATE %s SET %s=%s+2 WHERE %s >= %s' % (table, left_col, left_col, left_col, l1))
-        db.safe_query('UPDATE %s SET %s=%s+2 WHERE %s >= %s' % (table, right_col, left_col, right_col, l1))
-        db.safe_query('UPDATE %s SET %s=%s, %s=%s WHRE %s=%%s' % (table, left_col, l1, right_col, (l1+1), self.object._key), [id])
+        cr_o = cr(self.object)
+        cr_o.execute('UPDATE %s SET %s=%s+2 WHERE %s >= %s' % (table, left_col, left_col, left_col, l1))
+        cr_o.execute('UPDATE %s SET %s=%s+2 WHERE %s >= %s' % (table, right_col, right_col, right_col, l1))
+        cr_o.execute('UPDATE %s SET %s=%s, %s=%s WHERE %s=%%s' % (table, left_col, l1, right_col, (l1+1), self.object._key), [id])

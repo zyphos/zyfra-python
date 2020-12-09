@@ -57,8 +57,20 @@ class Cursor(object):
     
     def get_object(self, sql, data=None):
         self.execute(sql, data)
-        return self.cr.fetchone()
-    
+        row = self.cr.fetchone()
+        cols = self._get_column_names(row)
+        if row is None:
+            return None
+        if self.encoding is not None:
+                new_row = []
+                for x in row:
+                    if isinstance(x, basestring):
+                        new_row.append(x.decode(self.encoding))
+                    else:
+                        new_row.append(x)
+                row = new_row
+        return dict(zip(cols, row))
+
     def get_array_object(self, sql, data=None, key='', limit=None, offset=0, after_query_fx=None):
         self.execute(sql, data)
         if after_query_fx is not None:
@@ -261,7 +273,7 @@ class Sqlite3(Database):
     def get_table_column_definitions(self, tablename):
         res = {}
         for field in self.cursor().get_array_object('PRAGMA table_info(%s)' % tablename):
-            res[field.name] = self.make_sql_def(field.type, field.notnull, field.dflt_value, field.pk)
+            res[field['name']] = self.make_sql_def(field['type'], field['notnull'], field['dflt_value'], field['pk'])
         return res
     
     def make_sql_def(self, type, notnull, default, primary):
