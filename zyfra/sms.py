@@ -2,9 +2,10 @@
 # -*- coding:utf-8 -*-
 
 import os
-import ConfigParser
+import configparser
 
-import web_browser, xml2dict
+from . import web_browser
+from . import xml2dict
 
 class Sms(object):
     provider = None
@@ -33,7 +34,7 @@ class Sms(object):
         filename = os.path.expanduser(filename)
         if not os.path.exists(filename):
             return
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
         config.read([filename])
         defaults = config.defaults()
         if section is None:

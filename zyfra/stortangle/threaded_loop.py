@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -19,7 +19,7 @@ class ThreadedLoop(object):
     
     def _log(self, msg, level=1):
         if level <= self.__log_level:
-            print 'ThreadedLoop', msg
+            print('ThreadedLoop', msg)
     
     def _init(self): # Setup all data before looping
         pass

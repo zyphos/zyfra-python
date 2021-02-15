@@ -38,7 +38,7 @@ class MainHandler(tornado.web.RequestHandler):
     
     def get(self, path):
         if self.debug:
-            print '[HTTP] Received http get [%s]' % path 
+            print('[HTTP] Received http get [%s]' % path) 
         if path == '':
             self.render('templates/base.html')
             return
@@ -72,7 +72,7 @@ def middleware(queue2middle, queue2web):
         cmd, data = queue2middle.get()
         #print '[MIDDLE] received get'
         if cmd == 'exit':
-            print '[MIDDLE] Quitting'
+            print('[MIDDLE] Quitting')
             return
         elif cmd == 'set_status':
             #print '[MIDDLE] set status'
@@ -86,7 +86,7 @@ def middleware(queue2middle, queue2web):
                     
             queue2web.put(_status)
         else:
-            print '[MIDDLE] Command [%s] not found' % cmd
+            print('[MIDDLE] Command [%s] not found' % cmd)
 
 def start_server(port=8888, ssl=False, certfile=None, keyfile=None, queue2probe=None, debug=False):
     queue2middle = Queue()
@@ -108,17 +108,17 @@ def start_server(port=8888, ssl=False, certfile=None, keyfile=None, queue2probe=
     application.listen(port, ssl_options=ssl_options)
     ioloop = tornado.ioloop.IOLoop.instance()
     def dummy_callback(iol):
-        print 'test'
+        print('test')
         iol.add_callback(dummy_callback, iol) 
         
     def start_ioloop():
         try:
             ioloop.start()
         except KeyboardInterrupt:
-            print '[WEB] Stopped'
+            print('[WEB] Stopped')
     ioloop_process = Process(target=start_ioloop)
     middleware_process = Process(target=middleware, args=(queue2middle, queue2web))
     middleware_process.start()
     ioloop_process.start()
-    print 'Webserver listening on port %s' % port
+    print('Webserver listening on port %s' % port)
     return queue2middle

@@ -47,7 +47,7 @@ def is_numeric(var):
     except ValueError:
         return False
     except TypeError:
-        print 'is_numeric(%s)' % repr(var)
+        print('is_numeric(%s)' % repr(var))
         raise
 
 is_array = lambda var: isinstance(var, (list, tuple))
@@ -285,9 +285,7 @@ def dump_args(func):
     fname = func.func_name
 
     def echo_func(*args,**kwargs):
-        print fname + '(' + ', '.join(
-            '%s=%r' % entry
-            for entry in zip(argnames,args) + kwargs.items()) + ')'
+        print('%s(%s)' % (fname, ', '.join('%s=%r' % entry for entry in zip(argnames,args) + kwargs.items())))
         return func(*args, **kwargs)
 
     return echo_func
@@ -297,7 +295,7 @@ def dump_result(func):
 
     def echo_func(*args,**kwargs):
         r = func(*args, **kwargs)
-        print r
+        print(r)
         return r
 
     return echo_func
@@ -324,9 +322,9 @@ def print_table_dict(table):
         names.append(name.center(width))
         values.append(value.center(width))
         line.append('-' * width)
-    print '|'.join(names)
-    print '|'.join(line)
-    print '|'.join(values)
+    print('|'.join(names))
+    print('|'.join(line))
+    print('|'.join(values))
 
 def print_table(table, columns=None):
     "Pretty print data as a table"
@@ -336,10 +334,10 @@ def print_table(table, columns=None):
         print_table_dict(table)
         return
     if not isinstance(table, list):
-        print 'print_table: Type not supported %s' % repr(table)
+        print('print_table: Type not supported %s' % repr(table))
         return
     if not table:
-        print 'Empty'
+        print('Empty')
         return
     if isinstance(table[0], dict):
         print_table_list_dict(table)
@@ -359,25 +357,25 @@ def print_table(table, columns=None):
         for i, value in enumerate(row):
             row[i] = str(row[i]).ljust(col_sizes[i])
 
-    print '|'.join(columns)
-    print '|'.join(lines)
+    print('|'.join(columns))
+    print('|'.join(lines))
     for row in table:
-        print '|'.join(row)
+        print('|'.join(row))
 
 def print_table_list_dict(data):
     "Pretty print a list of dict"
     "data: [{},]"
     if not isinstance(data, list):
-        print 'print_table: Type not supported %s' % repr(data)
+        print('print_table: Type not supported %s' % repr(data))
         return
     if not data:
-        print 'Empty'
+        print('Empty')
         return
     if not isinstance(data[0], dict):
-        print 'print_table: Sub type not supported %s' % repr(data[0])
+        print('print_table: Sub type not supported %s' % repr(data[0]))
         return
     if not data[0]:
-        print 'Sub data is empty'
+        print('Sub data is empty')
         return
     columns = data[0].keys()
     rows = [[row[c] for c in columns] for row in data]
@@ -397,9 +395,9 @@ def trace(f):
             lineno = frame.f_lineno
 
             bname = os.path.basename(filename)
-            print "{}({}): {}".format(  bname,
+            print("{}({}): {}".format(  bname,
                                         lineno,
-                                        linecache.getline(filename, lineno)),
+                                        linecache.getline(filename, lineno)), end='')
         return localtrace
 
     def _f(*args, **kwds):
@@ -417,7 +415,7 @@ def duration(f): # Decorator for function
     def _f(*args, **kwargs):
         start = datetime.datetime.now()
         result = f(*args, **kwargs)
-        print '[%s] duration: %ss' % (fname, (datetime.datetime.now() - start).total_seconds()) 
+        print('[%s] duration: %ss' % (fname, (datetime.datetime.now() - start).total_seconds())) 
         return result
 
     return _f
@@ -444,10 +442,10 @@ def delay_cache(delay=60, garbage_collector=False, debug=False): # fn decorator
             timestamp = int(time.time())
             if data.next_query_timestamp is not None and data.next_query_timestamp > timestamp and ('_no_cache_' not in kargs or not kargs['_no_cache_']):
                 if debug:
-                    print 'Cached result for %s sec' % (data.next_query_timestamp - timestamp)
+                    print('Cached result for %s sec' % (data.next_query_timestamp - timestamp))
                 return data.cached_result
             if debug:
-                print 'Not cached'
+                print('Not cached')
             data.next_query_timestamp = timestamp + delay
             result = fn(*args)
             data.cached_result = result
@@ -490,7 +488,7 @@ def mail_on_exception(subject, from_email=None, to_email=None, catch=False, show
                 node_name = platform.node()
                 exception_details = traceback.format_exc()
                 if show:
-                    print exception_details
+                    print(exception_details)
                 username = getpass.getuser()
                 email_object(subject, 'Host: %s\nUsername:%s\n\n%s' % (node_name, username, exception_details), from_email, to_email)
                 if not catch:
@@ -562,7 +560,7 @@ class ShowProgress(object):
             eta = (self.__total_nb - nb_done) * time_per_item
             estimated_total_time = self.__total_nb * time_per_item
             self.__last_time = time_now
-            print '%s %s/%s Elapsed:%ss Total estimated:%ss ETA:%ss' % (self.__name, nb_done, self.__total_nb, str_s(time_elapsed), str_s(estimated_total_time), str_s(eta))
+            print('%s %s/%s Elapsed:%ss Total estimated:%ss ETA:%ss' % (self.__name, nb_done, self.__total_nb, str_s(time_elapsed), str_s(estimated_total_time), str_s(eta)))
 
 class StopWatch(object):
     def __init__(self, name=None):

@@ -8,15 +8,15 @@ import traceback
 import time
 from datetime import datetime
 import threading
-from Queue import Queue
+from queue import Queue
 #import multiprocessing
 
 import sqlite3
 
-import ssh_rpc
-import inotify
+from . import ssh_rpc
+from . import inotify
 from .. import message_queue
-import threaded_loop
+from . import threaded_loop
 """
 No space left on device (ENOSPC):
 sysctl -n fs.inotify.max_user_watches
@@ -52,7 +52,7 @@ class ChannelHandlerClientStortangle(ssh_rpc.ChannelHandlerClient):
         self.send({'action': 'name', 'name': self.name})
     
     def _on_receive_data(self, queue, cmd):
-        print 'SSH on_received %s' % cmd
+        print('SSH on_received %s' % cmd)
         action = cmd['action']
         if action == 'who':
             self.send({'action': 'name', 'name': self.name})
@@ -69,7 +69,7 @@ class ChannelHandlerClientStortangle(ssh_rpc.ChannelHandlerClient):
         queue.put(cmd)
         #queue.add(**cmd)
         if id is not None:
-            print 'ACK id[%s]' % id
+            print('ACK id[%s]' % id)
             self.send({'action': 'ack', 'id': id})
 
 class ChannelHandlerServerStortangle(ssh_rpc.ChannelHandlerServer):
@@ -80,7 +80,7 @@ class ChannelHandlerServerStortangle(ssh_rpc.ChannelHandlerServer):
         ssh_rpc.ChannelHandlerServer.__init__(self, client_socket, id, allowed_users, client_addr, queue=treat_queue, log_level=log_level, **kargs)
     
     def _on_receive_data(self, queue, cmd):
-        print 'SSH on_received %s' % cmd
+        print('SSH on_received %s' % cmd)
         action = cmd['action']
         if action == 'name':
             self.name = cmd['name']
@@ -97,7 +97,7 @@ class ChannelHandlerServerStortangle(ssh_rpc.ChannelHandlerServer):
         cmd['host'] = self.name
         queue.put(cmd)
         if id is not None:
-            print 'ACK id[%s]' % id
+            print('ACK id[%s]' % id)
             self.send({'action': 'ack', 'id': id})
     
     #def send(self, msg):
@@ -224,7 +224,7 @@ class MessageQueue2treat(ActionMessageQueue):
 def disable_inotify(fx):
     def new_fx(self, *args, **kargs):
         if self._inotify is None or kargs.get('skip_inotify', False):
-            print 'Skip inotify'
+            print('Skip inotify')
             return fx(self, *args, **kargs)
         self._inotify.join()
         res = fx(self, *args, **kargs)
@@ -259,7 +259,7 @@ class DiskAction(object):
             self._inotify.start(threaded=inotify_threaded)
     
     def set_server_path(self, server_path):
-        print 'Server path set to: %s' % server_path
+        print('Server path set to: %s' % server_path)
         self.__server_path = server_path
     
     @disable_inotify
@@ -271,10 +271,10 @@ class DiskAction(object):
             try:
                 local_timestamp = os.stat(full_path).st_mtime
             except OSError:
-                print 'The file "%s" does not exist, can not delete it.' % full_path
+                print('The file "%s" does not exist, can not delete it.' % full_path)
                 return True
             if timestamp <= local_timestamp:
-                print 'The file "%s" is more recent, can not delete it.' % full_path
+                print('The file "%s" is more recent, can not delete it.' % full_path)
                 return True # the file on disk is more recent, do not delete
         if os.path.isdir(full_path):
             self._rm_dir(full_path)
@@ -283,12 +283,12 @@ class DiskAction(object):
         return True
     
     def _rm_file(self, filename):
-        print 'rm file %s' % filename
+        print('rm file %s' % filename)
         if not dry_run:
             os.remove(filename)
     
     def _rm_dir(self, filename):
-        print 'rm dir %s' % filename
+        print('rm dir %s' % filename)
         if not dry_run:
             shutil.rmtree(filename)
     
@@ -297,7 +297,7 @@ class DiskAction(object):
     def mv(self, old, new, skip_inotify=False):
         old = os.path.join(self.__storage_path, old)
         new = os.path.join(self.__storage_path, new)
-        print 'rename %s -> %s' % (old, new)
+        print('rename %s -> %s' % (old, new))
         if not dry_run:
             os.rename(old, new)
         return True
@@ -307,13 +307,13 @@ class DiskAction(object):
         if compression:
             params += 'z'
         cmds = ['rsync', '-' + params] + cmds
-        print cmds
+        print(cmds)
         if not dry_run:
-            print 'Doing rsync'
+            print('Doing rsync')
             result = subprocess.check_output(cmds)
     
     def get_server_path(self, path):
-        print 'get_server_path: [%s] srv_path[%s]' % (path, self.__server_path)
+        print('get_server_path: [%s] srv_path[%s]' % (path, self.__server_path))
         return self.__rsync_target + ':' + os.path.join(self.__server_path, path)
     
     def get_local_path(self, path):
@@ -413,13 +413,13 @@ class DiskTreatmentWorker(Worker):
                 if self.__sending_queue is not None:
                     msg['action'] = 'rsync_pull'
                     #del msg['id']
-                    print 'Sending_queue adding: %s' % msg
+                    print('Sending_queue adding: %s' % msg)
                     self.__sending_queue.add(**msg)
             #return False
         elif cmd == 'rsync_pull':
             self.__disk_action.rsync_pull(msg.file1)
         elif cmd == 'srvpath':
-            print msg
+            print(msg)
             self.__disk_action.set_server_path(msg.file1)
         return True
     
@@ -434,8 +434,8 @@ class DiskTreatmentWorker(Worker):
             else:
                 break
         if len(batch_messages) > 1:
-            print 'Doing batch disk updates'
-            print batch_messages
+            print('Doing batch disk updates')
+            print(batch_messages)
             self.__disk_action.inotify_stop()
             ids = []
             try:
@@ -461,14 +461,14 @@ class SendWorkerClient(Worker):
     def treat(self, data):
         if data is None:
             return False
-        print 'sendworker client treat %s' % data
+        print('sendworker client treat %s' % data)
         self.__channel_handler.send(data)
         self._message_queue.wait_treated(5, id=data.id) #5 seconds timeout
         return False
 
     def treat_batch(self, messages):
         # Premice, not tested
-        print 'sendworker client treat_batch %s' % repr(messages)
+        print('sendworker client treat_batch %s' % repr(messages))
         if len(messages) == 0:
             return []
         data = {'id': [m.id for m in messages], 'action':'multi', 'data': 'messages'}
@@ -500,7 +500,7 @@ class SendWorkerServer(Worker):
     def treat(self, data):
         if data is None:
             return False
-        print 'sendworker srv treat %s' % data
+        print('sendworker srv treat %s' % data)
         self.__channel_handler.send_now(data['host'], data)
         self._message_queue.wait_treated(5, id=data.id, host=data.host) #5 seconds timeout
         return False
@@ -522,7 +522,7 @@ class StortangleCommon(object):
         return self.__event.is_set()
     
     def log(self, msg, level=1):
-        print 'Stortangle %s' % msg
+        print('Stortangle %s' % msg)
     
     def loop(self):
         pass
@@ -533,7 +533,7 @@ class StortangleCommon(object):
             try:
                 msg = self.queue.get(timeout=0.5)
             except KeyboardInterrupt:
-                print 'StortangleCommon Quitting'
+                print('StortangleCommon Quitting')
                 break
             except:
                 continue
@@ -578,7 +578,7 @@ class StortangleServer(StortangleCommon):
             pass
         except SystemExit as e:
             pass
-        print 'Stortangle Exception in server loop'
+        print('Stortangle Exception in server loop')
         try:
             self.send_all({'action':'quit'}, now=True)
         except:
@@ -594,7 +594,7 @@ class StortangleServer(StortangleCommon):
         #print 'routing table: %s' % ','.join(self.routing_table.keys())
     
     def parse_message(self, message):
-        print 'Message %s' % repr(message)
+        print('Message %s' % repr(message))
         src = message['host']
         cmd = message['action']
         self.log('parse_message from %s [%s]: %s' % (src, cmd, message))
@@ -711,14 +711,14 @@ class StortangleClient(StortangleCommon):
             pass
         except SystemExit as e:
             pass
-        print 'Stop inotify'
+        print('Stop inotify')
         self.inotify.stop()
         try:
-            print 'Send stop to server'
+            print('Send stop to server')
             self.send({'action':'quit'})
         except:
             pass
-        print 'Disconnect ssh'
+        print('Disconnect ssh')
         self.disk_worker.stop()
         sending_worker.stop()
         self.disk_worker.join()
@@ -738,12 +738,12 @@ class StortangleClient(StortangleCommon):
             #self.stop()
             self.ssh.join()
             if self.ssh.is_running():
-                print 'running'
+                print('running')
             else:
-                print 'not running'
-            print 'sleep 5'
+                print('not running')
+            print('sleep 5')
             time.sleep(5)
-            print 'hello'
+            print('hello')
             self.ssh.connect()
             pass
         elif cmd == 'get_server_lock':
@@ -766,14 +766,14 @@ class StortangleClient(StortangleCommon):
 if __name__ == "__main__":
     import sys
     args = sys.argv
-    print 'args', args
+    print('args', args)
     if len(args) == 1:
-        print 'Usage:'
-        print 'Server:'
-        print '%s <storage_path>' % args[0]
-        print
-        print 'Client:'
-        print '%s <storage_path> <node_name>' % args[0]
+        print('Usage:')
+        print('Server:')
+        print('%s <storage_path>' % args[0])
+        print()
+        print('Client:')
+        print('%s <storage_path> <node_name>' % args[0])
     elif len(args) == 2:
         storage_path = args[1]
         allowed_users = {'bucky': 'foo'}

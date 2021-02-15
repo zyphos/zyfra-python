@@ -21,7 +21,7 @@ import traceback
 import os
 from datetime import datetime
 
-from tools import DictObject
+from .tools import DictObject
 
 class Field(object):
     sql_type = 'TEXT'

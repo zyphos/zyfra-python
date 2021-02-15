@@ -1,8 +1,10 @@
+# -*- coding: utf-8 -*-
+
 import datetime
 import subprocess
 
-from zyfra import ssh_session, tools
-from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, ProbeException, State
+from .. import ssh_session, tools
+from .probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, ProbeException, StateValue
 
 """TODO:
 """
@@ -18,18 +20,30 @@ class CmdSsh(Cmd):
         self.target = target
         self.password = password
     
-    def __call__(self, cmd, raise_empty=True, shell=False):
+    def __call__(self, cmd, raise_empty=True, shell=False, debug=False):
         lnk = ssh_session.get_ssh_link(self.target, password=self.password)
         result = lnk.cmd(' '.join(cmd))
+        if debug:
+            print()
+            print(' '.join(cmd))
+            print(repr(result))
+            print()
+        result = result.decode()
         if raise_empty and result == '':
             raise ProbeException('Empty result for CmdSsh: %s' % cmd)
         return result
 
 class CmdLocalhost(Cmd):
-    def __call__(self, cmd, raise_empty=True, shell=False):
+    def __call__(self, cmd, raise_empty=True, shell=False, debug=False):
         if shell:
             cmd = ' '.join(cmd)
         result = subprocess.check_output(cmd, shell=shell, stderr=subprocess.STDOUT)
+        if debug:
+            print()
+            print(cmd)
+            print(repr(result))
+            print()
+        result = result.decode()
         if raise_empty and result == '':
             raise ProbeException('Empty result for CmdLocalhost: %s' % cmd)
         return result
@@ -93,7 +107,7 @@ class mount_usage(HostService):
         return mounts
     
     def _str_data(self, data):
-        mountpoints = data.keys()
+        mountpoints = list(data.keys())
         mountpoints.sort()
         return '\n'.join(['space|inode'] + ['% 4s % 4s %s' % (data[mp]['pc_space'],data[mp]['pc_inode'], mp) for mp in mountpoints])
     
@@ -101,13 +115,13 @@ class mount_usage(HostService):
     def get_state(self, cmd_exec):
         state = OK
         mount_usages = self._get_mount_usages(cmd_exec)
-        for mount_name, mount_usage in mount_usages.iteritems():
+        for mount_name, mount_usage in mount_usages.items():
             free_ratio = mount_usage['free_space'] / float(mount_usage['size'])
             if free_ratio <= 0.1:
                 state = CRITICAL
             elif free_ratio <= 0.2:
                 state = WARNING 
-        return State(state, self._str_data(mount_usages))
+        return StateValue(state, self._str_data(mount_usages))
 
 class loadavg(HostService):
     def _get_loads(self, cmd_exec):
@@ -123,7 +137,7 @@ class loadavg(HostService):
         state = WARNING
         if state_5m < 1:
             state = OK
-        return State(state, ' - '.join(['%.2f' % l for l in loads]))
+        return StateValue(state, ' - '.join(['%.2f' % l for l in loads]))
 
 class process(HostService):
     process_name = None
@@ -142,8 +156,8 @@ class process(HostService):
 
     def _parse_result(self, result):
         if len(result.split('\n')) > 3:
-            return State(OK)
-        return State(CRITICAL)
+            return StateValue(OK)
+        return StateValue(CRITICAL)
 
 class raid(HostService):
     def _get_raid_status(self, cmd_exec):
@@ -191,7 +205,7 @@ class raid(HostService):
                 if disk_state != 'U':
                     state = CRITICAL
                     break
-        return State(state, '\n'.join(msgs))
+        return StateValue(state, '\n'.join(msgs))
 
 class smart(HostService):
     'Retrieve device S.M.A.R.T. status, for Hard Drive failure, ...'
@@ -245,14 +259,14 @@ class smart(HostService):
     def get_state(self, cmd_exec):
         state = OK
         if not cmd_exec.file_exists(self.cmd_line):
-            print '%s not found ! Can not check for update !' % self.cmd_line
-            return State(UNKNOWN, 'smartctl not found !') 
+            print('%s not found ! Can not check for update !' % self.cmd_line)
+            return StateValue(UNKNOWN, 'smartctl not found !') 
         devices = self._get_devices(cmd_exec)
         for devicename in devices:
             nb_error = self._get_device_nb_errors(cmd_exec, devicename)
             if nb_error:
                 state = WARNING
-        return State(state)
+        return StateValue(state)
 
 class linux_updates(HostService):
     def _get_update_availables(self, cmd_exec):
@@ -267,9 +281,9 @@ class linux_updates(HostService):
         # apt-get install update-notifier-common
         cmd_line = '/usr/lib/update-notifier/apt-check'
         if not cmd_exec.file_exists(cmd_line):
-            print '%s not found ! Can not check for update !' % cmd_line
+            print('%s not found ! Can not check for update !' % cmd_line)
             return None 
-        result = cmd_exec([cmd_line]).split(';')
+        result = cmd_exec([cmd_line],debug=True,shell=True).split(';')
         updates = {}
         updates['normal'] = int(result[0])
         updates['security'] = int(result[1])
@@ -279,7 +293,7 @@ class linux_updates(HostService):
     def get_state(self, cmd_exec):
         updates = self._get_update_availables(cmd_exec)
         if updates is None:
-            return State(UNKNOWN, 'apt-check not found!')
+            return StateValue(UNKNOWN, 'apt-check not found!')
         messages = []
         if updates['normal']:
             messages.append('Normal: %s' % updates['normal'])
@@ -290,7 +304,7 @@ class linux_updates(HostService):
             state = CRITICAL    
         elif updates['normal'] > 0:
             state = WARNING
-        return State(state, '\n'.join(messages))
+        return StateValue(state, '\n'.join(messages))
 
 class linux_version(HostService):
     warning_below_days = 100
@@ -424,7 +438,7 @@ class linux_version(HostService):
     def _get_version_details(self, cmd_exec):
         cmd_line = '/usr/bin/lsb_release'
         if not cmd_exec.file_exists(cmd_line):
-            print '%s not found ! Can not check for version !' % cmd_line
+            print('%s not found ! Can not check for version !' % cmd_line)
             return None 
         result = cmd_exec([cmd_line, '-a'])
         data = {}
@@ -441,17 +455,17 @@ class linux_version(HostService):
     def get_state(self, cmd_exec):
         data = self._get_version_details(cmd_exec)
         if data is None:
-            return State(UNKNOWN, 'lsb_release not found !')
+            return StateValue(UNKNOWN, 'lsb_release not found !')
         if 'Description' not in data:
-            return State(UNKNOWN, 'Version not found !')
+            return StateValue(UNKNOWN, 'Version not found !')
         message = data['Description']
         if 'Distributor ID' not in data or 'Release' not in data or 'Codename' not in data:
-            return State(UNKNOWN, message)
+            return StateValue(UNKNOWN, message)
         distribution = data['Distributor ID']
         release = data['Release']
         codename = data['Codename']
         if distribution not in self.version_validity:
-            return State(UNKNOWN, message)
+            return StateValue(UNKNOWN, message)
         version_validities = self.version_validity[distribution]
         validity = None
         for version_validity in version_validities:
@@ -467,17 +481,17 @@ class linux_version(HostService):
                 break
                     
         if validity is None:
-            return State(UNKNOWN, message)
+            return StateValue(UNKNOWN, message)
         message = '%s [%s]' % (message, validity)
         if validity == 'expired':
-            return State(CRITICAL, message)
+            return StateValue(CRITICAL, message)
         validity_date = datetime.datetime.strptime(validity[:7],'%Y-%m').date()
         today = datetime.date.today()
         if validity_date <= today:
-            return State(CRITICAL, message)
+            return StateValue(CRITICAL, message)
         if (validity_date - today).days < self.warning_below_days:
-            return State(WARNING, message)
-        return State(OK, message)
+            return StateValue(WARNING, message)
+        return StateValue(OK, message)
 
 class mem_usage(HostService):
     def _get_memory_details(self, cmd_exec):
@@ -504,7 +518,6 @@ class mem_usage(HostService):
                 i -= 1
                 float(amount) / (1000**i)
             return '%i%s' % (int(float(amount) / (1000**i)), units[i]) 
-        
         mem_total = get_amount(details['MemTotal'])
         mem_free = get_amount(details['MemFree'])
         mem_cached = get_amount(details['Cached'])
@@ -528,14 +541,14 @@ class mem_usage(HostService):
         message = 'Mem: % 3i%% %s' % (round(pc_used*100), human_readable(mem_total))
         if swap_total > 0:
             message += '\nSwap: % 3i%% %s' % (round(pc_swap_used*100), human_readable(swap_total))
-        return State(state, message)
+        return StateValue(state, message)
 
 class reboot_needed(HostService):
     @tools.delay_cache(300) # 5 min cached
     def get_state(self, cmd_exec):
         if cmd_exec.file_exists('/var/run/reboot-required'):
-            return State(WARNING)
-        return State(OK)
+            return StateValue(WARNING)
+        return StateValue(OK)
 
 class clamav(process):
     process_name = 'clamd'
@@ -554,8 +567,3 @@ print 'LOAD: %s' % LoadAvg().get_state(cmd_exec)
 print 'RAID: %s' % Raid().get_state(cmd_exec)
 print 'SMART: %s' % SmartHdd().get_state(cmd_exec)
 """
-
-if __name__ == "__main__":
-    print reboot_needed().ssh('monitor@10.0.0.10', password='dptoik87974')
-#print 'reboot needed [%s]' % reboot_needed().get_state(CmdLocalhost())
-#pprint(Process('auto_print', 'auto_print.py').ssh('root@10.0.0.15'))

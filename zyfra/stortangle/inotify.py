@@ -22,7 +22,7 @@ class PathWatcher(object):
         self.__relative_path = relative_path
     
     def start(self, threaded=False):
-        print 'Inotify start'
+        print('Inotify start')
         if self.__running_event.is_set(): # Only run the thread once
             return
         if threaded:
@@ -34,7 +34,7 @@ class PathWatcher(object):
             
         else:
             self.__start()
-        print 'Inotify started'
+        print('Inotify started')
         return self
 
     def __start(self):
@@ -68,24 +68,24 @@ class PathWatcher(object):
                 except KeyboardInterrupt:
                         break
             time.sleep(0.1)
-        print 'Inotify stopping'
+        print('Inotify stopping')
         self.__events = []
         self.__notifier.stop()
         #self.__wm.stop()
         self.__running_event.clear()
-        print 'Inotify stopped'
+        print('Inotify stopped')
     
     def stop(self):
         self.__running_event.clear()
     
     def join(self):
-        print 'Inotify joining'
+        print('Inotify joining')
         if self.__thread is None:
             self.stop()
             return
         self.stop()
         self.__thread.join()
-        print 'Inotify joined'
+        print('Inotify joined')
     
     def get_queue(self):
         return self.__queue
@@ -136,7 +136,7 @@ class PathWatcher(object):
         if hasattr(event, 'src_pathname'):
             src = ' from %s' % event.src_pathname
         if self.__debug:
-            print 'Event %s on %s%s' % (event.maskname, event.pathname,src)
+            print('Event %s on %s%s' % (event.maskname, event.pathname,src))
         if the_event is not None:
             path = the_event[1]
             if the_event[0] == 'delete_dir' and path in self.__wdd:
@@ -163,8 +163,8 @@ class PathWatcher(object):
     
     def _on_events(self, events):
         if self.__debug:
-            print 'Events:'
-            print events
+            print('Events:')
+            print(events)
         if self._queue is not None:
             self._queue.put(events)
         
@@ -201,7 +201,7 @@ if __name__ == "__main__":
     pw = PathWatcher('/tmp/inotify', debug=True).start(threaded=True)
     try:
         while pw.is_running():
-            print 'Running'
+            print('Running')
             time.sleep(1)
     except:
         pw.join()

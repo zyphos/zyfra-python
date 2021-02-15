@@ -18,8 +18,8 @@ class SshLink(paramiko.SSHClient):
     def cmd(self, commmand):
         try:
             stdin, stdout, stderr = self.exec_command(commmand)
-            result = stdout.read() 
-            if result == '':
+            result = stdout.read()
+            if result == b'':
                 return stderr.read()
             return result
         except:

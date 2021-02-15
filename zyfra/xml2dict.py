@@ -53,4 +53,4 @@ if __name__ == "__main__":
         <browserID>0</browserID>
         <lsID>none</lsID>
 </SmsResponse>"""
-    print xml2dict(xml_str)
+    print(xml2dict(xml_str))

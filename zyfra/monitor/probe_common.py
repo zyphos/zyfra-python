@@ -9,7 +9,7 @@ UNKNOWN=1
 WARNING=2
 CRITICAL=3
 
-class State(dict):
+class StateValue(dict):
     def __init__(self, state, message=''):
         self['state'] = state
         self['message'] = message
@@ -43,7 +43,7 @@ class State(dict):
         raise Exception('Can not delete state parameter')
     
     def __str__(self):
-        return 'State[%s]:%s' % (self.state, self.message)
+        return 'StateValue[%s]:%s' % (self.state, self.message)
     
     def __repr__(self):
         return str(self)

@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 
 import os
-import ConfigParser
+import configparser
 
 import simplejson
 
@@ -72,7 +72,7 @@ class JsonRPC(object):
             raise Exception('Bad answer id not found')
         if 'error' in json:
             error = json['error']
-            print error['data']['debug']
+            print(error['data']['debug'])
             raise Exception('ERROR: %s\n%s' % (error['code'], error['message']))
         if 'result' in json:
             return json['result']
@@ -183,7 +183,7 @@ class OoJsonRPC(object):
         filename = os.path.expanduser(filename)
         if not os.path.exists(filename):
             return
-        p = ConfigParser.ConfigParser()
+        p = configparser.ConfigParser()
         p.read([filename])
         for (name, value) in p.items(section):
             if name == 'login':

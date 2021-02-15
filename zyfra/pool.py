@@ -5,7 +5,7 @@ import imp
 import sys
 import os
 
-from singleton import Singleton
+from .singleton import Singleton
 
 class Pool(object):
     __metaclass__ = Singleton
@@ -29,7 +29,7 @@ class Pool(object):
         try:
             self[key] = obj
         except:
-            print 'Exception during instanciation of module: %s' % key
+            print('Exception during instanciation of module: %s' % key)
             raise
         return obj
 
@@ -63,7 +63,7 @@ class Pool(object):
                     f.close()
             return getattr(mod, name.capitalize())(*self.__module_args, **self.__module_kargs)  # Istanciate class
         except:
-            print 'Exception during load of module: %s' % name
+            print('Exception during load of module: %s' % name)
             raise
             # raise Exception("Object class [" + key + "] doesn't exists")
 
@@ -80,5 +80,5 @@ class Pool(object):
                 try:
                     self[name] = obj
                 except:
-                    print 'Exception during instanciation of module: %s' % name
+                    print('Exception during instanciation of module: %s' % name)
                     raise

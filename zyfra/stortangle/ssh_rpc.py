@@ -11,7 +11,7 @@ import os
 import socket
 import sys
 import threading
-from Queue import Queue
+from queue import Queue
 #from multiprocessing import Process, Pipe, Event, Queue
 import traceback
 import signal
@@ -108,7 +108,7 @@ class ChannelHandler(object):
     
     def _log(self, msg, level=1):
         if level <= self.__log_level:
-            print 'SSH', msg
+            print('SSH', msg)
     
     def _start(self):
         self._event.set()
@@ -221,7 +221,7 @@ class ChannelHandlerServer(ChannelHandler):
             server = ParamikoServer(self.__allowed_users)
             try:
                 self._transport.start_server(server=server)
-            except paramiko.SSHException, x:
+            except paramiko.SSHException:
                 raise ServerException('*** SSH negotiation failed.')
         
             # wait for auth
@@ -282,17 +282,17 @@ class Server(object):
             sock.setblocking(0)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind(('', self.__port))
-        except Exception, e:
+        except Exception as e:
             raise ServerException('*** Bind failed: ' + str(e))
         
         sock.listen(100)
-        print 'SSH Listening for connection ...'
+        print('SSH Listening for connection ...')
         id = 0
         self.__handlers = {}
         while self.__event.is_set():
             try:
                 client_socket, addr = sock.accept()
-                print '\nSSH Got a connection from %s:%s' % (addr[0], addr[1])
+                print('\nSSH Got a connection from %s:%s' % (addr[0], addr[1]))
                 loglevel = 2
                 p = self.__channel_handler(client_socket, id, self.__allowed_users, addr, self.__queue, loglevel, closed_queue=self.__closed_channels,**self.__kargs)
                 self.__lock.acquire()
@@ -300,7 +300,7 @@ class Server(object):
                 self.__lock.release()
                 id += 1
             except KeyboardInterrupt:
-                print 'SSH Quitting, waiting for end of connections'
+                print('SSH Quitting, waiting for end of connections')
                 break
             except socket.error:
                 time.sleep(0.1)
@@ -309,7 +309,7 @@ class Server(object):
                 while not self.__in_queue.empty():
                     id, msg = self.__in_queue.get()
                     if id not in self.__handlers:
-                        print 'Client id not found [%s]' % id
+                        print('Client id not found [%s]' % id)
                     self.__handlers[id].send_from_ext(msg)
                     self.__in_queue.task_done()
             if not self.__closed_channels.empty():
@@ -319,7 +319,7 @@ class Server(object):
                     del self.__handlers[id]
                     self.__lock.release()
             self._loop_action()
-        print 'Stoping server, waiting children'
+        print('Stoping server, waiting children')
         for id in self.__handlers:
             self.__handlers[id].join()
     
@@ -327,7 +327,7 @@ class Server(object):
         self.__in_queue.put((id, msg))
     
     def get_handler_by_id(self, id):
-        print 'SSH get_handler_by_id(%s)' % id
+        print('SSH get_handler_by_id(%s)' % id)
         self.__lock.acquire()
         handler = self.__handlers[id]
         self.__lock.release()
@@ -390,16 +390,16 @@ class ChannelHandlerClient(ChannelHandler):
 
 class ChannelHandlerClientTest(ChannelHandlerClient):
     def _init(self):
-        print 'ping'
+        print('ping')
         self.send('ping')
     
     def _on_receive_data(self, queue, data):
-        print data
+        print(data)
         self.disconnect()
 
 class ChannelHandlerServerTest(ChannelHandlerServer):
     def _on_receive_data(self, queue, data):
-        print '%s from %s' % (data, self._get_id())
+        print('%s from %s' % (data, self._get_id()))
         self.send('pong')
 
 if __name__ == "__main__":

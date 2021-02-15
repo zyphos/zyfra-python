@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -41,7 +41,7 @@ adduser --system --home / --no-create-home monitor --shell /bin/bash
 #from zyfra.tools import duration
 import threading
 from multiprocessing import Queue
-from Queue import Empty as queue_empty
+from queue import Empty as queue_empty
 import time
 import dateutil.relativedelta
 import datetime
@@ -51,9 +51,9 @@ import os.path
 
 import yaml
 
-from probe_common import UNKNOWN, OK, WARNING, CRITICAL, State as cState
-import network_services
-import host_service
+from .probe_common import UNKNOWN, OK, WARNING, CRITICAL, StateValue
+from . import network_services
+from . import host_service
 
 def time_delta2str(ts0, ts1):
     dts0 = datetime.datetime.fromtimestamp(ts0)
@@ -116,12 +116,12 @@ def probe_host(host, hostname, old_service_states, all_results, force_refresh, d
     bad_states = []
     ping = None
     if debug:
-        print 'Probing %s (%s)' % (name, hostname)
+        print('Probing %s (%s)' % (name, hostname))
     for service_obj in host['service_objs']:
         service_name = service_obj.name
         if debug:
             start_time = float(time.time())
-            print service_name,
+            print(service_name, end='')
         if service_name in old_service_states:
             old_state = old_service_states[service_name]
         else:
@@ -130,7 +130,7 @@ def probe_host(host, hostname, old_service_states, all_results, force_refresh, d
             if isinstance(service_obj, network_services.NetworkService):
                 state_value = service_obj(hostname)
                 if service_obj.name == 'ping':
-                    ping = state_value == OK
+                    ping = state_value.state == OK
             elif isinstance(service_obj, host_service.HostService):
                 if ping is None or ping:
                     force_refresh_service = service_obj.name in force_refresh
@@ -141,31 +141,32 @@ def probe_host(host, hostname, old_service_states, all_results, force_refresh, d
                     else:
                         state_value = service_obj.get_state(host['cmd_exec'])
                 else:
-                    state_value = cState(UNKNOWN)
+                    state_value = StateValue(UNKNOWN)
             else:
                 if debug:
-                    print 'Unknown service type'
+                    print('Unknown service type')
                 # Unknown service type
                 continue
         except Exception as e:
-            state_value = cState(UNKNOWN)
-            print 'Exception for host [%s(%s)] in module [%s]: %s' % (name, hostname, service_name, e)
+            state_value = StateValue(UNKNOWN)
+            print('Exception for host [%s(%s)] in module [%s]: %s' % (name, hostname, service_name, e))
             if debug:
                 raise
         if debug:
             diff_time = float(time.time()) - start_time
             if diff_time < 0.001:
-                print
+                print()
             else:
-                print '%.3f s' % (diff_time) 
+                print('%.3f s' % (diff_time)) 
         old_state_value = old_state.value
-        if state_value != old_state_value:
+        if state_value.state != old_state_value:
             state_changed.append(service_name)
-        if old_state_value != CRITICAL and state_value == CRITICAL:
+        if old_state_value != CRITICAL and state_value.state == CRITICAL:
             new_criticals.append(service_name)
         old_state(state_value)
-        if state_value > 0:
+        if state_value.state > 0:
             bad_states.append(service_name)
+
         service_states[service_name] = old_state
     all_results.unset_host_probe_in_progress(hostname)
     all_results.set_result(hostname, service_states, state_changed, new_criticals, bad_states)
@@ -287,7 +288,7 @@ class Monitor(object):
         self.service_states = {}
         if self.webserver_port is not None:
             self.queue2probe = Queue()
-            import web_server
+            from . import web_server
             self.queue2middle = web_server.start_server(self.webserver_port, self.webserver_ssl, self.webserver_certfile, self.webserver_keyfile, self.queue2probe)
         else:
             self.queue2middle = None
@@ -295,7 +296,7 @@ class Monitor(object):
     
     def stop(self, *args):
         self.running = False
-        print 'Stop required'
+        print('Stop required')
     
     def init(self):
         # can be overcharged
@@ -319,7 +320,7 @@ class Monitor(object):
                 first_check = False
                 time.sleep(self.interval)
         except KeyboardInterrupt:
-            print 'CTRL-C pressed, quitting'
+            print('CTRL-C pressed, quitting')
             if self.queue2middle is not None:
                 self.queue2middle.put(['exit',''])
             
@@ -338,7 +339,7 @@ class Monitor(object):
         host_groups = {}
         for i, group in enumerate(data):
             if 'name' not in group:
-                print 'Name not found in group nr %s' % i
+                print('Name not found in group nr %s' % i)
                 continue
             name = group['name']
             host_groups[name] = group
@@ -372,7 +373,7 @@ class Monitor(object):
                 self.internet_needed = True
             if 'services' in host:
                 services = host['services']
-                if isinstance(services, basestring):
+                if isinstance(services, str):
                     services = services.split(',')
             else:
                 services = []
@@ -381,7 +382,7 @@ class Monitor(object):
             groups = []
             if 'groups' in host:
                 groups = host['groups']
-                if isinstance(groups, basestring):
+                if isinstance(groups, str):
                     groups = groups.split(',')
             
             if groups:
@@ -391,7 +392,7 @@ class Monitor(object):
                     group = self.host_groups[group_name]
                     if 'services' in group:
                         gs = group['services']
-                        if isinstance(gs, basestring):
+                        if isinstance(gs, str):
                             gs = gs.split(',')
                         host['services'] += gs
             
@@ -408,7 +409,7 @@ class Monitor(object):
             service_results = {}
             for service_obj in host['service_objs']:
                 s = State()
-                s.value = cState(UNKNOWN, 'Probing...')
+                s.value = StateValue(UNKNOWN, 'Probing...')
                 service_results[service_obj.name] = s
             temp_results[host['hostname']] = service_results
         return temp_results
@@ -420,10 +421,10 @@ class Monitor(object):
         all_results.convert_state2report()
         if self.internet_needed:
             internet_state = self.get_internet_state().state
-            print 'Internet access is %s' % render_status(internet_state)
+            print('Internet access is %s' % render_status(internet_state))
         else:
             internet_state = False
-        print 'Checking services'
+        print('Checking services')
         active_threads = []
         for host in self.hosts:
             if host.get('disabled'):
@@ -449,8 +450,8 @@ class Monitor(object):
         
         for t in active_threads:
             t.join()
-        print 'Done.'
-        print
+        print('Done.')
+        print()
         self.service_states = all_results.service_states
         self.bad_states = all_results.bad_states
         if not first_check and len(all_results.state_changed):
@@ -501,8 +502,8 @@ class Monitor(object):
             for service_name in state_changed[hostname]:
                 state = service_states[hostname][service_name]
                 txt += '%s: %s=>%s' % (service_name,
-                                         render_status(state.old_value, target),
-                                         render_status(state.value, target)) + cr
+                                         render_status(state.old_value.state, target),
+                                         render_status(state.value.state, target)) + cr
         return txt
     
     def on_after_check_services(self):

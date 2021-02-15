@@ -491,4 +491,4 @@ text
 * a
 * b
 * c"""
-    print wiki_parser(t)
+    print(wiki_parser(t))

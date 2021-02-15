@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import socket
 import os
 
-from probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, State
+from .probe_common import UNKNOWN, OK, WARNING, CRITICAL, Service, StateValue
 
 hostnames = {}
 tcp = socket.SOCK_STREAM
@@ -35,8 +35,8 @@ class NetworkTcpService(NetworkService):
         sock.settimeout(0.2)
         result = sock.connect_ex((remote_ip, self.port))
         if result == 0:
-            return State(OK)
-        return State(CRITICAL)
+            return StateValue(OK)
+        return StateValue(CRITICAL)
 
 class NetworkUdpService(NetworkService):
     port = 0
@@ -52,7 +52,7 @@ class NetworkUdpService(NetworkService):
         sock.settimeout(0.2)
         result = sock.connect_ex((remote_ip, self.port))
         try:
-            sock.send('')
+            sock.send(b'')
             sock.recv(10)
             is_open = False
         except socket.timeout:
@@ -61,16 +61,16 @@ class NetworkUdpService(NetworkService):
             is_open = False
         sock.close()
         if is_open:
-            return State(OK)
-        return State(CRITICAL)
+            return StateValue(OK)
+        return StateValue(CRITICAL)
 
 class ping(NetworkService):
     def __call__(self, hostname):
         remote_ip = get_hostname_ip(hostname)
         response = os.system("ping -c 1 " + remote_ip + " > /dev/null")
         if response == 0:
-            return State(OK)
-        return State(CRITICAL)
+            return StateValue(OK)
+        return StateValue(CRITICAL)
 
 class InternetCheck(ping):
     def __init__(self, hostnames):
@@ -79,8 +79,8 @@ class InternetCheck(ping):
     def __call__(self):
         for hostname in self.hostnames:
             if ping.__call__(self, hostname) == OK:
-                return State(OK)
-        return State(CRITICAL)
+                return StateValue(OK)
+        return StateValue(CRITICAL)
 
 class ftp(NetworkTcpService):
     port = 21
