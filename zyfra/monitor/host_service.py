@@ -283,7 +283,7 @@ class linux_updates(HostService):
         if not cmd_exec.file_exists(cmd_line):
             print('%s not found ! Can not check for update !' % cmd_line)
             return None 
-        result = cmd_exec([cmd_line],debug=True,shell=True).split(';')
+        result = cmd_exec([cmd_line]).split(';')
         updates = {}
         updates['normal'] = int(result[0])
         updates['security'] = int(result[1])
