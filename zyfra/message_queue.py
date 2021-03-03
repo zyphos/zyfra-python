@@ -138,7 +138,7 @@ class MessageQueue(object):
         kargs['treated'] = 0
         columns = []
         values = []
-        for column, value in kargs.iteritems():
+        for column, value in kargs.items():
             columns.append(column)
             values.append(self.__columns[column].sqlify(value))
         try:
@@ -155,7 +155,7 @@ class MessageQueue(object):
     
     def _where2sql(self, where):
         wheresql = []
-        for key, value in where.iteritems():
+        for key, value in where.items():
             if key not in self.__columns:
                 continue
             if isinstance(value, (tuple, list)):

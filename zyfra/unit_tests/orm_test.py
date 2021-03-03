@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os.path
@@ -10,9 +10,9 @@ SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 
 models_path = os.path.join(SCRIPT_PATH, 'models')
 
-print 'ORM test'
-print '========'
-print 'DB engine Sqlite3 memory'
+print('ORM test')
+print('========')
+print('DB engine Sqlite3 memory')
 
 db = Sqlite3(':memory:')
 o = Pool(db, models_path, lazy_load=False) # load all model
@@ -20,6 +20,7 @@ cr = Cursor()
 
 #o.set_auto_create(True) # Create table and column on the fly
 o.update_sql_structure() # Create table and column
+o.language.help()
 
 nb_passed = 0
 nb_test = 0
@@ -28,18 +29,18 @@ def check(to_eval, expected, description):
     global nb_test
     global nb_passed
     nb_test += 1
-    print '#%03d Testing %s...' % (nb_test, description),
+    print('#%03d Testing %s...' % (nb_test, description),end='')
     result = eval(to_eval)
     if result == expected:
-        print 'OK'
+        print('OK')
         nb_passed += 1
     else:
-        print "!!! Failed !!!"
-        print '=' * 30
+        print("!!! Failed !!!")
+        print('=' * 30)
         pprint(result)
-        print '...   !=   ...'
+        print('...   !=   ...')
         pprint(expected)
-        print '=' * 30
+        print('=' * 30)
 
 # Check r_multi_split_array
 mql = "a,b,c WHERE a=2 HAVING c=1 ORDER BY a DESC".lower()
@@ -174,8 +175,8 @@ id = o.task.create(cr, {'name':'work',
                    'priority': 1
                    })
 check("o.task_tr.select(cr, 'language_id,name')",
-      [{'language_id': 3, 'name': u'werk'},
-       {'language_id': 2, 'name': u'travail'},
+      [{'language_id': 2, 'name': u'travail'},
+       {'language_id': 3, 'name': u'werk'}
        ], 'insert translations')
 check("o.task.select(cr, 'name,name[fr] AS name_fr,name[nl] AS name_nl,description,description[fr] AS description_fr')",
       [{'description': u'something to do',
@@ -255,9 +256,9 @@ check("o.category.select(cr, 'id,parent_id_pleft,parent_id_pright ORDER BY id')"
       new_tree,
       'After unlink')
 
-print 'Test passed: %s/%s' % (nb_passed, nb_test)
+print('Test passed: %s/%s' % (nb_passed, nb_test))
 if nb_passed != nb_test:
     warning = '# Warning: %s test(s) FAILED #' % (nb_test-nb_passed)
-    print '#' * len(warning)
-    print warning
-    print '#' * len(warning)
+    print('#' * len(warning))
+    print(warning)
+    print('#' * len(warning))

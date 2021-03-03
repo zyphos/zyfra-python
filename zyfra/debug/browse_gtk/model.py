@@ -126,7 +126,7 @@ class DebugNode(object):
             last_child = self.add_child(context, attr, obj, n_child, last_child)
             n_child += 1
         if common.object_is_dict_browsable(self.obj):
-            for (key, item) in self.obj.iteritems():
+            for (key, item) in self.obj.items():
                 last_child = self.add_child(context, '[' + repr(key) + ']', 
                                             item, n_child, last_child)
                 n_child += 1

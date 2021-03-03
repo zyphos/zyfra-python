@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import os
@@ -15,7 +14,7 @@ def field_logger(func):
     def inner(self, value):
         res = func(self, value)
         if self.log:
-            print '%s[%s] %s => %s' % (self.__class__.name,self._name, repr(value), repr(res)),
+            print('%s[%s] %s => %s' % (self.__class__.name,self._name, repr(value), repr(res)), end='')
         return  res
     return inner
 
@@ -47,7 +46,7 @@ class Int(Field):
     _default = 0
 
     def eval(self, value):
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             value = value.replace(',','.')
         try:
             return int(value)
@@ -65,7 +64,7 @@ class Float(Field):
     _default = 0
 
     def eval(self, value):
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             value = value.replace(',','.')
         try:
             return float(value)
@@ -73,7 +72,7 @@ class Float(Field):
             return self._default
     
     def eval_load(self, value):
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             value = value.replace(',','.')
         try:
             return str(float(value))
@@ -98,7 +97,7 @@ class Relational(Field):
         Field.__init__(self, **kwargs)
         if isinstance(param, dict):
             self.link_array = param
-        elif isinstance(param, basestring):
+        elif isinstance(param, str):
             self.link_field = param
         self.must_be_found = must_be_found
 
@@ -224,7 +223,7 @@ class M2ONewField(M2O,NewField):
         return M2O.eval(self, key)
 
 def get_model_ids(oo, model, key='name', idname='id', where=None, limit=0):
-    print 'get_model_ids [%s]' % model
+    print('get_model_ids [%s]' % model)
     keys = {}
     for key in key.split(','):
         ks = key.split('|')
@@ -246,7 +245,7 @@ def get_model_ids(oo, model, key='name', idname='id', where=None, limit=0):
                     value = r[key][keys[key]]
                 except:
                     raise Exception('%s: %s not in %s [%s]' % (model, keys[key], repr(r[key]), repr(r)))
-            if not isinstance(value, basestring):
+            if not isinstance(value, str):
                 value = str(value)
             values.append(value)
         return ','.join(values)
@@ -263,7 +262,7 @@ def get_model_array(oo, model, field, key='id', where=None, limit=0):
     """ field: str = result value field name, (str, int) = (result value field, index of tupple)
         key: str = key value field name, (str, int) = (key value field, index of tupple), [multi level keys]
     """
-    print 'get_model_array [%s]' % model
+    print('get_model_array [%s]' % model)
     if not isinstance(key, list):
         key = [key]
     field_is_tupple = isinstance(field, tuple)
@@ -388,9 +387,9 @@ class Model(object):
     
     def __call__(self, record_ids=None, show_progress=False, limit=None, offset=None, debug=False, dry_run=False, debug_table=False):
         title = 'Doing %s' % self._name 
-        print
-        print title
-        print '=' * len(title)
+        print()
+        print(title)
+        print('=' * len(title))
         if self._dry_run:
             return []
         datas = []
@@ -464,8 +463,8 @@ class Model(object):
                             self.columns_fieldname.append(col_name)
                             col.fieldname = col_name
                     if debug:
-                        print 'src (row):',row
-                        print 'evaled (columns_fieldname):',self.columns_fieldname
+                        print('src (row):',row)
+                        print('evaled (columns_fieldname):',self.columns_fieldname)
                     continue
                 if offset is not None and nb_done < offset:
                     nb_done += 1
@@ -474,7 +473,7 @@ class Model(object):
                 #print row
                 csv_row = dict(zip(self.csv_columns, row))
                 if debug:
-                    print 'csv_row:'
+                    print('csv_row:')
                     if debug_table:
                         print_table(csv_row)
                     else:
@@ -514,13 +513,13 @@ class Model(object):
                             value = col.eval(csv_row)
                         row_evaled.append(value)
                 except:
-                    print '%s/%s' % (nb_done, nb_rows)
+                    print('%s/%s' % (nb_done, nb_rows))
                     pprint.pprint(csv_row)
                     raise
                 try:
                     data = dict(zip(self.columns_fieldname,row_evaled))
                     if debug:
-                        print 'evaled (data)'
+                        print('evaled (data)')
                         if debug_table:
                             print_table(data)
                         else:
@@ -529,7 +528,7 @@ class Model(object):
                         _id = data[_id_fieldname]
                         del data[_id_fieldname]
                         if debug:
-                            print 'oo[%s].write([%s],%s)' % (repr(self._name), repr(refs[_id]), repr(data))
+                            print('oo[%s].write([%s],%s)' % (repr(self._name), repr(refs[_id]), repr(data)))
                         if not dry_run: 
                             self.oo[self._name].write([refs[_id]], data, context=self.oo.context)
                     elif self._add_only and self._id and data[_id_fieldname] in added_refs:
@@ -548,12 +547,12 @@ class Model(object):
                                 del data[_id_fieldname]
                                 record_id = refs[_id]
                                 if debug:
-                                    print 'oo[%s].write([%s],%s)' % (repr(self._name), repr(record_id), repr(data))
+                                    print('oo[%s].write([%s],%s)' % (repr(self._name), repr(record_id), repr(data)))
                                 self.oo[self._name].write([record_id], data, context=self.oo.context)
                                 continue
                             else:
                                 if debug:
-                                    print 'oo[%s].create(%s)' % (repr(self._name), repr(data))
+                                    print('oo[%s].create(%s)' % (repr(self._name), repr(data)))
                                 record_id = self.oo[self._name].create(data, context=self.oo.context)
                                 for col in self._id_fields:
                                     id_fields.setdefault(col.id_name, {})[id_fields_row[col.id_name]] = record_id
@@ -569,7 +568,7 @@ class Model(object):
                                 language_model_name = self._name
                             else:
                                 language_model_name = col.language_model_name 
-                            for csv_col_name, lang in col.language.iteritems():
+                            for csv_col_name, lang in col.language.items():
                                 trans_data = {'lang': lang,
                                               'src': src_translation,
                                               'name': '%s,%s' % (language_model_name, col.fieldname),
@@ -581,13 +580,13 @@ class Model(object):
                                     self.oo['ir.translation'].create(trans_data)
                             
                 except:
-                    print '%s/%s' % (nb_done, nb_rows)
-                    print 'csv_row:'
+                    print('%s/%s' % (nb_done, nb_rows))
+                    print('csv_row:')
                     if debug_table:
                         print_table(csv_row)
                     else:
                         pprint.pprint(csv_row)
-                    print 'evaled (row_evaled=data)'
+                    print('evaled (row_evaled=data)')
                     if debug_table:
                         print_table(zip(self.columns_fieldname,row_evaled))
                     else:
@@ -607,7 +606,7 @@ class Model(object):
             if not dry_run:
                 res = self.oo[self._name].load(self.columns_fieldname, datas)
                 for r in res['messages']:
-                    print '%s[%s] %s' % (r['field'],repr(r['record']),repr(r['message']))
+                    print('%s[%s] %s' % (r['field'],repr(r['record']),repr(r['message'])))
                 #pprint.pprint(res['messages'])
                 if self._id is not None:
                     #print res['ids']

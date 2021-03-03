@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from field import Field
+from .field import Field
 
 class Shortcut(Field):
     # ShortcutField('Label', 'field.field.field')

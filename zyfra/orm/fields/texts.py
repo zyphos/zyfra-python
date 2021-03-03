@@ -1,9 +1,8 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from field import Field
-from many2one import Many2One
-from one2many import One2Many
+from .field import Field
+from .many2one import Many2One
+from .one2many import One2Many
 
 class FakeSQLWrite(object):
     def __init__(self, cr, ids):
@@ -13,7 +12,7 @@ class FakeSQLWrite(object):
 class Text(Field):
     widget='text'
     translate=False
-    
+
     def _get_language_id(self, cr, context):
         language_id = context.get('language_id')
         parameter = context.get('parameter', None)
@@ -41,7 +40,7 @@ class Text(Field):
     def sql_create_after_trigger(self, sql_create, value, fields, context, id):
         fake_sql_write = FakeSQLWrite(sql_create.cr, [id])
         self.sql_write(fake_sql_write, value, fields, context)
-        
+
         #t = self.translate
         #tr_obj = self.object._pool[t['object']]
         #create = {t['column']: new_value, t['key']: id, t['language_id']: language_id}
@@ -109,7 +108,8 @@ class Text(Field):
                 tr_obj = Model(_name=tr_name,
                             _columns={'language_id': Many2One('Language', 'language'), 
                                          'source_id': Many2One('Source row id', obj._name),\
-                                         name: self.__get_translate_col_instance()})
+                                         name: self.__get_translate_col_instance()},
+                            _order_by='language_id')
                 pool[tr_name] = tr_obj
             self.translate = {'object': tr_name, 'column': name, 'key': 'source_id', 'language_id': 'language_id'}
         if '_translation' not in obj:
@@ -129,7 +129,7 @@ class Text(Field):
         language_id = self._get_language_id(sql_query.cr, context)
         if not language_id:
             return self.add_operator(self_sql, context)
-        
+
         context = {'parameter': '%s=%s' % (self.translate['language_id'], language_id)}
         fields = [self.translate['column']]
         tr_sql = self.object._columns['_translation'].get_sql(parent_alias, fields, sql_query, context)
@@ -148,7 +148,7 @@ class Char(Text):
 
     def get_sql_def(self, db_type):
         return 'VARCHAR(%s)' % self.size
-    
+
     def validate(self, cr, data):
         if len(data) > self.size:
             return 'Len size to big %i > %i' % (len(data), self.size)

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import sys
@@ -16,7 +15,7 @@ class DictObject(dict):
         if (len(args) == 1 and isinstance(args[0], list)):
             return [DictObject(arg) for arg in args[0]]
         return super(DictObject, cls).__new__(cls, *args, **kargs)
-        
+
     def __init__(self, *args, **kargs):
         super(DictObject, self).__init__(**kargs)
         if (len(args)):
@@ -30,13 +29,13 @@ class DictObject(dict):
                             continue
                         self[attr] = getattr(arg, attr)
         #self.__dict__ = self
-    
+
     def __getattr__(self, name):
         return self[name]
-    
+
     def __setattr__(self, name, value):
         self[name] = value
-    
+
     def __delattr__(self, name):
         del self[name]
 
@@ -146,7 +145,7 @@ def specialsplitnotpar(string, split_var=',') :
         split_by_sizes = {}
         for sv in split_var:
             split_by_sizes.setdefault(len(sv), []).append(sv)
-        lengths = split_by_sizes.keys()
+        lengths = list(split_by_sizes.keys())
         lengths.sort(reverse=True)
         split_by_sizes = [(l, split_by_sizes[l]) for l in lengths]
     else:
@@ -309,7 +308,7 @@ def print_table_dict(table):
     values = []
     line = []
     for c in table:
-        if isinstance(c, basestring):
+        if isinstance(c, str):
             try:
                 float(c)
                 name = repr(c)
@@ -431,7 +430,7 @@ def delay_cache(delay=60, garbage_collector=False, debug=False): # fn decorator
         
         def do_garbage_collector():
             timestamp = int(time.time())
-            for args, data in datas.iteritems():
+            for args, data in datas.items():
                 if data.next_query_timestamp <= timestamp:
                     del datas[args]
         
@@ -455,13 +454,13 @@ def delay_cache(delay=60, garbage_collector=False, debug=False): # fn decorator
     return decorator
 
 # Threading safe lock, be sure that the function is not executed in parallel mode
-# if lock is basestring, use getattr(obj, lock) as a lock
+# if lock is str, use getattr(obj, lock) as a lock
 def fn_lock(lock=None):
     if lock is None:
         lock = threading.Lock()
     def decorator(fn):
         def _fn(*args, **kargs):
-            if isinstance(lock, basestring):
+            if isinstance(lock, str):
                 the_lock = getattr(args[0], lock)
                 the_lock.acquire()
                 result = fn(*args, **kargs)

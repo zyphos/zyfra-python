@@ -115,7 +115,7 @@ def add_syntax_path(path_or_list):
         for i in range(len(path_or_list)):
             SYNTAX_PATH.insert(0, path_or_list[-i])
     # handle single string
-    elif isinstance(path_or_list, basestring):
+    elif isinstance(path_or_list, str):
         SYNTAX_PATH.insert(0, path_or_list)
     # handle attr-error
     else:

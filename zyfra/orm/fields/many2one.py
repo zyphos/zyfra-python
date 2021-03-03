@@ -1,9 +1,8 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from relational import Relational
-import numerics
-from zyfra.orm.sql_query import SQLQuery
+from .relational import Relational
+from . import numerics
+from ..sql_query import SQLQuery
 from .one2many import One2Many
 
 class Many2One(Relational):
@@ -53,7 +52,8 @@ class Many2One(Relational):
     def get_sql(self, parent_alias, fields, sql_query, context=None):
         if context is None:
             context = {}
-        if sql_query.debug > 1: print 'M2O[%s]:' % self.name, fields
+        if sql_query.debug > 1:
+            print('M2O[%s]:' % self.name, fields)
         robj = self.get_relation_object()
         nb_fields = len(fields)
         if nb_fields == 0: #||($fields[0] == $this->relation_object_key)
@@ -61,14 +61,14 @@ class Many2One(Relational):
             parent_alias.set_used()
             if nb_fields == 0: field_link = self.add_operator(field_link, context)
             return field_link
-        
+
         parameter = 'param' in context and context['parameter'] or ''
         field_link = '%s.%s%s' % (parent_alias.alias, self.sql_name, parameter)
         if hasattr(self, 'local_keys'):
             # Threat multi key
             palias = parent_alias.alias
             relations = []
-            for key, localkey in self.local_keys.iteritems():
+            for key, localkey in self.local_keys.items():
                 foreign_key = self.foreign_keys[key]
                 if foreign_key in self.relation_object._columns:
                     foreign_key = '%ta%.' + foreign_key
@@ -78,7 +78,7 @@ class Many2One(Relational):
             sql_on = implode(' and ', relations)
         else:
             sql_on = '%%ta%%.%s=%s.%s' % (self.relation_object_sql_key, parent_alias.alias, self.local_key if self.local_key != '' else self.sql_name)
-        
+
         sql = '%sJOIN %s AS %%ta%% ON %s' % (('' if self.required else 'LEFT '), robj._table, sql_on)
         if sql_query.context.get('visible', True) and robj._visible_condition != '':
             sql_txt, on_condition = sql.split(' ON ')
@@ -97,7 +97,7 @@ class Many2One(Relational):
             return None
         context['parameter'] = field_param
         sql_result = robj._columns[field_name].get_sql(ta, fields, sql_query, context)
-        
+
         if nb_fields == 0: sql_result = self.add_operator(sql_result, context)
         return sql_result
 
@@ -107,7 +107,7 @@ class Many2One(Relational):
             relation_object = self.get_relation_object()
             if isinstance(value, dict): # Create remote object aswell
                 return relation_object.create(value, context)
-            
+
             relation_id = relation_object.get_id_from_value(sql_create.cr, value, self.relation_object_key)
             return relation_object._columns[self.relation_object_key].sql_create(sql_create, relation_id, fields, context)
         #Handle subfield (meanfull ?)
@@ -135,21 +135,22 @@ class Many2OneSelf(Many2One):
         self.needed_columns[self.pright] = numerics.Int(self.label + ' right')
 
     def get_sql(self, parent_alias, fields, sql_query, context=None):
-        if sql_query.debug > 1: print 'M2OS[%s]:' % self.name, fields
+        if sql_query.debug > 1:
+            print('M2OS[%s]:fields%s operator[%s]' % (self.name, repr(fields),'operator' in context and repr(context['operator']) or ''))
         if context is None:
             context = {}
         robj = self.get_relation_object()
         nb_fields = len(fields)
-        if nb_fields == 0 and 'operator' in context and context['operator'] in ['parent_of', 'child_of']:
+        if nb_fields == 0 and 'operator' in context and str(context['operator']) in ['parent_of', 'child_of']:
             obj = self.object
             pa = parent_alias.alias
-            operator = context['operator']
+            operator = str(context['operator'])
             op_data = context['op_data'].strip()
             if len(op_data) and op_data[0] == '(':
                 cmp_operator = ' IN '
             else:
                 cmp_operator = '='
-            
+
             ta = sql_query.get_new_table_alias()
             if operator == 'parent_of':
                 sql = 'EXISTS(SELECT %s FROM %s AS %s WHERE %s.%s%s%s AND %s.%s<%s.%s AND %s.%s>%s.%s)' % (obj._key_sql_name, obj._table, ta,
@@ -175,7 +176,7 @@ class Many2OneSelf(Many2One):
         table = self.object._table
         key = self.object._key
         cr_o = cr(self.object)
-        for id, old_value in old_values.iteritems():
+        for id, old_value in old_values.items():
             if old_value == new_value:
                 continue
             obj = cr_o.get_object('SELECT %s AS lc, %s AS rc FROM %s WHERE %s=%s' % (left_col, right_col, table, self.object._key, id))
@@ -243,9 +244,9 @@ class Many2OneSelf(Many2One):
         right_col = self.pright
         cr_o = cr(self.object)
         sql = 'SELECT %s FROM %s WHERE %s IN %%s ORDER BY %s' % (self.pleft, self.object._table, self.object._key, self.pleft)
-        plefts = cr_o.get_scalar(sql, [old_values.keys()])
+        plefts = cr_o.get_scalar(sql, [list(old_values.keys())])
         nb = len(plefts)
-        for i in xrange(len(plefts)):
+        for i in range(len(plefts)):
             nbi = (i + 1) * 2
             if i+1 < nb:
                 if plefts[i+1] - plefts[i] >= 2:

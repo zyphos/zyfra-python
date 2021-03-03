@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 class DatabaseException(Exception):
@@ -9,7 +8,7 @@ class Cursor(object):
         self.cr = cr
         self.db = db
         self.encoding = encoding
-    
+
     def execute(self, sql, data=None):
         args = []
         if data is not None:
@@ -38,13 +37,13 @@ class Cursor(object):
         try:
             self.cr.execute(sql, args)
         except:
-            print 'SQL: %s' % sql
-            print 'Arg: %s' % repr(args)
+            print('SQL: %s' % sql)
+            print('Arg: %s' % repr(args))
             raise
-    
+
     def _get_column_names(self, row):
         return [c[0] for c in self.cr.description]
-    
+
     def get_scalar(self, sql, data=None):
         self.execute(sql, data)
         result = []
@@ -54,7 +53,7 @@ class Cursor(object):
                 break
             result.append(row[0])
         return result
-    
+
     def get_object(self, sql, data=None):
         self.execute(sql, data)
         row = self.cr.fetchone()
@@ -64,7 +63,7 @@ class Cursor(object):
         if self.encoding is not None:
                 new_row = []
                 for x in row:
-                    if isinstance(x, basestring):
+                    if isinstance(x, str):
                         new_row.append(x.decode(self.encoding))
                     else:
                         new_row.append(x)
@@ -89,7 +88,7 @@ class Cursor(object):
             if self.encoding is not None:
                 new_row = []
                 for x in row:
-                    if isinstance(x, basestring):
+                    if isinstance(x, str):
                         new_row.append(x.decode(self.encoding))
                     else:
                         new_row.append(x)
@@ -102,10 +101,10 @@ class Cursor(object):
             if limit is not None:
                 limit -= 1
         return res
-    
+
     def _safe_sql(self, sql, datas):
         def parse_data(data):
-            if isinstance(data, basestring):
+            if isinstance(data, str):
                 return repr(data)
             if isinstance(data, (list, tuple)):
                 return '(' + ','.join([parse_data(d) for d in data]) + ')'
@@ -115,30 +114,30 @@ class Cursor(object):
         for data in datas:
             sql = sql.replace('%s', parse_data(data), 1)
         return sql
-    
+
     def get_last_insert_id(self):
         return self.cr.lastrowid
 
 class Database(object):
     cnx = None
     cursor_class = Cursor
-    
+
     table_auto_create = False
     table_auto_alter = False
-    
+
     def cursor(self, autocommit=False):
         if self.cnx is None:
             raise DatabaseException('No connection available for this database.')
         if autocommit:
             self.cnx.autocommit = True
         return self.cursor_class(self, self.cnx.cursor())
-    
+
     def get_table_names(self):
         return []
-    
+
     def get_table_column_definitions(self, tablename):
         return {}
-    
+
     def make_sql_def(self, type, notnull, default, primary):
         return '%s%s%s' % (type,
                            notnull and ' NOT NULL' or '',
@@ -163,15 +162,15 @@ class OdbcCursor(Cursor):
             try:
                 self.cr.execute(sql, params)
             except:
-                print 'sql:'
-                print sql
-                print 'param: %s' % repr(params) 
+                print('sql:')
+                print(sql)
+                print('param: %s' % repr(params)) 
                 raise
         except self.cnx.pyodbc.ProgrammingError as e:
-            print e
+            print(e)
             raise
         except:
-            print '===Not handled==='
+            print('===Not handled===')
             raise
 
     def get_array_object(self, sql, data=None, key='', limit=None, offset=0):
@@ -179,7 +178,7 @@ class OdbcCursor(Cursor):
             self.cr.skip(offset)
         res = super(OdbcCursor, self).get_array_object(sql, data, key, limit, offset, after_query_fx)
         return res
-    
+
     def _get_column_names(self, row):
         return [c[0].lower() for c in row.cursor_description]
 
@@ -190,7 +189,7 @@ class Odbc(Database):
         import pyodbc
         self.pyodbc = pyodbc
         self.cnx = pyodbc.connect(*args, **kargs)
-        
+
     def cursor(self, encoding=None, autocommit=False):
         return OdbcCursor(self, self.cnx.cursor(), encoding)
 
@@ -201,7 +200,7 @@ class PostgreSQL(Database):
     type = 'postgresql'
     table_auto_create = False
     table_auto_alter = False
-    
+
     def __init__(self, *args, **kargs):
         import psycopg2
         self.psycopg2 = psycopg2
@@ -241,14 +240,14 @@ class Sqlite3Cursor(Cursor):
         try:
             return self.cr.execute(sql, data)
         except:
-            print 'sql:'
-            print sql
-            print 'data: %s' % repr(data)
+            print('sql:')
+            print(sql)
+            print('data: %s' % repr(data))
             raise
 
     def commit(self):
         self.db.cnx.commit()
-    
+
 class Sqlite3(Database):
     # TODO: Handle table auto alter 
     type = 'sqlite3'
@@ -256,26 +255,26 @@ class Sqlite3(Database):
     table_auto_alter = False
     cursor_class = Sqlite3Cursor
     __filename = None
-    
+
     def __init__(self, filename=':memory:', auto_connect=True):
         import sqlite3
         self.sqlite3 = sqlite3
         self.__filename = filename
         if auto_connect:
             self.connect()
-    
+
     def connect(self):
         self.cnx = self.sqlite3.connect(self.__filename)
-        
+
     def get_table_names(self):
         return self.cursor().get_scalar("SELECT name FROM sqlite_master WHERE type='table'")
-    
+
     def get_table_column_definitions(self, tablename):
         res = {}
         for field in self.cursor().get_array_object('PRAGMA table_info(%s)' % tablename):
             res[field['name']] = self.make_sql_def(field['type'], field['notnull'], field['dflt_value'], field['pk'])
         return res
-    
+
     def make_sql_def(self, type, notnull, default, primary):
         return '%s%s%s%s' % (type,
                            notnull and ' NOT NULL' or '',
@@ -294,21 +293,21 @@ class MySQL(Database):
     type = 'mysql'
     table_auto_create = True
     table_auto_alter = True
-    
+
     def __init__(self, host, user, password, database):
         import mysql.connector 
         self.mysql = mysql.connector
         self.cnx = mysql.connector.connect(host=host,user=user,password=password, database=database)
-    
+
     def get_table_names(self):
         return self.cursor().get_scalar("SHOW TABLES")
-    
+
     def get_table_column_definitions(self, tablename):
         res = {}
         for field in self.cursor().get_array_object('SHOW COLUMNS FROM %s' % tablename):
             res[field.Field] = self.make_sql_def(field.Type, field.Null == 'NO', field.Default, field.Key == 'PRI') 
         return res
-    
+
     def make_sql_def(self, type, notnull, default, primary):
         return '%s%s%s%s' % (type,
                            notnull and ' NOT NULL' or ' NULL',

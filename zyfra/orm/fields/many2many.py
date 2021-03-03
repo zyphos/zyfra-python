@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from one2many import One2Many
-from many2one import Many2One
+from .one2many import One2Many
+from .many2one import Many2One
 from ..sql_interface import Callback
-from zyfra.tools import is_array
+from ...tools import is_array
 
 class Many2Many(One2Many):
     widget='many2many'
@@ -95,20 +94,20 @@ class Many2Many(One2Many):
 
     def join_key_words(self, keywords):
         r = ''
-        for keyword, value in keywords.iteritems():
+        for keyword, value in keywords.items():
             r += ' %s %s' % (keyword, value)
         return r
-    
+
     def get_sql(self, parent_alias, fields, sql_query, context=None):
         if context is None:
             context = {}
         if sql_query.debug > 1:
-            print 'M2M[%s]: ' % (self.name,), fields
+            print('M2M[%s]: ' % (self.name,), fields)
         nb_fields = len(fields)
         if 'is_where' in context and context['is_where']:
             if nb_fields == 0 and 'operator' in context:
                 pa = parent_alias.alias
-                operator = context['operator'];
+                operator = str(context['operator'])
                 op_data = context['op_data'].strip()
                 
                 ta = sql_query.get_new_table_alias()
@@ -126,7 +125,7 @@ class Many2Many(One2Many):
                 new_fields = fields[:]
                 new_fields.insert(0, self.rt_foreign_field)
                 return super(Many2Many, self).get_sql(parent_alias, new_fields, sql_query, context)
-        
+
         new_fields = fields[:] 
         new_ctx = context.copy()
         if nb_fields:
@@ -144,9 +143,9 @@ class Many2Many(One2Many):
                 
                 new_fields = ['(%s.%s as  %s%s)'% (self.rt_foreign_field, '.'.join(fields), context['parameter'], self.join_key_words(keywords))]
                 if (sql_query.debug > 1):
-                    print 'M2M New field: ', new_fields
+                    print('M2M New field: ', new_fields)
                 del new_ctx['parameter']
-                
+
                 #print 'new_fields2', new_fields
         return super(Many2Many, self).get_sql(parent_alias, new_fields, sql_query, new_ctx)
 
@@ -160,15 +159,15 @@ class Many2Many(One2Many):
         fake_sql_write.cr = sql_create.cr
         fake_sql_write.debug = sql_create.debug
         self.sql_write(fake_sql_write, value, fields, context)
-    
+
     def sql_create(self, sql_create, value, fields, context):
         if (sql_create.debug > 1):
-            print 'sql_create: %s.%s %s' % (self.object._name, self.name, value)
+            print('sql_create: %s.%s %s' % (self.object._name, self.name, value))
         return Callback(self.sql_create_after_trigger, None)
-    
+
     def sql_write(self, sql_write, value, fields, context):
         if (sql_write.debug > 1):
-            print 'sql_write: %s%s.%s %s' % (self.object._name,sql_write.ids, self.name, value)
+            print('sql_write: %s%s.%s %s' % (self.object._name,sql_write.ids, self.name, value))
         if not is_array(value):
             return
         cr = sql_write.cr.copy()

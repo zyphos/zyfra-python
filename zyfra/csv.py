@@ -19,7 +19,7 @@ class CSVfile(object):
         try:
             if isinstance(data, str):
                 data = unicode(data.decode('UTF8'))
-            if isinstance(data, basestring):
+            if isinstance(data, str):
                 return u'%s%s%s' % (self.quotechar, data.replace(self.quotechar,self.quotechar+self.quotechar), self.quotechar)
             elif isinstance(data, list):
                 if data:

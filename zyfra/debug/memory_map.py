@@ -26,8 +26,8 @@ from browse_gtk import common
 
 def is_limit_reached(lvl, max_lvl):
     if lvl >= max_lvl:
-        print ' ' * (lvl + 1) * 4 + '--max-lvl:' + str(max_lvl) + \
-              ' Limit reached--'
+        print(' ' * (lvl + 1) * 4 + '--max-lvl:' + str(max_lvl) + \
+              ' Limit reached--')
         return True
     return False
 
@@ -39,13 +39,13 @@ def object_memory_map(obj, hide_builtin=True, lvl=0, max_lvl=10,
     attr_name = (attr_name is not None and '' + str(attr_name) + ' = ') or ''
     prefix = ' ' * lvl * 4 + attr_name + field_name + '(' + obj_type + ')'
     if obj_type in ['str', 'int', 'float']:
-        print prefix + str(obj)
+        print(prefix + str(obj))
         return
 
     if obj_type == 'class':
-        print prefix
+        print(prefix)
     else:
-        print prefix
+        print(prefix)
     builtin_attr = ['__class__', '__delattr__', '__doc__', '__getattribute__',
                  '__hash__', '__init__', '__new__', '__reduce__',
                  '__reduce_ex__', '__repr__', '__setattr__', '__str__']
@@ -61,7 +61,7 @@ def object_memory_map(obj, hide_builtin=True, lvl=0, max_lvl=10,
 
     if common.object_is_dict_browsable(obj):
         if is_limit_reached(lvl, max_lvl): return
-        for (key, item) in obj.iteritems():
+        for (key, item) in obj.items():
             object_memory_map(item, hide_builtin, lvl + 1,
                                               field_name=key, max_lvl=max_lvl)
     elif common.object_is_list_browsable(obj):

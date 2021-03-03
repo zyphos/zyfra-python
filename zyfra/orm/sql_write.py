@@ -1,8 +1,8 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 import time
 
-from sql_interface import SQLInterface
+from .sql_interface import SQLInterface
 from .. import tools
 
 class SQLWrite(SQLInterface):
@@ -17,7 +17,7 @@ class SQLWrite(SQLInterface):
         user_id = cr.context.get('user_id', object._pool._default_user_id)
         if object._write_user_id:
             values[object._write_user_id] = user_id
-        
+
         self.values = values
         self.col_assign = []
         self.col_assign_data = []
@@ -30,7 +30,7 @@ class SQLWrite(SQLInterface):
         else:
             old_value_columns = False
 
-        for column, value in values.iteritems():
+        for column, value in values.items():
             fields = tools.specialsplit(column, '.')
             field = fields.pop(0)
             field_name, field_data = tools.specialsplitparam(field)
@@ -43,12 +43,12 @@ class SQLWrite(SQLInterface):
                 self.col_assign_data.append(value)
         if len(self.col_assign) == 0:
             if self.debug:
-                print 'SQLWrite: No column found'
+                print('SQLWrite: No column found')
             return
         sql = 'UPDATE %s SET %s WHERE %s' % (object._table, ','.join(self.col_assign), where)
 
         if self.debug:
-            print sql
+            print(sql)
         if not self.dry_run:
             datas = self.col_assign_data + where_datas
             cr(self.object).execute(sql, datas)

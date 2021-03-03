@@ -1,8 +1,7 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import time
-from field import Field
+from .field import Field
 
 class Datetime(Field):
     widget = 'datetime'

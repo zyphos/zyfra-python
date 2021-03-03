@@ -1,9 +1,8 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from relational import Relational
-from zyfra.orm.sql_query import MqlWhere
-from zyfra.tools import specialsplitparam
+from .relational import Relational
+from ..sql_query import MqlWhere
+from ...tools import specialsplitparam
 
 class One2Many(Relational):
     widget = 'one2many'
@@ -33,16 +32,16 @@ class One2Many(Relational):
 
     def get_sql(self, parent_alias, fields, sql_query, context=None):
         if sql_query.debug > 1:
-            print 'O2M[%s] fields: '% self.name, fields;
+            print('O2M[%s] fields: '% self.name, fields)
         if context is None:
             context = {}
         if 'parameter' in context:
             parameter = context['parameter']
         else:
             parameter = ''
-        
+
         is_where = 'is_where' in context and context['is_where']
-        
+
         if is_where and len(fields) == 0:
             fields.append(self.relation_object_key)
         key_field = parent_alias.alias + '.' + self.object._key_sql_name

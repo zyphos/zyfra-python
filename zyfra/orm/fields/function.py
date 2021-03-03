@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from field import Field
+from .field import Field
 
 class Function(Field):
     # FunctionField('Label', 'my_fx')

@@ -36,7 +36,7 @@ class Field(object):
         self.needed_columns = {}
         if self.not_null and self.default_value is None:
             raise Exception('Field do not accept null values, but default value is null.')
-    
+
     def is_stored(self, context):
         return self.stored
 
@@ -52,7 +52,7 @@ class Field(object):
         if self.not_null:
             raise Exception('Null value not accepted for this field [%s.%s]' % (self.object._name, self.name))
         return 'null'
-    
+
     def sql_format(self, value):
         if value is None:
             return self._sql_format_null()
@@ -62,7 +62,7 @@ class Field(object):
 
     def python_format(self, value):
         return value
-    
+
     def set_instance(self, object, name):
         if self.instanciated: return
         self.instanciated = True
@@ -81,7 +81,7 @@ class Field(object):
         if self.sql_name == field_alias: sql_query.no_alias(field_alias)
         parent_alias.set_used()
         return self.add_operator('%s.%s' % (parent_alias.alias, self.sql_name), context)
-    
+
     def add_operator(self, field_sql, context):
         if 'operator' in context:
             operator = str(context['operator'])
@@ -89,10 +89,10 @@ class Field(object):
             op_data = context['op_data'].strip()
             return '%s%s%s' % (field_sql, operator, op_data)
         return field_sql
-    
+
     def get_sql_column_definition(self, db):
         return db.make_sql_def(self.get_sql_def(db.type), self.not_null, self.default_value, self.primary_key)
-    
+
     def get_sql_def(self, db_type):
         return ''
 
@@ -102,19 +102,19 @@ class Field(object):
 
     def get_sql_extra(self, db_type):
         return ''
-    
+
     def get(self, ids, context, datas):
         return [] # list or dict ?
-    
+
     def set(self, ids, value, context):
         pass
-    
+
     def get_default(self):
         return self.default_value
 
     def validate(self, cr, data):
         return False
-    
+
     def get_model_class(self):
         if self.model_class is None:
             return self.object._pool._model_class

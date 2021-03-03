@@ -1,13 +1,12 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import re
 import datetime
 from pprint import pprint
 
-from tools import r_multi_split_array
+from .tools import r_multi_split_array
 
-from zyfra import tools
+from .. import tools
 
 regex_sql_fx_field = re.compile(r'^([a-z_]+)\((.*)\)$')
 
@@ -30,20 +29,20 @@ class SqlTableAlias:
 
 class Operator(object):
     value = ''
-    
+
     def __init__(self, value=''):
         self.value = value
-    
+
     def __repr__(self):
         return repr(self.value)
-    
+
     def __str__(self):
         if self.value is None:
             return ''
         return self.value
-    
+
     def __cmp__(self, a):
-        if isinstance(a, basestring):
+        if isinstance(a, str):
             return cmp(self.value, str(a))
         return cmp(self, a)
 
@@ -55,22 +54,22 @@ class MqlWhere(object):
     def __init__(self, sql_query):
         self.sql_query = sql_query
         self.operators = ['parent_of', 'child_of']
-        
+
         self.reserved_words = ['unknown', 'between', 'false', 'like', 'null', 'true', 'div', 'mod', 'not', 'xor ', 'and', 'or','in','is']
         self.basic_operators = ['+','-','=','/','*','<=','>=','<>','<','>','!','is not','is','not in','in']
         self.parenthesis = ['(',')',' ',',']
         self.split_char = self.basic_operators[:-4] + self.parenthesis
         self.all_operators = self.basic_operators + self.operators
-    
+
     def field2sql(self, field_name, obj = None, ta = None, field_alias = '', operator=None, op_data=''):
         # fixme: operator must be by reference to be deleted
         if self.sql_query.debug > 4:
             obj_name = '' if obj is None else obj._name
-            print 'Where Field2sql[%s.%s]' % (obj_name, field_name)
+            print('Where Field2sql[%s.%s]' % (obj_name, field_name))
         res = self.sql_query.field2sql(field_name, obj, ta, field_alias, operator, op_data, True)
         if self.sql_query.debug > 3:
             obj_name = '' if obj is None else obj._name
-            print 'Where Field2sql[%s.%s]=>[%s]' % (obj_name, field_name, res)
+            print('Where Field2sql[%s.%s]=>[%s]' % (obj_name, field_name, res))
         return res
 
     def parse(self, mql_where, obj=None, ta=None):
@@ -81,7 +80,7 @@ class MqlWhere(object):
         mql_where = tools.trim_inside(mql_where)
         fields = tools.specialsplitnotpar(mql_where, self.split_char)
         previous_operator = None
-        for i in xrange(len(fields)-1, 0, -1):
+        for i in range(len(fields)-1, 0, -1):
             field = fields[i]
             if field.strip() == '':
                 del fields[i]
@@ -98,10 +97,10 @@ class MqlWhere(object):
                 previous_operator = None
             if field == 'in':
                 fields[i] = ' in '
-        
+
         if self.sql_query.debug > 3:
-            print 'Where fields: %s' % fields
-        
+            print('Where fields: %s' % fields)
+
         max_field_index = len(fields) - 1
         key = -1
         while key < len(fields) - 1:
@@ -138,7 +137,7 @@ class MqlWhere(object):
                         op_data += self.field2sql(val, self.obj, self.ta)
                         break
                     i += 1
-                
+
                 # Rebuild                
                 operator = Operator(fields[key+1].lower())
                 fields[key] = self.field2sql(field, self.obj, self.ta, '', operator, op_data)
@@ -147,14 +146,14 @@ class MqlWhere(object):
                     max_field_index = len(fields) - 1
             else:
                 fields[key] = self.field2sql(field, self.obj, self.ta)
-            
+
         if self.sql_query.debug > 4:
-            print 'Fields after where parse: %s' % fields
-        
+            print('Fields after where parse: %s' % fields)
+
         sql_where = ' '.join(fields).replace(' (', '(').replace(' )', ')')
         if self.sql_query.debug > 3:
-            print 'Where sql:'
-            print sql_where
+            print('Where sql:')
+            print(sql_where)
 
         return sql_where
 
@@ -230,14 +229,14 @@ class SQLQuery(object):
 
     def get_table_sql(self):
         tables = ''
-        aliases = self.table_alias.keys()
+        aliases = list(self.table_alias.keys())
         aliases.sort()
         for alias in aliases:
             table_alias = self.table_alias[alias]
             if table_alias.used:
                 tables  += ' ' + table_alias.sql
         return tables
-    
+
     def split_keywords(self, mql):
         datas = r_multi_split_array(mql, self.keywords_split)
         mql = datas['']
@@ -265,8 +264,8 @@ class SQLQuery(object):
                     continue
                 txt  += key.upper() + "\n" + query_datas[key] + "\n"
             txt  += 'Context:' + repr(self.context)
-            print '== MQL[' + str(self.__uid__) + ']: =='
-            print txt 
+            print('== MQL[' + str(self.__uid__) + ']: ==')
+            print(txt)
         sql = 'SELECT ' + self.parse_mql_fields(mql)
         if 'order by' not in query_datas:
             query_datas['order by'] = ''
@@ -282,7 +281,7 @@ class SQLQuery(object):
             self.where.append(self.object._visible_condition)
         if len(self.where) and 'where' not in query_datas:
             query_datas['where'] = ''
-        
+
         for keyword in keywords:
             if keyword in query_datas:
                 data = getattr(self, 'parse_mql_' + keyword.replace(' ', '_'))(query_datas[keyword])
@@ -311,10 +310,10 @@ class SQLQuery(object):
                 else:
                     txt  += ss + "\n"
                 i += 2
-            print '== SQL[' + str(self.__uid__) + ']: =='
-            print txt
+            print('== SQL[' + str(self.__uid__) + ']: ==')
+            print(txt)
         return sql
-    
+
     def where2sql(self, mql, context = None):
         if context is None:
             if hasattr(self, 'context'):
@@ -332,11 +331,11 @@ class SQLQuery(object):
         sql = self.parse_mql_where(mql)
         sql  += ' ' + self.get_table_sql()
         return sql
-    
+
     def get_array_sql(self, cr, sql, **kargs):
         res = cr(self.object).get_array_object(sql, **kargs)
         return tools.DictObject(res)
-    
+
     def get_scalar(self, cr, mql):
         # Retrieve a simple list with the first column
         sql = self.mql2sql(cr, mql)
@@ -345,11 +344,11 @@ class SQLQuery(object):
     def get_array(self, cr, mql, data=None, **kargs):
         debug = cr.context.get('debug')
         if debug:
-            print 'Get_array...'
+            print('Get_array...')
         start_time = datetime.datetime.now()
         sql = self.mql2sql(cr, mql, True)
         if debug:
-            print '[mql2sql] duration: %s' % ((datetime.datetime.now() - start_time).total_seconds())
+            print('[mql2sql] duration: %s' % ((datetime.datetime.now() - start_time).total_seconds()))
         cr = cr.copy()
         if 'key' in cr.context:
             key = cr.context['key']
@@ -358,7 +357,7 @@ class SQLQuery(object):
             key = ''
         res = cr(self.object).get_array_object(sql, key=key, data=data, **kargs)
         if debug:
-            print '[get_array_object] duration: %s' % ((datetime.datetime.now() - start_time).total_seconds())
+            print('[get_array_object] duration: %s' % ((datetime.datetime.now() - start_time).total_seconds()))
 
         # Clean result
         if isinstance(res, dict):
@@ -366,9 +365,9 @@ class SQLQuery(object):
                 row = res[key]
                 for col in row:
                     value = row[col]
-                    if isinstance(value, basestring):
+                    if isinstance(value, str):
                         row[col] = row[col].rstrip()
-                if isinstance(key, basestring):
+                if isinstance(key, str):
                     new_key = key.rstrip()
                     if new_key != key:
                         res[new_key] = row
@@ -377,11 +376,11 @@ class SQLQuery(object):
             for row in res:
                 for col in row:
                     value = row[col]
-                    if isinstance(value, basestring):
+                    if isinstance(value, str):
                         row[col] = row[col].rstrip()
-        
+
         if isinstance(res, dict):
-            datas = dict([(key, tools.DictObject(value)) for key, value in res.iteritems()])
+            datas = dict([(key, tools.DictObject(value)) for key, value in res.items()])
         else:
             datas = tools.DictObject(res)
         #print 'datas', datas
@@ -417,12 +416,12 @@ class SQLQuery(object):
                     if len(reqf):
                         for id in ids:
                             obj = {}
-                            for key, field in reqf.iteritems():
+                            for key, field in reqf.items():
                                 for row_id in row_alias_ids[id]:
                                     obj[key] = datas[row_id][self.sql_field_alias[field]]
                             fx_data[id] = tools.DictObject(obj)
                     sub_datas = robject[rfield].get(cr, ids, fx_data, param)
-                    for id, row_ids in row_alias_ids.iteritems():
+                    for id, row_ids in row_alias_ids.items():
                         if id=='':
                             continue
                         for row_id in row_ids:
@@ -435,7 +434,7 @@ class SQLQuery(object):
                         parameter = '(' + parameter + ') AND '
                     cr.context.update({'domain': parameter + rfield + ' IN(' + ','.join(map(str, ids)) + ')'})
                     sub_datas = robject.select(cr, rfield + ' AS subid_,' + sub_mql)
-                    for id, row_ids in row_alias_ids.iteritems():
+                    for id, row_ids in row_alias_ids.items():
                         for sub_row in sub_datas:
                             if sub_row.subid_ == id:
                                 for row_id in row_ids:
@@ -566,11 +565,11 @@ class SQLQuery(object):
         if obj is None:
             obj = self.object
         if self.debug > 1:
-            print 'Field2sql[%s->%s]' % (obj._name, field_name)
+            print('Field2sql[%s->%s]' % (obj._name, field_name))
         if field_name == '' or tools.is_numeric(field_name) or field_name[0] in [',',' ','(',')',"'"] or field_name in ['unknown', 'between', 'false', 'like', 'null', 'true', 'div', 'mod', 'not', 'xor', 'and', 'or','in','is']:
             return field_name
         if self.debug >1:
-            print 'FULL treatment[%s->%s]' % (obj._name, field_name)
+            print('FULL treatment[%s->%s]' % (obj._name, field_name))
         if ta is None:
             ta = self.table_alias['']
         matches = regex_sql_fx_field.match(field_name)
@@ -603,9 +602,9 @@ class SQLQuery(object):
 
     def add_sub_query(self, robject, rfield, sub_mql, field_alias, parameter):
         self.sub_queries.append([robject, rfield, sub_mql, field_alias, parameter])
-    
+
     def add_required_fields(self, required_fields):
         self.required_fields = list(set(self.required_fields + required_fields))
-    
+
     def __repr__(self):
         return super(SQLQuery, self).__repr__() +'<' + self.object._name + '>'

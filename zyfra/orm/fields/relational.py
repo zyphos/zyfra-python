@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from field import Field
+from .field import Field
 
 class Relational(Field):
     local_key = ''
@@ -25,7 +24,7 @@ class Relational(Field):
                 raise
                 #raise Exception('Could not find object [' + self.relation_object_name + '] field ' + self.__class__.__name__ + ' [' + self.name + '] from object [' + self.object._name + ']')
         return self.__rel_obj
-    
+
     def set_relation_object(self, relation_obj):
         self.__rel_obj = relation_obj
 

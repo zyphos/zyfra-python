@@ -1,9 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from field import Field
-from zyfra.tools import is_numeric
 import decimal
+
+from .field import Field
+from zyfra.tools import is_numeric
 
 class Int(Field):
     unsigned = False
@@ -95,7 +95,7 @@ class IntSelect(Field):
         super(IntSelect, self).__init__(label, **args)
 
     def sql_format(self, value):
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             key = array_search(value, self.select_values)
             if key is not False:
                 return str(key)

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
@@ -105,7 +104,7 @@ class Data(MetaObject):
         
     def re(self, regex):
         """Find all regex occurence on data content"""
-        if(not isinstance(self, basestring)): 
+        if(not isinstance(self, str)): 
             if(isinstance(self, lxml.etree._ElementTree) or isinstance(self, lxml.etree._Element)):
                 res = re.findall(regex, str(self))
             else:
@@ -119,7 +118,7 @@ class Data(MetaObject):
             print 'HAs xpath'
             return toData(self.__xpath(xpath))"""
         """Do a xpath on data content"""
-        if(not isinstance(self, basestring)): 
+        if(not isinstance(self, str)): 
             if(isinstance(self, lxml.etree._ElementTree) or isinstance(self, lxml.etree._Element)):
                 tree = fromstring(lxml.etree.tostring(self))
             else:
@@ -199,7 +198,7 @@ class Field(object):
         return data
 
     def parse_value(self, ctx, value):
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             return value
         if isinstance(value, list) and len(value):
             return self.parse_value(ctx, value[0])
@@ -331,8 +330,8 @@ class Page(Object):
         #print 'url2:', url
         data = Data(web_browser(url, *args, **kargs))
         if debug:
-            print 'data:'
-            print data
+            print('data:')
+            print(data)
         ctx['url'] = url
         return Object.parse_value(self, ctx, data)
     
