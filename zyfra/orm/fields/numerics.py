@@ -74,7 +74,7 @@ class Boolean(Field):
         return str(value and 1 or 0)
 
     def get_sql_def(self, db_type):
-        if db.type == 'postgresql':
+        if db_type == 'postgresql':
             return 'BOOLEAN'
         return 'INT(1)'
     
