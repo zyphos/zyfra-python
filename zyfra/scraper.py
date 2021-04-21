@@ -97,12 +97,7 @@ class Data(MetaObject):
             obj.__xpath = value.xpath
             obj.__value = value
         return obj
-    
-    #def __str__(self):
-    #    if(isinstance(self, lxml.etree._ElementTree) or isinstance(self, lxml.etree._Element)):
-    #        return lxml.etree.tostring(self)
-    #    return str(self.__value)
-        
+
     def re(self, regex):
         """Find all regex occurence on data content"""
         if(not isinstance(self, basestring)): 
@@ -131,7 +126,7 @@ class Data(MetaObject):
             res = tree.xpath(xpath)
         except lxml.etree.XPathEvalError:
             raise ScraperException('Invalid xpath expression: %s' % xpath)
-        
+
         def parse_data(data):
             if isinstance(data, lxml.etree._ElementStringResult):
                 return str(data)
@@ -140,17 +135,17 @@ class Data(MetaObject):
             elif html and isinstance(data, (lxml.etree._ElementTree, lxml.etree._Element, lxml.html.HtmlElement)):
                 return lxml.etree.tostring(data)
             return data
-        
+
         if isinstance(res, list):
             res = [parse_data(r) for r in res]
         else:
             res = parse_data(res)
         return toData(res)
-    
+
     def json(self):
         res = json.loads(str(self))
         return Data(res)
-    
+
     def html(self):
         if isinstance(self, (lxml.etree._ElementTree, lxml.etree._Element, lxml.html.HtmlElement)):
             return lxml.etree.tostring(self)
@@ -159,7 +154,7 @@ class Data(MetaObject):
 class Scraper(object):
     def __init__(self):
         self.web_browser = WebBrowser()
- 
+
     def get_url(self, *args, **kargs):
         return Data(self.web_browser(*args, **kargs))
     
@@ -174,7 +169,7 @@ class Field(object):
     _default_value = None
     _name = None
     _parent_type = None
-    
+
     def __init__(self, xpath=None, full_xpath=None, attr=None, tag=False,
                  default_value=None):
         if full_xpath is not None:
@@ -185,7 +180,7 @@ class Field(object):
         self._tag = tag
         if default_value is not None:
             self._default_value = default_value
-    
+
     def _auto_xpath(self, xpath):
             self._xpath = xpath
 
@@ -254,7 +249,7 @@ class Float(Field):
 
 class Object(Field):
     _columns = None
-    
+
     def __init__(self, *args, **kargs):
         Field.__init__(self, *args, **kargs)
         self._columns = {}
@@ -262,12 +257,12 @@ class Object(Field):
             attr = getattr(self, col)
             if isinstance(attr, Field):
                 self.__add_columns(name=col, field=attr)
-    
+
     def __add_columns(self, name, field):
         name = name.lower()
         self._columns[name] = field
         field.set_instance_data(name, self.__class__.__name__)
-    
+
     def __setattr__(self, name, value):
         if isinstance(value, Field):
             self.__add_columns(name=name, field=value)
@@ -275,7 +270,7 @@ class Object(Field):
             self.__dict__[name] = value
         else:
             raise ScraperException('%s: Can not add other attribute than Field instance: [%s] %s, %s' % (self.__class__.__name__, name, repr(value), type(value),))
-    
+
     def parse_value(self, ctx, value):
         res = {}
         for field_name in self._columns:
@@ -300,7 +295,7 @@ class Page(Object):
     def __init__(self, web_browser = None, **kargs):
         self._web_browser = web_browser
         Object.__init__(self, **kargs)
-    
+
     def __call__(self, url=None, ctx=None, debug=False, *args, **kargs):
         if url is None:
             if self._url is not None:
@@ -309,7 +304,7 @@ class Page(Object):
                 raise ScraperException('%s: No url provided' % self.__class__.__name__)
         if ctx is None:
             ctx = {}
-        
+
         if 'web_browser' in ctx:
             web_browser = ctx['web_browser']
         elif self._web_browser is not None:
@@ -334,7 +329,4 @@ class Page(Object):
             print 'data:'
             print data
         ctx['url'] = url
-        return Object.parse_value(self, ctx, data)
-    
-    def parse_value(self, ctx, value):
-        return Field.parse_value(self, ctx, value)
+        return self.parse_value(self, ctx, data)
