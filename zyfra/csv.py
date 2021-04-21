@@ -6,7 +6,7 @@ f, path, descr = imp.find_module('csv', sys.path[1:])
 python_csv = imp.load_module('csv', f, path, descr)
 
 class CSVfile(object):
-    def __init__(self, file, delimiter=u',', quotechar=u'"', auto_detect=False, debug=False):
+    def __init__(self, file, delimiter=',', quotechar='"', auto_detect=False, debug=False):
         self.debug = debug
         self.delimiter = delimiter
         self.quotechar = quotechar
@@ -18,23 +18,21 @@ class CSVfile(object):
     def render_field(self, data):
         try:
             if isinstance(data, str):
-                data = unicode(data.decode('UTF8'))
-            if isinstance(data, str):
-                return u'%s%s%s' % (self.quotechar, data.replace(self.quotechar,self.quotechar+self.quotechar), self.quotechar)
+                return '%s%s%s' % (self.quotechar, data.replace(self.quotechar,self.quotechar+self.quotechar), self.quotechar)
             elif isinstance(data, list):
                 if data:
-                    return u'[%s]' % u','.join(data)
+                    return '[%s]' % ','.join(data)
                 else:
-                    return u''
+                    return ''
             elif data is None:
-                return u''
+                return ''
             elif isinstance(data, float):
                 return self.render_field(str(float(data)).replace('.',','))
             elif isinstance(data, Decimal):
                 return self.render_field(str(data).replace('.',','))
             return unicode(str(data))
         except:
-            print repr(data)
+            print(repr(data))
             raise
     
     def write(self, *args):
@@ -42,16 +40,16 @@ class CSVfile(object):
         try:
             rendered_data = self.delimiter.join(rendered_args)
         except:
-            print rendered_args
+            print(rendered_args)
             raise
         if self.debug:
-            print rendered_data
+            print(rendered_data)
         else:
             try:
-                self.file.write((rendered_data + u'\n').encode('utf8'))
+                self.file.write((rendered_data + '\n').encode('utf8'))
             except:
-                print rendered_data
-                print repr(rendered_data)
+                print(rendered_data)
+                print(repr(rendered_data))
                 raise
     
     def read_file(self, nb_max_rows=0):
