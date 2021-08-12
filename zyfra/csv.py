@@ -46,7 +46,7 @@ class CSVfile(object):
             print(rendered_data)
         else:
             try:
-                self.file.write((rendered_data + '\n').encode('utf8'))
+                self.file.write((rendered_data + '\n'))
             except:
                 print(rendered_data)
                 print(repr(rendered_data))
