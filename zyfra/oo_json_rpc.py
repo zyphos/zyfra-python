@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 
 import os
+import traceback
 import configparser
 
 import simplejson
@@ -273,9 +274,18 @@ class OoJsonRPC(object):
                 result[r[key]] = r
         return result
 
+    def close_session(self):
+        try:
+            if self.json_rpc and self.session_id:
+                params = {'context': self.context}
+                if self.version < 12:
+                    params['session_id'] = self.session_id
+                self.json_rpc('session/destroy', params)
+            self.json_rpc = None
+            self.session_id = None
+        except Exception as e:
+            print(e)
+            print(traceback.format_exc())
+
     def __del__(self):
-        if self.json_rpc and self.session_id:
-            params = {'context': self.context}
-            if self.version < 12:
-                params['session_id'] = self.session_id
-            self.json_rpc('session/destroy', params)
+        self.close_session()
