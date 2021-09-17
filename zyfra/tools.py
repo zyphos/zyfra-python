@@ -339,7 +339,7 @@ def print_table(table, columns=None):
         print('Empty')
         return
     if isinstance(table[0], dict):
-        print_table_list_dict(table)
+        print_table_list_dict(table, columns)
         return
 
     # compute column size
@@ -361,7 +361,7 @@ def print_table(table, columns=None):
     for row in table:
         print('|'.join(row))
 
-def print_table_list_dict(data):
+def print_table_list_dict(data, columns=None):
     "Pretty print a list of dict"
     "data: [{},]"
     if not isinstance(data, list):
@@ -376,7 +376,8 @@ def print_table_list_dict(data):
     if not data[0]:
         print('Sub data is empty')
         return
-    columns = data[0].keys()
+    if columns is None:
+        columns = data[0].keys()
     rows = [[row[c] for c in columns] for row in data]
     print_table(rows, columns)
 
