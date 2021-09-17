@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -133,8 +133,8 @@ def generate_object(oo, db, obj_name, debug=False):
                                              rt_local_field=rt_local_field,
                                              rt_foreign_field=rt_foreign_field)
         elif debug:
-            print 'Obj(%s) Field(%s) Type(%s) unknown type' % (obj_name, field_name, type)
-            print field
+            print('Obj(%s) Field(%s) Type(%s) unknown type' % (obj_name, field_name, type))
+            print(field)
             continue
         #print 'Add Field(%s) Type(%s) to Obj(%s)' % (field_name, type, obj_name)
         if not field_obj.stored or field_name in real_table_columns:
