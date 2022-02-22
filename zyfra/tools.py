@@ -342,29 +342,42 @@ def print_table(table, columns=None):
         print 'Empty'
         return
     if isinstance(table[0], dict):
-        print_table_list_dict(table)
+        print_table_list_dict(table, columns)
         return
 
+    first_line_is_col = False
+    if len(columns) > len(table):
+        #print 'More columns[%s] than rows[%s] zip the table' % (len(columns), len(table))
+        lines = []
+        columns = list(columns)
+        for i in range(len(columns)):
+            lines.append([str(columns[i]),] + [str(r[i]) for r in table])
+    else:
+        first_line_is_col = True
+        lines = [columns[:]] # copy
+        for r in table:
+            lines.append(str(c) for c in column)
+
     # compute column size
-    col_sizes = [len(c) for c in columns]
-    for row in table:
-        for i, value in enumerate(row):
+    col_sizes = [len(c) for c in lines[0]]
+    for line in lines:
+        for i, value in enumerate(line):
             length = len(str(value))
             if length > col_sizes[i]:
                 col_sizes[i] = length
 
-    columns = [c.ljust(col_sizes[i]) for i, c in enumerate(columns)]
-    lines = ['-' * s for s in col_sizes]
-    for row in table:
-        for i, value in enumerate(row):
-            row[i] = str(row[i]).ljust(col_sizes[i])
+    #columns = [c.ljust(col_sizes[i]) for i, c in enumerate(columns)]
+    for line in lines:
+        for i, value in enumerate(line):
+            line[i] = value.ljust(col_sizes[i])
 
-    print '|'.join(columns)
-    print '|'.join(lines)
-    for row in table:
-        print '|'.join(row)
+    if first_line_is_col:
+        lines = lines[0]+['-' * s for s in col_sizes]+lines[1:]
 
-def print_table_list_dict(data):
+    for line in lines:
+        print '|'.join(line)
+
+def print_table_list_dict(data, columns=None):
     "Pretty print a list of dict"
     "data: [{},]"
     if not isinstance(data, list):
@@ -379,8 +392,11 @@ def print_table_list_dict(data):
     if not data[0]:
         print 'Sub data is empty'
         return
-    columns = data[0].keys()
-    rows = [[row[c] for c in columns] for row in data]
+    if columns is None:
+        columns = set()
+        for row in data:
+            columns |= set(row.keys())
+    rows = [[row.get(c,'') for c in columns] for row in data]
     print_table(rows, columns)
 
 # source : https://wiki.python.org/moin/PythonDecoratorLibrary#Line_Tracing_Individual_Functions
