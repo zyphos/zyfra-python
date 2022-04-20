@@ -356,7 +356,7 @@ def print_table(table, columns=None):
         first_line_is_col = True
         lines = [columns[:]] # copy
         for r in table:
-            lines.append(str(c) for c in column)
+            lines.append(list(str(r[i]) for i in xrange(len(columns))))
 
     # compute column size
     col_sizes = [len(c) for c in lines[0]]
@@ -372,7 +372,7 @@ def print_table(table, columns=None):
             line[i] = value.ljust(col_sizes[i])
 
     if first_line_is_col:
-        lines = lines[0]+['-' * s for s in col_sizes]+lines[1:]
+        lines = [lines[0]]+[['-' * s for s in col_sizes]]+lines[1:]
 
     for line in lines:
         print '|'.join(line)
@@ -396,6 +396,7 @@ def print_table_list_dict(data, columns=None):
         columns = set()
         for row in data:
             columns |= set(row.keys())
+    columns = list(columns)
     rows = [[row.get(c,'') for c in columns] for row in data]
     print_table(rows, columns)
 
