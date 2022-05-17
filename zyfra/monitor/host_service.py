@@ -359,6 +359,10 @@ class linux_version(HostService):
                              'validity':'2020-07'},
                             {'version':'20.04',
                              'validity':'2025-04'},
+                            {'version':'21.10',
+                             'validity':'2022-07'},
+                            {'version':'22.04',
+                             'validity':'2027-04'},
                                    ],
                         'Debian': [
                             {'codename':'slink',
@@ -383,6 +387,12 @@ class linux_version(HostService):
                              'validity':'2022-06'},
                             {'codename':'buster',
                              'validity':'2024-01'},
+                            {'codename':'bullseye',
+                             'validity':'2026-01'},
+                            {'codename':'bookworm',
+                             'validity':'2028-01'},
+                            {'codename':'trixie',
+                             'validity':'2030-01'},
                             ],
                         'LinuxMint': [
                             {'version':'5',
@@ -431,6 +441,14 @@ class linux_version(HostService):
                              'validity': '2023-01'},
                             {'version':'19.3',
                              'validity': '2023-01'},
+                            {'version':'20',
+                             'validity': '2025-04'},
+                            {'version':'20.1',
+                             'validity': '2025-04'},
+                            {'version':'20.2',
+                             'validity': '2025-04'},
+                            {'version':'20.3',
+                             'validity': '2025-04'},
                             ]
                         }
     version_validity['Raspbian'] = version_validity['Debian']
