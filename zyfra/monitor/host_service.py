@@ -270,25 +270,20 @@ class smart(HostService):
 
 class linux_updates(HostService):
     def _get_update_availables(self, cmd_exec):
-        """result = cmd_exec(['sudo','/usr/lib/update-notifier/update-motd-updates-available']).split('\n')
-        updates = {}
-        if len(result) < 3:
-            updates['normal'] = 0
-            updates['security'] = 0
-        else:
-            updates['normal'] = int(result[1].split()[0])
-            updates['security'] = int(result[2].split()[0])"""
         # apt-get install update-notifier-common
         cmd_line = '/usr/lib/update-notifier/apt-check'
         if not cmd_exec.file_exists(cmd_line):
-            print('%s not found ! Can not check for update !' % cmd_line)
-            return None 
+            cmd_line2 = '/usr/bin/apt-list-update.sh'
+            if not cmd_exec.file_exists(cmd_line2):
+                print('%s and %s not found ! Can not check for update !' % (cmd_line, cmd_line2))
+                return None
+            cmd_line = cmd_line2
         result = cmd_exec([cmd_line]).split(';')
         updates = {}
         updates['normal'] = int(result[0])
         updates['security'] = int(result[1])
         return updates
-    
+
     @tools.delay_cache(300) # 5 min cached
     def get_state(self, cmd_exec):
         updates = self._get_update_availables(cmd_exec)
