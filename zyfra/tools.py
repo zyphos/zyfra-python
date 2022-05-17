@@ -346,7 +346,7 @@ def print_table(table, columns=None):
     col_sizes = [len(c) for c in columns]
     for row in table:
         for i, value in enumerate(row):
-            length = len(str(value))
+            length = len(repr(value))
             if length > col_sizes[i]:
                 col_sizes[i] = length
 
@@ -354,7 +354,7 @@ def print_table(table, columns=None):
     lines = ['-' * s for s in col_sizes]
     for row in table:
         for i, value in enumerate(row):
-            row[i] = str(row[i]).ljust(col_sizes[i])
+            row[i] = repr(row[i]).ljust(col_sizes[i])
 
     print('|'.join(columns))
     print('|'.join(lines))
