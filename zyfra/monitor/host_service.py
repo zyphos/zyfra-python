@@ -234,7 +234,7 @@ class smart(HostService):
         smart_data = self._get_smart_data(result)
         res = smart_data[1].split(': ')
         if len(res) > 1:
-            return int(res[1])
+            return int(res[1].split(' ')[0])
         return 0
     
     def _get_device_attributes(self, cmd_exec, devicename):
