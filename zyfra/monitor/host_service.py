@@ -229,13 +229,27 @@ class smart(HostService):
             devices[device] = dev_type
         return devices
     
-    def _get_device_nb_errors(self, cmd_exec, devicename):
+    def _get_device_nb_errors(self, cmd_exec, devicename, power_on_hours=None):
         result = cmd_exec(['sudo', self.cmd_line, '-l', 'error', devicename])
         smart_data = self._get_smart_data(result)
         res = smart_data[1].split(': ')
+        msg_rows = []
+        last_error_days = None
         if len(res) > 1:
-            return int(res[1].split(' ')[0])
-        return 0
+            nb_error = int(res[1].split(' ')[0])
+            for line in smart_data[2:]:
+                if line[:6] != 'Error ':
+                    continue
+                error_time = line.split(': ')[1]
+                error_hour = int(error_time.split(' ')[0])
+                if power_on_hours is not None:
+                    days = round(float(power_on_hours - error_hour)/24)
+                    if last_error_days is None:
+                        last_error_days = days
+                    error_time = '%u days ago' % days
+                msg_rows.append('Error %s: %s' % (line.split(' ',3)[1], error_time))
+            return nb_error, '\n'.join(msg_rows), last_error_days
+        return 0, '', last_error_days
     
     def _get_device_attributes(self, cmd_exec, devicename):
         result = cmd_exec(['sudo', self.cmd_line, '-A', devicename])
@@ -244,29 +258,43 @@ class smart(HostService):
         for row in smart_data[3:]:
             if row == '':
                 break
-            id, name, flag, value, worst, thresh, type, updated, when_failed, raw_value = row.split()
+            id, name, flag, value, worst, thresh, type, updated, when_failed, raw_value = row.split(None, 9)
             attributes[name] = {'flag': flag,
                                 'value': int(value),
                                 'thresh': int(thresh),
                                 'type': type,
                                 'updated': updated,
                                 'when_failed':when_failed,
-                                'raw_value':int(raw_value),
+                                'raw_value':raw_value,
                                 }
         return attributes
     
     @tools.delay_cache(300) # 5 min cached    
     def get_state(self, cmd_exec):
         state = OK
+        message = ''
         if not cmd_exec.file_exists(self.cmd_line):
             print('%s not found ! Can not check for update !' % self.cmd_line)
             return StateValue(UNKNOWN, 'smartctl not found !') 
         devices = self._get_devices(cmd_exec)
         for devicename in devices:
-            nb_error = self._get_device_nb_errors(cmd_exec, devicename)
-            if nb_error:
-                state = WARNING
-        return StateValue(state)
+            attributes = self._get_device_attributes(cmd_exec, devicename)
+            attributes_in_error = ['%s: %s' % (a, v['raw_value']) for a, v in attributes.items() if a.lower().find('error') != -1 and int(v['raw_value'].split()[0]) > 0]
+            power_on_hours = attributes.get('Power_On_Hours', None)
+            if power_on_hours:
+                power_on_hours = int(power_on_hours['raw_value'])
+            nb_error, msg, last_error_days = self._get_device_nb_errors(cmd_exec, devicename, power_on_hours)
+
+            if nb_error or attributes_in_error:
+                message_array = ['%s Errors:%s' % (devicename, nb_error)] + attributes_in_error + [msg]
+                if last_error_days is not None:
+                    if last_error_days < 10:
+                        state = CRITICAL
+                    elif last_error_days < 30:
+                        state = WARNING
+                message = '\n'.join(message_array)
+
+        return StateValue(state, message)
 
 class linux_updates(HostService):
     def _get_update_availables(self, cmd_exec):
