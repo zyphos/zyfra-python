@@ -151,7 +151,10 @@ class Pool(orm.Pool):
         self._oo = OoJsonRPC(**oo_rpc_options)
         self.__debug = debug
         orm.Pool.__init__(self, db)
-        
+
+    def _set_oo_rpc_options(self, **kargs):
+        self._oo = OoJsonRPC(**kargs)
+
     def __getattr__(self, key):
         if key in self.__pool:
             return self.__pool[key]
