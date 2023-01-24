@@ -152,8 +152,8 @@ class Data(MetaObject):
         raise ScraperException('This is not an element')
 
 class Scraper(object):
-    def __init__(self):
-        self.web_browser = WebBrowser()
+    def __init__(self, default_headers=None):
+        self.web_browser = WebBrowser(default_headers)
 
     def get_url(self, *args, **kargs):
         return Data(self.web_browser(*args, **kargs))
