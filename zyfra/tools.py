@@ -345,8 +345,13 @@ def print_table(table, columns=None):
         print_table_list_dict(table, columns)
         return
 
-    first_line_is_col = False
-    if len(columns) > len(table):
+    if columns is None:
+        first_line_is_col = True
+        lines = []
+        for r in table:
+            lines.append([str(c) for c in r])
+    elif columns and len(columns) > len(table):
+        first_line_is_col = False
         #print 'More columns[%s] than rows[%s] zip the table' % (len(columns), len(table))
         lines = []
         columns = list(columns)
