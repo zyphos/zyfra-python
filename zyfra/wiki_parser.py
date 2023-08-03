@@ -92,7 +92,7 @@ class WikiParser(object):
     def do_headings(self, text):
         for i in xrange(6, 1, -1):
             h = '=' * i
-            text = re.sub(r"/^%s(.+)%s\\s*$/m" % (h, h), r"<h%u>\\1</h%u>" % (i, i), text)
+            text = re.sub(r"^%s(.+)%s\s*$" % (h, h), r"<h%u>\1</h%u>" % (i, i), text, 0, re.MULTILINE)
         return text
     
     """
@@ -484,7 +484,8 @@ def wiki_parser(text):
     return WikiParser().parse(text)
 
 if __name__ == '__main__':
-    t = """Test
+    t = """==Title==
+Test
 text
 
 ''ttt:''
