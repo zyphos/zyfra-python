@@ -118,13 +118,19 @@ class Data(MetaObject):
             print 'HAs xpath'
             return toData(self.__xpath(xpath))"""
         """Do a xpath on data content"""
-        if(not isinstance(self, str)): 
+        if isinstance(self,str):
+            tree = fromstring(self)
+        elif isinstance(self,bytes):
+            try:
+                txt = self.decode()
+            except:
+                raise ScraperException('Can not do xpath on this kind of object [' + str(self) + ']')
+            tree = fromstring(txt)
+        else:
             if(isinstance(self, lxml.etree._ElementTree) or isinstance(self, lxml.etree._Element)):
                 tree = fromstring(lxml.etree.tostring(self))
             else:
                 raise ScraperException('Can not do xpath on this kind of object [' + str(self) + ']')
-        else:
-            tree = fromstring(self)
 
         try:
             res = tree.xpath(xpath)
