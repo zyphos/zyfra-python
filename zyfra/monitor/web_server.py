@@ -35,7 +35,7 @@ class MainHandler(tornado.web.RequestHandler):
         self.queue2web = queue2web
         self.queue2probe = queue2probe
         self.debug = debug
-    
+
     def get(self, path):
         if self.debug:
             print('[HTTP] Received http get [%s]' % path) 
@@ -60,7 +60,7 @@ class MainHandler(tornado.web.RequestHandler):
             self.write('Probing hosts... Please wait')
         else:
             self.render('templates/service_status.html', status=status)
-        
+
 is_alive = True
 def middleware(queue2middle, queue2web):
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -83,7 +83,6 @@ def middleware(queue2middle, queue2web):
             for node in _status:
                 for service in node['services']:
                     service['age'] = 'Age: %s' % display_time(int(round(now_ts-service['last_update_ts'])))
-                    
             queue2web.put(_status)
         else:
             print('[MIDDLE] Command [%s] not found' % cmd)
@@ -107,10 +106,11 @@ def start_server(port=8888, ssl=False, certfile=None, keyfile=None, queue2probe=
         ssl_options = None
     application.listen(port, ssl_options=ssl_options)
     ioloop = tornado.ioloop.IOLoop.instance()
+
     def dummy_callback(iol):
         print('test')
         iol.add_callback(dummy_callback, iol) 
-        
+
     def start_ioloop():
         try:
             ioloop.start()

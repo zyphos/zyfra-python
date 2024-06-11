@@ -23,12 +23,12 @@ def get_hostname_ip(hostname):
 
 class NetworkTcpService(NetworkService):
     port = 0
-    
+
     def __init__(self, port=None):
         Service.__init__(self)
         if port is not None:
             self.port = port
-    
+
     def __call__(self, hostname):
         remote_ip = get_hostname_ip(hostname)
         sock = socket.socket(socket.AF_INET, tcp)
@@ -40,12 +40,12 @@ class NetworkTcpService(NetworkService):
 
 class NetworkUdpService(NetworkService):
     port = 0
-    
+
     def __init__(self, port=None):
         Service.__init__(self)
         if port is not None:
             self.port = port
-    
+
     def __call__(self, hostname):
         remote_ip = get_hostname_ip(hostname)
         sock = socket.socket(socket.AF_INET, udp)
@@ -75,7 +75,7 @@ class ping(NetworkService):
 class InternetCheck(ping):
     def __init__(self, hostnames):
         self.hostnames = hostnames
-    
+
     def __call__(self):
         for hostname in self.hostnames:
             if ping.__call__(self, hostname) == OK:

@@ -19,7 +19,7 @@ class CmdSsh(Cmd):
     def __init__(self, target, password=None):
         self.target = target
         self.password = password
-    
+
     def __call__(self, cmd, raise_empty=True, shell=False, debug=False):
         lnk = ssh_session.get_ssh_link(self.target, password=self.password)
         result = lnk.cmd(' '.join(cmd))
@@ -47,14 +47,14 @@ class CmdLocalhost(Cmd):
         if raise_empty and result == '':
             raise ProbeException('Empty result for CmdLocalhost: %s' % cmd)
         return result
-        
+
 class HostService(Service):
     cmd = ['ls']
     shell = False
-    
+
     def _parse_result(self, result):
         return result
-    
+
     def get_state(self, cmd_exec):
         result = cmd_exec(self.cmd, shell=self.shell)
         return self._parse_result(result)
@@ -62,7 +62,7 @@ class HostService(Service):
     def ssh(self, target, password=None):
         cmd_exec = CmdSsh(target, password)
         return self.get_state(cmd_exec)
-    
+
     def localhost(self):
         cmd_exec = CmdLocalhost()
         return self.get_state(cmd_exec)
@@ -70,7 +70,7 @@ class HostService(Service):
 class mount_usage(HostService):
     def _get_mount_usages(self, cmd_exec):
         mounts = {}
-        
+
         # Check space
         result = cmd_exec(['df','-P']) 
         for row in result.split('\n')[1:-1]:
@@ -88,7 +88,7 @@ class mount_usage(HostService):
                                    'used_space': used_space,
                                    'free_space': free_space,
                                    'pc_space': pc}
-        
+
         # Check inodes
         result = cmd_exec(['df','-i'])
         for row in result.split('\n')[1:-1]:
@@ -105,12 +105,12 @@ class mount_usage(HostService):
                     }
             mounts[mount_point].update(data)
         return mounts
-    
+
     def _str_data(self, data):
         mountpoints = list(data.keys())
         mountpoints.sort()
         return '\n'.join(['space|inode'] + ['% 4s % 4s %s' % (data[mp]['pc_space'],data[mp]['pc_inode'], mp) for mp in mountpoints])
-    
+
     @tools.delay_cache(60) # 1 min cached
     def get_state(self, cmd_exec):
         state = OK
@@ -129,7 +129,7 @@ class loadavg(HostService):
         cmd = ['cat', '/proc/loadavg']
         result = cmd_exec(cmd)
         return [float(x) for x in result.split()[:3]]
-    
+
     @tools.delay_cache(60) # 1 min cached
     def get_state(self, cmd_exec):
         loads = self._get_loads(cmd_exec)
@@ -190,7 +190,7 @@ class raid(HostService):
                            'msg': msg
                            }
         return raids
-    
+
     @tools.delay_cache(60) # 1 min cached
     def get_state(self, cmd_exec):
         state = OK
@@ -210,7 +210,7 @@ class raid(HostService):
 class smart(HostService):
     'Retrieve device S.M.A.R.T. status, for Hard Drive failure, ...'
     cmd_line = '/usr/sbin/smartctl'
-    
+
     def _get_smart_data(self, result):
         rows = result.split('\n')
         for id, row in enumerate(rows):
@@ -228,7 +228,7 @@ class smart(HostService):
             dev_type = txt.split(' ')[0]
             devices[device] = dev_type
         return devices
-    
+
     def _get_device_nb_errors(self, cmd_exec, devicename, power_on_hours=None):
         result = cmd_exec(['sudo', self.cmd_line, '-l', 'error', devicename])
         smart_data = self._get_smart_data(result)
@@ -250,7 +250,7 @@ class smart(HostService):
                 msg_rows.append('Error %s: %s' % (line.split(' ',3)[1], error_time))
             return nb_error, '\n'.join(msg_rows), last_error_days
         return 0, '', last_error_days
-    
+
     def _get_device_attributes(self, cmd_exec, devicename):
         result = cmd_exec(['sudo', self.cmd_line, '-A', devicename])
         smart_data = self._get_smart_data(result)
@@ -268,7 +268,7 @@ class smart(HostService):
                                 'raw_value':raw_value,
                                 }
         return attributes
-    
+
     @tools.delay_cache(300) # 5 min cached    
     def get_state(self, cmd_exec):
         state = OK
@@ -475,7 +475,7 @@ class linux_version(HostService):
                             ]
                         }
     version_validity['Raspbian'] = version_validity['Debian']
-    
+
     def _get_version_details(self, cmd_exec):
         cmd_line = '/usr/bin/lsb_release'
         if not cmd_exec.file_exists(cmd_line):
@@ -491,7 +491,7 @@ class linux_version(HostService):
             value = value.strip()
             data[property] = value
         return data
-        
+
     @tools.delay_cache(3600) # 1h cached
     def get_state(self, cmd_exec):
         data = self._get_version_details(cmd_exec)
@@ -520,7 +520,7 @@ class linux_version(HostService):
                     continue
                 validity = version_validity['validity']
                 break
-                    
+
         if validity is None:
             return StateValue(UNKNOWN, message)
         message = '%s [%s]' % (message, validity)
@@ -543,13 +543,13 @@ class mem_usage(HostService):
             value = value.strip()
             result[parameter] = value
         return result
-        
+
     def get_state(self, cmd_exec):
         details = self._get_memory_details(cmd_exec)
-        
+
         def get_amount(txt):
             return int(txt.split(' ', 1)[0])
-        
+
         def human_readable(amount):
             i = 0
             while float(amount) / (1000**i) > 1:
@@ -565,7 +565,7 @@ class mem_usage(HostService):
         mem_buffer = get_amount(details['Buffers'])
         mem_used = mem_total - mem_free - mem_cached - mem_buffer
         pc_used = mem_used / float(mem_total)
-        
+
         swap_total = get_amount(details['SwapTotal'])
         swap_free = get_amount(details['SwapFree'])
         swap_used = swap_total - swap_free
@@ -573,7 +573,7 @@ class mem_usage(HostService):
         all_used = mem_used + swap_used
         if swap_total > 0:
             pc_swap_used = swap_used / float(swap_total)
-        
+
         state = OK
         if pc_used > 0.9 or ((all_used/float(all_total)) > 0.8):
             state = CRITICAL
