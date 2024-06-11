@@ -30,7 +30,7 @@ class CSVfile(object):
                 return self.render_field(str(float(data)).replace('.',','))
             elif isinstance(data, Decimal):
                 return self.render_field(str(data).replace('.',','))
-            return unicode(str(data))
+            return str(data)
         except:
             print(repr(data))
             raise
