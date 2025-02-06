@@ -12,9 +12,6 @@
  *    Copyright (C) 2021 De Smet Nicolas (<http://ndesmet.be>).
  *    All Rights Reserved
  *
- *    Very inspired by MediaWiki (which is under GPL2)
- *    http://www.mediawiki.org/wiki/MediaWiki
- *    /includes/parser/Parser.php
  *
  *
  *    This program is free software: you can redistribute it and/or modify

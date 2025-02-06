@@ -3,6 +3,7 @@
 
 import os
 import traceback
+import re
 import configparser
 
 import simplejson
@@ -59,11 +60,12 @@ class JsonRPC(object):
                                 "method": "call",
                                 "params": kargs,
                                 "id": idt})
-        # print 'Q:', service, raw
         url = self.base_url + '/web/' + service
         header = {'Content-Type': 'application/json; charset=UTF-8'}
+        #print('url:', url)
+        #print('Q:', service, raw)
         res = self.wb(url, raw_data=raw, header=header)
-        # print 'R:', res
+        #print('R:', res)
         json = simplejson.loads(res)
         if 'jsonrpc' not in json or json['jsonrpc'] != self.version:
             raise Exception('Bad Json RPC version')
@@ -109,7 +111,10 @@ class ProxyObject(object):
                       'context': self.oo_rpc.context}
             if self.oo_rpc.version < 12:
                 params["session_id"] = self.oo_rpc.session_id
-            return self.oo_rpc.json_rpc('dataset/call_kw', params)
+            if self.oo_rpc.version < 16:
+                return self.oo_rpc.json_rpc('dataset/call_kw', params)
+            else:
+                return self.oo_rpc.json_rpc('dataset/call_kw/%s/%s' % (self.model,method), params)
         if method[:2] == '__':
             return super(ProxyObject, self).__getattr__(method)
         return fx
@@ -169,16 +174,29 @@ class OoJsonRPC(object):
 
         if self.login is None or self.password is None:
             raise Exception('Error, not enough creditential login, password')
-        params = {"db":self.db,
-                  "login":self.login,
-                  "password":self.password,
-                  "base_location":self.url
-                  }
-        if self.version < 12:
-            params.update(session_id=self.session_id, context={})
-        res = self.json_rpc('session/authenticate', params)
-        self.context = res['user_context']
-        self.session_id = res['session_id']
+        if self.version < 16:
+            params = {"db":self.db,
+                      "login":self.login,
+                      "password":self.password,
+                      "base_location":self.url
+                      }
+            if self.version < 12:
+                params.update(session_id=self.session_id, context={})
+            res = self.json_rpc('session/authenticate', params)
+            self.context = res['user_context']
+            self.session_id = res['session_id']
+        else:
+            # Odoo 16
+            data = self.json_rpc.wb(self.url + '/web', get_data={'db':self.db})
+            csrf_token = re.search(r"csrf_token:\s*\"([^\"]+)", data.decode('utf-8'), re.MULTILINE).group(1)
+            params = {
+                'csrf_token':csrf_token,
+                'db':self.db,
+                'login':self.login,
+                'password':self.password,
+                'redirect':'',
+                      }
+            self.json_rpc.wb(self.url + '/web/login', post_data=params) # Init session cookie
 
     def _read_config(self, filename, section):
         filename = os.path.expanduser(filename)
@@ -207,7 +225,8 @@ class OoJsonRPC(object):
         return self.json_rpc('database/list', {})
 
     def get_installed_module_list(self):
-        params = {'session_id': self.session_id, 'context':self.context}
+        if self.version < 16:
+            params = {'session_id': self.session_id, 'context':self.context}
         return self.json_rpc('session/modules', params)
 
     def create_database(self, db_name, create_admin_pwd='admin', super_admin_pwd=None, db_lang='fr_BE'):
@@ -226,6 +245,25 @@ class OoJsonRPC(object):
                             ]
                             }
         return self.json_rpc('database/create', params)
+
+    def drop_database(self, db_name, super_admin_pwd):
+        params = {'session_id': self.session_id, 'context':{},
+                  'fields':[
+                            {'name':'drop_db', 'value':db_name},
+                            {'name':'drop_pwd', 'value':super_admin_pwd},
+                            ]
+                            }
+        return self.json_rpc('database/drop', params)
+
+    def duplicate_database(self, db_name, new_db_name, super_admin_pwd):
+        params = {'session_id': self.session_id, 'context':{},
+                  'fields':[
+                            {'name':'super_admin_pwd', 'value':super_admin_pwd},
+                            {'name':'db_original_name', 'value':db_name},
+                            {'name':'db_name', 'value':new_db_name},
+                            ]
+                            }
+        return self.json_rpc('database/duplicate', params)
 
     def add_modules(self, module_names):
         context = self.context.copy()
@@ -247,16 +285,33 @@ class OoJsonRPC(object):
             context = {}
         new_context = self.context.copy()
         new_context.update(context)
-        params = {'model':model,
-                  'fields':fields,
-                  'domain': domain,
-                  'offset': offset,
-                  'limit': limit,
-                  'sort': sort,
-                  'context': new_context}
-        if self.version < 12:
-            params['session_id'] = self.session_id
-        res = self.json_rpc('dataset/search_read', params)
+        if self.version < 16:
+            params = {'model':model,
+                      'fields':fields,
+                      'domain': domain,
+                      'offset': offset,
+                      'limit': limit,
+                      'sort': sort,
+                      'context': new_context}
+            if self.version < 12:
+                params['session_id'] = self.session_id
+            res = self.json_rpc('dataset/search_read', params)
+        else:
+            params = {
+                'args':[],
+                'kwargs': {
+                    'fields': fields,
+                    'domain': domain,
+                    'offset': offset,
+                    'limit': limit,
+                    'context': new_context,
+                    'order': sort,
+                    'count_limit': 10001, # ??? speed hack ? maybe futur bug
+                    },
+                'method': 'web_search_read',
+                'model': model,
+                }
+            res = self.json_rpc('dataset/call_kw/%s/web_search_read' % model, params)
         return res['records']
 
     def make_dict(self, model, fields, key, domain=None, limit=0):
