@@ -297,6 +297,9 @@ class smart(HostService):
         return StateValue(state, message)
 
 class linux_updates(HostService):
+    # /etc/cron.d/apt-update  needed for debian
+    # 10 */2 * * * root /usr/bin/apt-get update > /dev/null
+
     def _get_update_availables(self, cmd_exec):
         cmd_line = '/usr/bin/apt'
         result = cmd_exec([cmd_line,'list','--upgradable']).split('\n')
@@ -324,7 +327,7 @@ class linux_updates(HostService):
 
 class linux_version(HostService):
     warning_below_days = 100
-    version_validity = {'Ubuntu': [
+    version_validity = {'Ubuntu': [# https://ubuntu.com/about/release-cycle
                             {'version':'8.04',
                              'validity':'expired'},
                             {'version':'8.10',
@@ -379,8 +382,12 @@ class linux_version(HostService):
                              'validity':'2022-07'},
                             {'version':'22.04',
                              'validity':'2027-04'},
+                            {'version':'24.04',
+                             'validity':'2029-04'},
+                            {'version':'24.10',
+                             'validity':'2025-07'},
                                    ],
-                        'Debian': [
+                        'Debian': [ # https://wiki.debian.org/LTS
                             {'codename':'slink',
                              'validity':'2000-10-30'},
                             {'codename':'potato',
@@ -404,13 +411,13 @@ class linux_version(HostService):
                             {'codename':'buster',
                              'validity':'2024-01'},
                             {'codename':'bullseye',
-                             'validity':'2026-01'},
+                             'validity':'2026-09'},
                             {'codename':'bookworm',
-                             'validity':'2028-01'},
+                             'validity':'2028-07'},
                             {'codename':'trixie',
                              'validity':'2030-01'},
                             ],
-                        'LinuxMint': [
+                        'LinuxMint': [ # src: https://linuxmint.com/download_all.php
                             {'version':'5',
                              'validity': '2011-04'},
                             {'version':'6',
@@ -465,6 +472,18 @@ class linux_version(HostService):
                              'validity': '2025-04'},
                             {'version':'20.3',
                              'validity': '2025-04'},
+                            {'version':'21',
+                             'validity': '2027-04'},
+                            {'version':'21.1',
+                             'validity': '2027-04'},
+                            {'version':'21.2',
+                             'validity': '2027-04'},
+                            {'version':'21.3',
+                             'validity': '2027-04'},
+                            {'version':'22',
+                             'validity': '2029-04'},
+                            {'version':'22.1',
+                             'validity': '2029-04'},
                             ]
                         }
     version_validity['Raspbian'] = version_validity['Debian']
