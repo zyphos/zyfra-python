@@ -262,7 +262,10 @@ class smart(HostService):
         for row in smart_data[3:]:
             if row == '':
                 break
-            id, name, flag, value, worst, thresh, type, updated, when_failed, raw_value = row.split(None, 9)
+            r_split = row.split(None, 9)
+            if len(r_split) != 9:
+                continue
+            id, name, flag, value, worst, thresh, type, updated, when_failed, raw_value = r_split
             attributes[name] = {'flag': flag,
                                 'value': int(value),
                                 'thresh': int(thresh),
