@@ -209,6 +209,8 @@ class raid(HostService):
 
 class smart(HostService):
     'Retrieve device S.M.A.R.T. status, for Hard Drive failure, ...'
+    # User need to be in sudoer.s list w/o password
+    # monitor ALL = NOPASSWD: /usr/sbin/smartctl
     cmd_line = '/usr/sbin/smartctl'
 
     def _get_smart_data(self, result):
@@ -220,6 +222,8 @@ class smart(HostService):
 
     def _get_devices(self, cmd_exec):
         result = cmd_exec(['sudo', self.cmd_line, '--scan'])
+        if 'sudo' in result:
+            raise Exception('SUDO')
         devices = {}
         for row in result.split('\n'):
             if row == '':
@@ -274,9 +278,16 @@ class smart(HostService):
         state = OK
         message = ''
         if not cmd_exec.file_exists(self.cmd_line):
-            print('%s not found ! Can not check for update !' % self.cmd_line)
-            return StateValue(UNKNOWN, 'smartctl not found !') 
-        devices = self._get_devices(cmd_exec)
+            print('%s not found ! Can not check for smart data !' % self.cmd_line)
+            return StateValue(UNKNOWN, 'smartctl not found !')
+        try:
+            devices = self._get_devices(cmd_exec)
+        except Exception as e:
+            if str(e) == 'SUDO':
+                # User need to be in sudoer.s list w/o password
+                # monitor ALL = NOPASSWD: /usr/sbin/smartctl
+                return StateValue(UNKNOWN, 'User not in sudoers w/o password.')
+            raise e
         for devicename in devices:
             attributes = self._get_device_attributes(cmd_exec, devicename)
             attributes_in_error = ['%s: %s' % (a, v['raw_value']) for a, v in attributes.items() if a.lower().find('error') != -1 and int(v['raw_value'].split()[0]) > 0]
