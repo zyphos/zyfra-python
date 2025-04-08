@@ -341,7 +341,7 @@ class linux_updates(HostService):
 
 class linux_version(HostService):
     warning_below_days = 100
-    version_validity = {'Ubuntu': [# https://ubuntu.com/about/release-cycle
+    version_validity = {'ubuntu': [# https://ubuntu.com/about/release-cycle
                             {'version':'8.04',
                              'validity':'expired'},
                             {'version':'8.10',
@@ -401,7 +401,7 @@ class linux_version(HostService):
                             {'version':'24.10',
                              'validity':'2025-07'},
                                    ],
-                        'Debian': [ # https://wiki.debian.org/LTS
+                        'debian': [ # https://wiki.debian.org/LTS
                             {'codename':'slink',
                              'validity':'2000-10-30'},
                             {'codename':'potato',
@@ -431,7 +431,7 @@ class linux_version(HostService):
                             {'codename':'trixie',
                              'validity':'2030-01'},
                             ],
-                        'LinuxMint': [ # src: https://linuxmint.com/download_all.php
+                        'linuxmint': [ # src: https://linuxmint.com/download_all.php
                             {'version':'5',
                              'validity': '2011-04'},
                             {'version':'6',
@@ -500,7 +500,7 @@ class linux_version(HostService):
                              'validity': '2029-04'},
                             ]
                         }
-    version_validity['Raspbian'] = version_validity['Debian']
+    version_validity['raspbian'] = version_validity['debian']
 
     def _get_version_details(self, cmd_exec):
         cmd_line = '/usr/bin/lsb_release'
@@ -528,11 +528,11 @@ class linux_version(HostService):
         message = data['Description']
         if 'Distributor ID' not in data or 'Release' not in data or 'Codename' not in data:
             return StateValue(UNKNOWN, message)
-        distribution = data['Distributor ID']
+        distribution = data['Distributor ID'].lower()
         release = data['Release']
         codename = data['Codename']
         if distribution not in self.version_validity:
-            return StateValue(UNKNOWN, message)
+            return StateValue(UNKNOWN, '%s [%s]' % (message, distribution))
         version_validities = self.version_validity[distribution]
         validity = None
         for version_validity in version_validities:
