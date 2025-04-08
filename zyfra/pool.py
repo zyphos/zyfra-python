@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import imp
+import importlib
 import sys
 import os
+import traceback
 
 from .singleton import Singleton
 
@@ -53,30 +54,32 @@ class Pool(object):
     def keys(self):
         return self.__pool.keys()
 
-    def __load_module(self, name):
+    def __load_module(self, name, full_filename):
         try:
-            f, path, descr = imp.find_module(name, [self.module_path])
-            try:
-                mod = imp.load_module(name, f, path, descr)
-            finally:
-                if f:
-                    f.close()
+            loader = importlib.machinery.SourceFileLoader(name, full_filename)
+            spec = importlib.util.spec_from_loader(name, loader)
+            mod = importlib.util.module_from_spec(spec)
+            loader.exec_module(mod)
             return getattr(mod, name.capitalize())(*self.__module_args, **self.__module_kargs)  # Istanciate class
         except:
-            print('Exception during load of module: %s' % name)
+            txt = 'Exception during load of module: %s' % name
+            print('+=' + '=' *len(txt) + '=+')
+            print('| %s |' % txt)
+            print('+=' + '=' *len(txt) + '=+')
+            print(traceback.print_exception(sys.exception()))
             raise
-            # raise Exception("Object class [" + key + "] doesn't exists")
 
     def __load_all_modules(self):
         fnames = os.listdir(self.module_path)
         for fname in fnames:
+            full_filename = os.path.join(self.module_path,fname)
             f = fname.rsplit('.', 1)
             if len(f) == 2:
                 name, ext = f
             else:
                 ext = ''
             if ext == 'py' and name not in self.__pool:
-                obj = self.__load_module(name)
+                obj = self.__load_module(name, full_filename)
                 try:
                     self[name] = obj
                 except:
