@@ -428,8 +428,8 @@ def trace(f):
     return _f
 
 def duration(f): # Decorator for function
-    fname = f.func_name
-    
+    fname = f.__name__
+
     @wraps(f)
     def _f(*args, **kwargs):
         start = datetime.datetime.now()

@@ -15,6 +15,7 @@ Helper for using NetRPC with OpenERP, Odoo
 Tested on:
 - OpenERP 7.0
 - Odoo 12.0
+- Odoo 18.0
 
 Usage:
 
@@ -25,10 +26,9 @@ db = 'my_openerp'
 login = 'my_login'
 password = 'my_password'
 
-oo = OoJsonRPC(url, db, login, password)
-
-print oo.search_read('product.product', limit=1)
-print oo['product.product'].fields_get()
+with OoJsonRPC(url, db, login, password) as oo: # use context manager
+  print(oo.search_read('product.product', limit=1))
+  print(oo['product.product'].fields_get())
 
 
 all options (url, db, login, password) can be set as default in ~/.oo7_rpc
@@ -69,10 +69,23 @@ class JsonRPC(object):
         json = simplejson.loads(res)
         if 'jsonrpc' not in json or json['jsonrpc'] != self.version:
             raise Exception('Bad Json RPC version')
+        if 'error' in json:
+            error = json['error']
+            print('OoJsonRPC error: code %s' % error['code'])
+            print(error['message'])
+            error_data = error['data']
+            print(list(error_data.keys()))
+            if 'name' in error_data:
+                print(error_data['name'])
+            if 'message' in error_data:
+                print(error_data['message'])
+            print(error_data['debug'])
+            raise Exception('OoJsonRPC error: code %s' % error['code'])
         if 'id' not in json:
-            raise Exception('Bad answer id %s != %s' % (json['id'], idt))
-        if json['id'] != idt:
             raise Exception('Bad answer id not found')
+        if json['id'] != idt:
+            print(repr(json))
+            raise Exception('Bad answer id %s != %s' % (json['id'], idt))
         if 'error' in json:
             error = json['error']
             print(error['data']['debug'])
@@ -229,31 +242,48 @@ class OoJsonRPC(object):
             params = {'session_id': self.session_id, 'context':self.context}
         return self.json_rpc('session/modules', params)
 
-    def create_database(self, db_name, create_admin_pwd='admin', super_admin_pwd=None, db_lang='fr_BE'):
-        if super_admin_pwd is None:
+    def create_database(self, name, login='admin', login_pwd='admin', master_pwd=None, lang='en_US', country_code='us'):
+        if master_pwd is None:
             if self.admin_passwd is None:
-                super_admin_pwd = 'admin'
+                master_pwd = 'admin'
             else:
-                super_admin_pwd = self.admin_passwd
-        params = {'session_id': self.session_id, 'context':{},
+                master_pwd = self.admin_passwd
+
+        if self.version < 12:
+            params = {'session_id': self.session_id, 'context':{},
                   'fields':[
                             {'name':'super_admin_pwd', 'value':super_admin_pwd},
-                            {'name':'db_name', 'value':db_name},
-                            {'name':'db_lang', 'value':db_lang},
-                            {'name':'create_admin_pwd', 'value':create_admin_pwd},
-                            {'name':'create_confirm_pwd', 'value':create_admin_pwd}
+                            {'name':'db_name', 'value':name},
+                            {'name':'db_lang', 'value':lang},
+                            {'name':'create_admin_pwd', 'value':login_pwd},
+                            {'name':'create_confirm_pwd', 'value':login_pwd}
                             ]
-                            }
-        return self.json_rpc('database/create', params)
+                     }
+            return self.json_rpc('database/create', params)
+        params = {
+            'master_pwd': master_pwd,
+            'name': name,
+            'login': login,
+            'password': login_pwd,
+            'phone': '',
+            'lang': lang,
+            'country_code': country_code,
+            }
+        url = self.json_rpc.base_url + '/web/' + 'database/create'
+        return self.json_rpc.wb(url, post_data=params)
 
-    def drop_database(self, db_name, super_admin_pwd):
-        params = {'session_id': self.session_id, 'context':{},
-                  'fields':[
-                            {'name':'drop_db', 'value':db_name},
-                            {'name':'drop_pwd', 'value':super_admin_pwd},
-                            ]
-                            }
-        return self.json_rpc('database/drop', params)
+    def drop_database(self, db_name, master_pwd='admin'):
+        if self.version < 12:
+            params = {
+                'session_id': self.session_id,
+                'context':{},
+                'fields': [{'name':'drop_db', 'value':db_name},
+                           {'name':'drop_pwd', 'value':master_pwd}
+                           ]}
+            return self.json_rpc('database/drop', params)
+        params = {'name': db_name,
+                  'master_pwd': master_pwd}
+        return self.json_rpc.wb(self.url + '/web/database/drop', post_data=params)
 
     def duplicate_database(self, db_name, new_db_name, super_admin_pwd):
         params = {'session_id': self.session_id, 'context':{},
@@ -298,10 +328,8 @@ class OoJsonRPC(object):
             res = self.json_rpc('dataset/search_read', params)
         else:
             params = {
-                'args':[],
+                'args':[domain, {f:[] for f in fields}],
                 'kwargs': {
-                    'fields': fields,
-                    'domain': domain,
                     'offset': offset,
                     'limit': limit,
                     'context': new_context,
@@ -342,5 +370,8 @@ class OoJsonRPC(object):
             print(e)
             print(traceback.format_exc())
 
-    def __del__(self):
+    def __enter__(self): #  Context Manager, to use "with"
+        return self
+
+    def __exit__(self, type, value, traceback): #  Context Manager, to use "with"
         self.close_session()
