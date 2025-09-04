@@ -1,9 +1,6 @@
 import sys
-import imp
+import csv
 from decimal import Decimal
-
-f, path, descr = imp.find_module('csv', sys.path[1:])
-python_csv = imp.load_module('csv', f, path, descr)
 
 class CSVfile(object):
     def __init__(self, file, delimiter=',', quotechar='"', auto_detect=False, debug=False):
@@ -56,11 +53,11 @@ class CSVfile(object):
         rows = []
         if self.auto_detect:
             self.file.seek(0)
-            dialect = python_csv.Sniffer().sniff(self.file.read(1024))
+            dialect = csv.Sniffer().sniff(self.file.read(1024))
             self.file.seek(0)
-            reader = python_csv.reader(self.file, dialect)
+            reader = csv.reader(self.file, dialect)
         else:
-            reader = python_csv.reader(self.file, delimiter=self.delimiter, quotechar=self.quotechar)
+            reader = csv.reader(self.file, delimiter=self.delimiter, quotechar=self.quotechar)
         i = 0
         for row in reader:
             i += 1
