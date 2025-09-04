@@ -37,7 +37,7 @@ class FieldPropertyMany2One(orm.fields.Function,orm.fields.Many2One):
     def __init__(self, label, relation_object_name, **kargs):
         self.required_fields = []
         orm.fields.Many2One.__init__(self, label, relation_object_name, **kargs)
-    
+
     def set_instance(self, object, name):
         orm.fields.Many2One.set_instance(self, object, name)
         self._property_obj = self.object._pool['ir.property']
@@ -73,7 +73,7 @@ def generate_object(oo, db, obj_name, debug=False):
     #print 'Generating object(%s)' % obj_name
     fields = oo[obj_name].fields_get()
     #print fields
-    
+
     table_name = obj_name.replace('.', '_')
     obj = OdooModel(_name=obj_name, _table=table_name)
     cr = db.cursor(autocommit=True)

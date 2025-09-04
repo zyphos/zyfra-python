@@ -328,7 +328,7 @@ class OoJsonRPC(object):
             res = self.json_rpc('dataset/search_read', params)
         else:
             params = {
-                'args':[domain, {f:[] for f in fields}],
+                'args':[domain, {f:{} for f in fields}],
                 'kwargs': {
                     'offset': offset,
                     'limit': limit,
