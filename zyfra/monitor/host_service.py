@@ -400,6 +400,8 @@ class linux_version(HostService):
                              'validity':'2029-04'},
                             {'version':'24.10',
                              'validity':'2025-07'},
+                            {'version':'25.04',
+                             'validity':'2026-01'},
                                    ],
                         'debian': [ # https://wiki.debian.org/LTS
                             {'codename':'slink',
@@ -423,13 +425,13 @@ class linux_version(HostService):
                             {'codename':'stretch',
                              'validity':'2022-06'},
                             {'codename':'buster',
-                             'validity':'2024-01'},
+                             'validity':'2024-06-30'},
                             {'codename':'bullseye',
-                             'validity':'2026-09'},
+                             'validity':'2026-08-31'},
                             {'codename':'bookworm',
-                             'validity':'2028-07'},
+                             'validity':'2028-06-30'},
                             {'codename':'trixie',
-                             'validity':'2030-01'},
+                             'validity':'2030-06-30'},
                             ],
                         'linuxmint': [ # src: https://linuxmint.com/download_all.php
                             {'version':'5',
@@ -497,6 +499,8 @@ class linux_version(HostService):
                             {'version':'22',
                              'validity': '2029-04'},
                             {'version':'22.1',
+                             'validity': '2029-04'},
+                            {'version':'22.2',
                              'validity': '2029-04'},
                             ]
                         }
