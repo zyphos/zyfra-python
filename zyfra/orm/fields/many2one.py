@@ -96,7 +96,10 @@ class Many2One(Relational):
             sql_query.split_select_fields(sub_mql, False, robj, ta, field_alias)
             return None
         context['parameter'] = field_param
-        sql_result = robj._columns[field_name].get_sql(ta, fields, sql_query, context)
+        if field_name in robj._columns:
+            sql_result = robj._columns[field_name].get_sql(ta, fields, sql_query, context)
+        else:
+            raise Exception("field [%s] not found for object[%s]" % (field_name, robj._name))
 
         if nb_fields == 0: sql_result = self.add_operator(sql_result, context)
         return sql_result

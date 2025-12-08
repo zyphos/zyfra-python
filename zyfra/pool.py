@@ -54,7 +54,12 @@ class Pool(object):
     def keys(self):
         return self.__pool.keys()
 
-    def __load_module(self, name, full_filename):
+    def items(self):
+        return self.__pool.items()
+
+    def __load_module(self, name, full_filename=None):
+        if full_filename is None:
+            full_filename = os.path.join(self.module_path,name + '.py')
         try:
             loader = importlib.machinery.SourceFileLoader(name, full_filename)
             spec = importlib.util.spec_from_loader(name, loader)

@@ -62,7 +62,7 @@ class FieldPropertyMany2One(orm.fields.Function,orm.fields.Many2One):
 
 class OdooModel(orm.Model):
     _read_only = True
-    
+
     id = orm.fields.Int('ID')
     create_uid = orm.fields.Many2One('Create user ID', 'res.users')
     create_date = orm.fields.Datetime('Create date')
@@ -71,8 +71,15 @@ class OdooModel(orm.Model):
 
 def generate_object(oo, db, obj_name, debug=False):
     #print 'Generating object(%s)' % obj_name
-    fields = oo[obj_name].fields_get()
-    #print fields
+    try:
+        oo['ma.model']
+        fields = oo['ma.model'].get_model_fields(obj_name)
+        #print('Using ma.model')
+    except:
+        #print('Using old fields_get')
+        fields = oo[obj_name].fields_get()
+    #from pprint import pprint
+    #pprint(fields)
 
     table_name = obj_name.replace('.', '_')
     obj = OdooModel(_name=obj_name, _table=table_name)
@@ -114,20 +121,41 @@ def generate_object(oo, db, obj_name, debug=False):
         elif type == 'date':
             field_obj = orm.fields.Datetime(txt)
         elif type == 'selection':
-            selection = dict(field['selection'])
+            #from pprint import pprint
+            #pprint(field)
+            #selection = dict(field['selection'])
             field_obj = orm.fields.Text(txt) # , select=selection
         elif type == 'many2one':
-            relation = field['relation']
+            #from pprint import pprint
+            #pprint(field)
+            if 'comodel_name' in field:
+                relation = field['comodel_name']
+            else:
+                relation = field['relation']
             field_obj = orm.fields.Many2One(txt, relation)
         elif type == 'one2many':
-            relation = field['relation']
-            relation_field = field['relation_field']
+            #from pprint import pprint
+            #pprint(field)
+            if 'comodel_name' in field:
+                relation = field['comodel_name']
+                relation_field = field['inverse_name']
+            else:
+                relation = field['relation']
+                relation_field = field['relation_field']
             #print 'M2O %s[%s]' % (field_name, relation_field)
             field_obj = orm.fields.One2Many(txt, relation, relation_field)
         elif type == 'many2many':
-            relation = field['relation']
-            rt_local_field, rt_foreign_field = field['m2m_join_columns']
-            m2m_join_table = field['m2m_join_table']
+            #from pprint import pprint
+            #pprint(field)
+            if 'comodel_name' in field:
+                relation = field['comodel_name']
+                rt_local_field = field['column1']
+                rt_foreign_field = field['column2']
+                m2m_join_table = field['relation']
+            else:
+                relation = field['relation']
+                rt_local_field, rt_foreign_field = field['m2m_join_columns']
+                m2m_join_table = field['m2m_join_table']
             field_obj = orm.fields.Many2Many(txt, relation,
                                              relation_table=m2m_join_table,
                                              rt_local_field=rt_local_field,
@@ -136,7 +164,10 @@ def generate_object(oo, db, obj_name, debug=False):
             print('Obj(%s) Field(%s) Type(%s) unknown type' % (obj_name, field_name, type))
             print(field)
             continue
-        #print 'Add Field(%s) Type(%s) to Obj(%s)' % (field_name, type, obj_name)
+        else:
+            # skip
+            continue
+        #print('Add Field(%s) Type(%s) to Obj(%s)' % (field_name, type, obj_name))
         if not field_obj.stored or field_name in real_table_columns:
             obj._columns[field_name] = field_obj
             #obj.add_column(field_name, field_obj)

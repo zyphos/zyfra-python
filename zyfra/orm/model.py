@@ -372,7 +372,7 @@ class Model(object):
 
         other_txt = ''
         columns = []
-        columns_name = self._columns.keys()
+        columns_name = list(self._columns.keys())
         columns_name.sort()
         for col_name in columns_name:
             if col_name in column2skip:
