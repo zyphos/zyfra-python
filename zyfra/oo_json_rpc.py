@@ -149,7 +149,7 @@ class OoJsonRPC(object):
     version = 7
 
     def __init__(self, url=None, db=None, login=None, password=None,
-                 config_filename='~/.oo7_rpc', config_section='options', no_login=False, version=None):
+                 config_filename='~/.oo_json_rpc', config_section='options', no_login=False, version=None):
         self.context = {}
         self._read_config(config_filename, config_section)
         if db:
