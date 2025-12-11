@@ -55,8 +55,8 @@ import json
 from .web_browser import WebBrowser
 from .meta_object import MetaObject
 
-re_float = re.compile('\d+(?:\.\d+)?')
-re_int = re.compile('\d+')
+re_float = re.compile(r'\d+(?:\.\d+)?')
+re_int = re.compile(r'\d+')
 
 class ScraperException(Exception):
     pass

@@ -344,7 +344,7 @@ class Model(object):
 
     def set_name(self):
         name = ''
-        for i,c in enumerate(re.compile('([A-Z])').split(self.__class__.__name__)):
+        for i,c in enumerate(re.compile(r'([A-Z])').split(self.__class__.__name__)):
             if i % 2 == 0:
                 name += c
             else:
