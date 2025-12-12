@@ -401,7 +401,7 @@ class SQLQuery(object):
                         row_alias_ids.setdefault(row[field_alias], []).append(row_id)
                         if not is_fx:
                             row[field_alias] = []
-                    ids = ids.keys()
+                    ids = list(ids.keys())
                     for key, id in enumerate(ids):
                         if str(id).strip() == '' or id is None:
                             del ids[key]

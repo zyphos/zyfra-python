@@ -31,7 +31,7 @@ with OoJsonRPC(url, db, login, password) as oo: # use context manager
   print(oo['product.product'].fields_get())
 
 
-all options (url, db, login, password) can be set as default in ~/.oo7_rpc
+all options (url, db, login, password) can be set as default in ~/.oo_json_rpc
 ie:
 [option]
 url = http://localhost
