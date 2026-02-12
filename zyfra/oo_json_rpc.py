@@ -199,7 +199,7 @@ class OoJsonRPC(object):
             self.context = res['user_context']
             self.session_id = res['session_id']
         else:
-            # Odoo 16
+            # Odoo 16+
             data = self.json_rpc.wb(self.url + '/web', get_data={'db':self.db})
             csrf_token = re.search(r"csrf_token:\s*\"([^\"]+)", data.decode('utf-8'), re.MULTILINE).group(1)
             params = {
@@ -307,6 +307,14 @@ class OoJsonRPC(object):
 
     def search_read(self, model, fields=None, domain=None, offset=0,
                       limit=40, sort='', context=None):
+        # from Odoo 16 fields can be:
+        # list: ['a','b','c.d','c.e','f.(g,h)']
+        # dict: {'a':{},
+        #        'b':{'fields':{'c':{}}, # Many2one, One2many, Many2many
+        #             'context':{}, # Many2one, One2many, Many2many
+        #             'display_name':{}, # Many2one
+        #             'order':'c'  # One2many, Many2many
+        #        }}
         if fields is None:
             fields = []
         if domain is None:
@@ -327,8 +335,25 @@ class OoJsonRPC(object):
                 params['session_id'] = self.session_id
             res = self.json_rpc('dataset/search_read', params)
         else:
+            if isinstance(fields, list):
+                tmp_fields = {}
+                for f in fields:
+                    fsplit = f.split('.')
+                    fname = fsplit[0]
+                    field = tmp_fields.setdefault(fname,{})
+                    if len(fsplit) > 2:
+                        raise Exception(f'Multiple recursive field not handled {repr(f)}')
+                    elif len(fsplit) == 2: # subfield, . in f
+                        s2entity = fsplit[1]
+                        if s2entity[0] == '(': # check if list of subfield
+                            if s2entity[-1] != ')':
+                                raise Exception(f'No maching end ")", got {repr(f)}')
+                            field.setdefault('fields',{}).update({subfield:{} for subfield in s2entity[1:-1].split(',')})
+                fields = tmp_fields
+            elif not isinstance(fields, dict):
+                raise Exception(f'Fields must be list or dict, fields={repr(fields)}')
             params = {
-                'args':[domain, {f:{} for f in fields}],
+                'args':[domain, fields],
                 'kwargs': {
                     'offset': offset,
                     'limit': limit,
