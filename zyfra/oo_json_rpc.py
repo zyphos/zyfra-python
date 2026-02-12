@@ -349,6 +349,8 @@ class OoJsonRPC(object):
                             if s2entity[-1] != ')':
                                 raise Exception(f'No maching end ")", got {repr(f)}')
                             field.setdefault('fields',{}).update({subfield:{} for subfield in s2entity[1:-1].split(',')})
+                        else:
+                            field.setdefault('fields',{})[s2entity] = {}
                 fields = tmp_fields
             elif not isinstance(fields, dict):
                 raise Exception(f'Fields must be list or dict, fields={repr(fields)}')
