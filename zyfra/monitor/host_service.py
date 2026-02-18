@@ -628,9 +628,9 @@ class clamav_signatures(HostService):
     def get_state(self, cmd_exec):
         data = cmd_exec(['clamscan','--version'])
         # ClamAV 1.4.3/27916/Wed Feb 18 07:24:48 2026
-        signature_date_txt = data.split('/')[-1]
+        signature_date_txt = data.split('/')[-1].strip()
         try:
-            if (datetime.now() - datetime.strptime(signature_date_txt)).days < 1:
+            if (datetime.datetime.now() - datetime.datetime.strptime(signature_date_txt, '%a %b %d %H:%M:%S %Y')).days < 1:
                 return StateValue(OK, signature_date_txt)
             else:
                 return StateValue(CRITICAL, signature_date_txt)
