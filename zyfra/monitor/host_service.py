@@ -635,7 +635,27 @@ class clamav_signatures(HostService):
             else:
                 return StateValue(CRITICAL, signature_date_txt)
         except:
-            return StateValue(WARNING, 'Can not retrieve clamav signatures date')
+            return StateValue(UNKNOWN, 'Can not retrieve clamav signatures date')
+
+class ufw(HostService):
+    def get_state(self, cmd_exec):
+        # create /usr/bin/ufw-status
+        # #! /bin/bash
+        # ufw status
+
+        # Add ufw-status allowed in /etc/sudoers.d/
+        try:
+            data = cmd_exec(['sudo','ufw-status'])
+        except:
+            data = cmd_exec(['sudo','ufw','status'])
+        # Status: active
+        # Status: inactive
+        first_line = data.split('\n')[0]
+        if first_line == 'Status: active':
+            return StateValue(OK, data)
+        elif first_line == 'Status: inactive':
+            return StateValue(CRITICAL, data)
+        return StateValue(UNKNOWN, data)
 
 class mysql_local(process):
     process_name = 'sbin/mysqld'
