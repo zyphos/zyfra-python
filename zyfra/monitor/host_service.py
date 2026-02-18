@@ -624,6 +624,19 @@ class reboot_needed(HostService):
 class clamav(process):
     process_name = 'clamd'
 
+class clamav_signatures(HostService):
+    def get_state(self, cmd_exec):
+        data = cmd_exec(['clamscan','--version'])
+        # ClamAV 1.4.3/27916/Wed Feb 18 07:24:48 2026
+        signature_date_txt = data.split('/')[-1]
+        try:
+            if (datetime.now() - datetime.strptime(signature_date_txt)).days < 1:
+                return StateValue(OK, signature_date_txt)
+            else:
+                return StateValue(CRITICAL, signature_date_txt)
+        except:
+            return StateValue(WARNING, 'Can not retrieve clamav signatures date')
+
 class mysql_local(process):
     process_name = 'sbin/mysqld'
 
