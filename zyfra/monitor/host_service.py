@@ -630,8 +630,11 @@ class clamav_signatures(HostService):
         # ClamAV 1.4.3/27916/Wed Feb 18 07:24:48 2026
         signature_date_txt = data.split('/')[-1].strip()
         try:
-            if (datetime.datetime.now() - datetime.datetime.strptime(signature_date_txt, '%a %b %d %H:%M:%S %Y')).days < 1:
+            days = (datetime.datetime.now() - datetime.datetime.strptime(signature_date_txt, '%a %b %d %H:%M:%S %Y')).days
+            if days < 1:
                 return StateValue(OK, signature_date_txt)
+            elif days < 2:
+                return StateValue(WARNING, signature_date_txt)
             else:
                 return StateValue(CRITICAL, signature_date_txt)
         except:
