@@ -558,12 +558,13 @@ class ShowProgress(object):
                 sp.show(i)
                 sleep(0.05)
     """
-    def __init__(self, name, total_nb, interval=2):
+    def __init__(self, name, total_nb, interval=2, same_line=True):
         self.__name = name
         self.__total_nb = total_nb
         self.__start_time = time.time()
         self.__last_time = 0
         self.__interval = interval
+        self.__same_line = same_line
     
     def show(self, nb_done):
         if nb_done == 0:
@@ -579,7 +580,13 @@ class ShowProgress(object):
             eta = (self.__total_nb - nb_done) * time_per_item
             estimated_total_time = self.__total_nb * time_per_item
             self.__last_time = time_now
-            print('%s %s/%s Elapsed:%ss Total estimated:%ss ETA:%ss' % (self.__name, nb_done, self.__total_nb, str_s(time_elapsed), str_s(estimated_total_time), str_s(eta)))
+            if self.__same_line:
+                fc = '\r'
+                es = ''
+            else:
+                fc = ''
+                es = '\n'
+            print(f'{fc}{self.__name} {nb_done}/{self.__total_nb} Elapsed:{str_s(time_elapsed)}s Total estimated:{str_s(estimated_total_time)}s ETA:{str_s(eta)}s', end=es)
 
 class StopWatch(object):
     def __init__(self, name=None):
