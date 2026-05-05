@@ -395,8 +395,8 @@ def print_table_list_dict(data, columns=None):
         columns = set()
         for row in data:
             columns |= set(row.keys())
-    columns = list(columns)
-    columns.sort()
+        columns = list(columns)
+        columns.sort()
     rows = [[row.get(c,'') for c in columns] for row in data]
     print_table(rows, columns)
 
