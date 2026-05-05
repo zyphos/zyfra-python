@@ -307,14 +307,14 @@ class OoJsonRPC(object):
 
     def search_read(self, model, fields=None, domain=None, offset=0,
                       limit=40, sort='', context=None):
-        # from Odoo 16 fields can be:
-        # list: ['a','b','c.d','c.e','f.(g,h)']
-        # dict: {'a':{},
-        #        'b':{'fields':{'c':{}}, # Many2one, One2many, Many2many
-        #             'context':{}, # Many2one, One2many, Many2many
-        #             'display_name':{}, # Many2one
-        #             'order':'c'  # One2many, Many2many
-        #        }}
+        """from Odoo 16 fields can be:
+          list: ['a','b','c.d','c.e','f.(g,h)']
+          dict: {'a':{},
+                 'b':{'fields':{'c':{}}, # Many2one, One2many, Many2many
+                      'context':{}, # Many2one, One2many, Many2many
+                      'display_name':{}, # Many2one
+                      'order':'c'  # One2many, Many2many
+                 }}"""
         if fields is None:
             fields = []
         if domain is None:
