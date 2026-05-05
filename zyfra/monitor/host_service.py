@@ -660,6 +660,46 @@ class ufw(HostService):
             return StateValue(CRITICAL, data)
         return StateValue(UNKNOWN, data)
 
+class ups(HostService):
+    def __init__(self, name, ups_name=None):
+        super().__init__(name)
+        self._ups_name = ups_name
+
+    def get_state(self, cmd_exec):
+        if not self._ups_name:
+            return StateValue(CRITICAL, 'ups parameter must be set. IE:\nups:eaton\nor\nups:eaton@localhost')
+        data = cmd_exec(['upsc', self._ups_name])
+        values = dict([line.split(': ') for line in data.split('\n') if ': ' in line])
+        value2show = ['ups.status','battery.charge','battery.runtime','ups.load']
+        errors = []
+        warning = []
+        status = 'OK' if values['ups.status'] == 'OL' else values['ups.status']
+        load_pc = int(values['ups.load'])
+        run_time = int(values['battery.runtime'])
+        battery_charge = int(values['battery.charge'])
+        if status != 'OK':
+            errors.append(f"Status: [{status}]")
+        if load_pc > 70:
+            errors.append(f"Load too high: {load_pc}%")
+        elif load_pc > 50:
+            warning.append(f"Load is high: {load_pc}%")
+        if battery_charge < 30:
+            warning.append(f"Load is high: {battery_charge}%")
+        err_warn = errors + warning
+        if err_warn:
+            err_warn_txt = '\n'.join(err_warn) + '\n\n'
+        else:
+            err_warn_txt = ''
+        txt = err_warn_txt + f"""Status: {status}
+Remaining battery time: {run_time}s
+Battery charge: {battery_charge}%
+Load: {load_pc}%"""
+        if errors:
+            return StateValue(CRITICAL, txt)
+        elif warning:
+            return StateValue(WARNING, txt)
+        return StateValue(OK, txt)
+
 class mysql_local(process):
     process_name = 'sbin/mysqld'
 
