@@ -355,10 +355,10 @@ class Monitor(object):
             else:
                 service_name, params = split
                 params = params.split(',')
-            if hasattr(network_services, service):
-                return getattr(network_services, service)(*params)
-            if hasattr(host_service, service):
-                return getattr(host_service, service)(*params)
+            if hasattr(network_services, service_name):
+                return getattr(network_services, service_name)(service, *params)
+            if hasattr(host_service, service_name):
+                return getattr(host_service, service_name)(service, *params)
             raise Exception('Service not found [%s] in host [%s]' % (service, host['name']))
 
         for host in self.hosts:

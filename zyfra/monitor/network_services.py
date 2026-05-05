@@ -24,8 +24,8 @@ def get_hostname_ip(hostname):
 class NetworkTcpService(NetworkService):
     port = 0
 
-    def __init__(self, port=None):
-        Service.__init__(self)
+    def __init__(self, name, port=None):
+        super().__init__(name)
         if port is not None:
             self.port = port
 
@@ -41,8 +41,8 @@ class NetworkTcpService(NetworkService):
 class NetworkUdpService(NetworkService):
     port = 0
 
-    def __init__(self, port=None):
-        Service.__init__(self)
+    def __init__(self, name, port=None):
+        super().__init__(name)
         if port is not None:
             self.port = port
 
@@ -74,6 +74,7 @@ class ping(NetworkService):
 
 class InternetCheck(ping):
     def __init__(self, hostnames):
+        super().__init__('InternetCheck')
         self.hostnames = hostnames
 
     def __call__(self):

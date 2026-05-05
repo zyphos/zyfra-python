@@ -143,14 +143,14 @@ class process(HostService):
     process_name = None
     shell = True
 
-    def __init__(self, name = None, cmd = None):
+    def __init__(self, service_name, name = None, cmd = None):
         if cmd is None:
             cmd = self.process_name
         if cmd is None:
             raise ProbeException('No process cmd defined')
         #self.cmd = ['ps', 'aux', '|', 'grep "%s"' % cmd]
         self.cmd = ['ps', 'aux', '|', 'grep', '"%s"' % cmd]
-        HostService.__init__(self)
+        super().__init__(service_name)
         if name is not None:
             self.name = name
 

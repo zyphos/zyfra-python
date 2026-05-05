@@ -49,8 +49,8 @@ class StateValue(dict):
         return str(self)
 
 class Service(object):
-    def __init__(self):
-        self.name = self.__class__.__name__
+    def __init__(self, name):
+        self.name = name
 
     def get_state(self):
         # To be overide
