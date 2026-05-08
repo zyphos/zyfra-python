@@ -669,14 +669,14 @@ class ups(HostService):
         if not self._ups_name:
             return StateValue(CRITICAL, 'ups parameter must be set. IE:\nups:eaton\nor\nups:eaton@localhost')
         data = cmd_exec(['upsc', self._ups_name])
-        values = dict([line.split(': ') for line in data.split('\n') if ': ' in line])
+        values = dict([line.split(': ',1) for line in data.split('\n') if ': ' in line])
         value2show = ['ups.status','battery.charge','battery.runtime','ups.load','ups.realpower']
         errors = []
         warning = []
         status = 'OK' if values['ups.status'] == 'OL' else values['ups.status']
         load_pc = int(values['ups.load'])
         realpower_w = int(values.get('ups.realpower',0))
-        realpower_w = f' ({realpower}W)' if realpower_w else ''
+        realpower_w = f' ({realpower_w}W)' if realpower_w else ''
         run_time = int(values['battery.runtime'])
         battery_charge = int(values['battery.charge'])
         if status != 'OK':
